@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Paper, Box, Button, TextField } from "@mui/material";
-import { Add as AddIcon, Close as CloseIcon } from "@mui/icons-material";
-import { useForm } from "@tanstack/react-form";
+import { useState } from 'react';
+import { Paper, Box, Button, TextField } from '@mui/material';
+import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
+import { useForm } from '@tanstack/react-form';
 
 type AddListButtonProps = {
   onAdd: (title: string) => void;
@@ -11,7 +11,7 @@ export function AddListButton({ onAdd }: AddListButtonProps) {
   const [isAdding, setIsAdding] = useState(false);
 
   const form = useForm({
-    defaultValues: { title: "" },
+    defaultValues: { title: '' },
     onSubmit: async ({ value }) => {
       const trimmed = value.title.trim();
       if (trimmed) {
@@ -32,17 +32,17 @@ export function AddListButton({ onAdd }: AddListButtonProps) {
       <Button
         startIcon={<AddIcon />}
         onClick={() => setIsAdding(true)}
-        className="w-72 flex-shrink-0"
+        className="w-72 shrink-0"
         sx={{
-          backgroundColor: "rgba(255, 255, 255, 0.3)",
-          color: "text.secondary",
-          justifyContent: "flex-start",
-          height: "fit-content",
+          backgroundColor: 'rgba(255, 255, 255, 0.3)',
+          color: 'text.secondary',
+          justifyContent: 'flex-start',
+          height: 'fit-content',
           py: 1.5,
           px: 2,
           borderRadius: 2,
-          "&:hover": {
-            backgroundColor: "rgba(255, 255, 255, 0.5)",
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
           },
         }}
       >
@@ -53,8 +53,8 @@ export function AddListButton({ onAdd }: AddListButtonProps) {
 
   return (
     <Paper
-      className="w-72 flex-shrink-0 p-2"
-      sx={{ backgroundColor: "#ebecf0", borderRadius: 2 }}
+      className="w-72 shrink-0 p-2"
+      sx={{ backgroundColor: '#ebecf0', borderRadius: 2 }}
     >
       <form.Field name="title">
         {(field) => (
@@ -62,19 +62,20 @@ export function AddListButton({ onAdd }: AddListButtonProps) {
             value={field.state.value}
             onChange={(e) => field.handleChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
+              if (e.key === 'Enter') {
                 form.handleSubmit();
-              } else if (e.key === "Escape") {
+              } else if (e.key === 'Escape') {
                 handleCancel();
               }
             }}
+            onBlur={handleCancel}
             placeholder="Enter list title..."
             size="small"
             fullWidth
             autoFocus
             sx={{
-              "& .MuiOutlinedInput-root": {
-                backgroundColor: "white",
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'white',
               },
             }}
           />
@@ -86,6 +87,7 @@ export function AddListButton({ onAdd }: AddListButtonProps) {
             <Button
               variant="contained"
               size="small"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => form.handleSubmit()}
               disabled={!title.trim()}
             >
@@ -95,8 +97,9 @@ export function AddListButton({ onAdd }: AddListButtonProps) {
         </form.Subscribe>
         <Button
           size="small"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={handleCancel}
-          sx={{ minWidth: "auto", p: 1 }}
+          sx={{ minWidth: 'auto', p: 1 }}
         >
           <CloseIcon fontSize="small" />
         </Button>

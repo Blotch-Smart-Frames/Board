@@ -220,6 +220,7 @@ export const addTask = async (
     title: input.title,
     description: input.description || '',
     order: maxOrder + 1,
+    startDate: input.startDate ? Timestamp.fromDate(input.startDate) : null,
     dueDate: input.dueDate ? Timestamp.fromDate(input.dueDate) : null,
     calendarEventId: null,
     calendarSyncEnabled: input.calendarSyncEnabled || false,
@@ -247,6 +248,12 @@ export const updateTask = async (
     ...updates,
     updatedAt: serverTimestamp(),
   };
+
+  if (updates.startDate !== undefined) {
+    updateData.startDate = updates.startDate
+      ? Timestamp.fromDate(updates.startDate)
+      : null;
+  }
 
   if (updates.dueDate !== undefined) {
     updateData.dueDate = updates.dueDate

@@ -16,7 +16,8 @@ class SyncService {
       return null;
     }
 
-    const dueDate = task.dueDate.toDate();
+    const dueDate =
+      task.dueDate instanceof Date ? task.dueDate : task.dueDate.toDate();
 
     try {
       if (task.calendarEventId) {

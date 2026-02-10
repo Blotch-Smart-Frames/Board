@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { onSnapshot } from 'firebase/firestore';
 import {
@@ -204,16 +204,12 @@ export const useBoardQuery = (boardId: string | null) => {
 export const useListsWithTasks = (boardId: string | null) => {
   const { lists, tasks } = useBoardQuery(boardId);
 
-  return useMemo(
-    () =>
-      [...lists]
-        .sort((a, b) => a.order - b.order)
-        .map((list) => ({
-          ...list,
-          tasks: tasks
-            .filter((task) => task.listId === list.id)
-            .sort((a, b) => a.order - b.order),
-        })),
-    [lists, tasks],
-  );
+  return [...lists]
+    .sort((a, b) => a.order - b.order)
+    .map((list) => ({
+      ...list,
+      tasks: tasks
+        .filter((task) => task.listId === list.id)
+        .sort((a, b) => a.order - b.order),
+    }));
 };

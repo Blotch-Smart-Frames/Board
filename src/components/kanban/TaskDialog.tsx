@@ -43,6 +43,7 @@ export function TaskDialog({
     defaultValues: {
       title: task?.title ?? '',
       description: task?.description ?? '',
+      startDate: (task?.startDate?.toDate() ?? null) as Date | null,
       dueDate: (task?.dueDate?.toDate() ?? null) as Date | null,
       calendarSyncEnabled: task?.calendarSyncEnabled ?? false,
       labelIds: task?.labelIds ?? [],
@@ -51,6 +52,7 @@ export function TaskDialog({
       const data: CreateTaskInput | UpdateTaskInput = {
         title: value.title.trim(),
         description: value.description.trim() || undefined,
+        startDate: value.startDate || undefined,
         dueDate: value.dueDate || undefined,
         calendarSyncEnabled: value.calendarSyncEnabled,
         labelIds: value.labelIds,
@@ -69,13 +71,7 @@ export function TaskDialog({
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Dialog
-        open={open}
-        onClose={onClose}
-        maxWidth="sm"
-        fullWidth
-        key={open ? (task?.id ?? 'new') : 'closed'}
-      >
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -148,24 +144,77 @@ export function TaskDialog({
 
               <Divider />
 
-              <form.Field name="dueDate">
-                {(field) => (
-                  <DatePicker
-                    label="Due date"
-                    value={field.state.value}
-                    onChange={(date) => field.handleChange(date)}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                      },
-                    }}
-                  />
-                )}
-              </form.Field>
+              <div className="flex gap-4">
+                <form.Subscribe selector={(state) => state.values.dueDate}>
+                  {(dueDate) => (
+                    <form.Field
+                      name="startDate"
+                      validators={{
+                        onChange: ({ value }) =>
+                          value && dueDate && value > dueDate
+                            ? 'Start date must be before or equal to due date'
+                            : undefined,
+                      }}
+                    >
+                      {(field) => (
+                        <DatePicker
+                          label="Start date"
+                          value={field.state.value}
+                          onChange={(date) => field.handleChange(date)}
+                          maxDate={dueDate || undefined}
+                          slotProps={{
+                            textField: {
+                              fullWidth: true,
+                              error:
+                                field.state.meta.isTouched &&
+                                !field.state.meta.isValid,
+                              helperText:
+                                field.state.meta.isTouched &&
+                                field.state.meta.errors.join(', '),
+                            },
+                          }}
+                        />
+                      )}
+                    </form.Field>
+                  )}
+                </form.Subscribe>
 
-              <form.Subscribe
-                selector={(state) => state.values.dueDate}
-              >
+                <form.Subscribe selector={(state) => state.values.startDate}>
+                  {(startDate) => (
+                    <form.Field
+                      name="dueDate"
+                      validators={{
+                        onChange: ({ value }) =>
+                          value && startDate && value < startDate
+                            ? 'Due date must be after or equal to start date'
+                            : undefined,
+                      }}
+                    >
+                      {(field) => (
+                        <DatePicker
+                          label="Due date"
+                          value={field.state.value}
+                          onChange={(date) => field.handleChange(date)}
+                          minDate={startDate || undefined}
+                          slotProps={{
+                            textField: {
+                              fullWidth: true,
+                              error:
+                                field.state.meta.isTouched &&
+                                !field.state.meta.isValid,
+                              helperText:
+                                field.state.meta.isTouched &&
+                                field.state.meta.errors.join(', '),
+                            },
+                          }}
+                        />
+                      )}
+                    </form.Field>
+                  )}
+                </form.Subscribe>
+              </div>
+
+              <form.Subscribe selector={(state) => state.values.dueDate}>
                 {(dueDate) => (
                   <form.Field name="calendarSyncEnabled">
                     {(field) => (
@@ -195,7 +244,7 @@ export function TaskDialog({
             </Box>
           </DialogContent>
 
-          <DialogActions className="justify-between">
+          <DialogActions className="flex w-full justify-between!">
             <Box>
               {isEditing && onDelete && (
                 <Button
@@ -225,11 +274,7 @@ export function TaskDialog({
                     type="submit"
                     disabled={!title.trim() || !canSubmit || isSubmitting}
                   >
-                    {isSubmitting
-                      ? 'Saving...'
-                      : isEditing
-                        ? 'Save'
-                        : 'Create'}
+                    {isSubmitting ? 'Saving...' : isEditing ? 'Save' : 'Create'}
                   </Button>
                 )}
               </form.Subscribe>

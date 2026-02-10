@@ -15,7 +15,11 @@ import {
   Edit as EditIcon,
 } from '@mui/icons-material';
 import { LabelChip } from '../common/LabelChip';
-import type { Task as TaskType, UpdateTaskInput, Label } from '../../types/board';
+import type {
+  Task as TaskType,
+  UpdateTaskInput,
+  Label,
+} from '../../types/board';
 
 type TaskProps = {
   task: TaskType;
@@ -163,7 +167,7 @@ export function Task({
                 e.stopPropagation();
                 onEdit(task);
               }}
-              className="flex-shrink-0 opacity-0 group-hover:opacity-100"
+              className="shrink-0 opacity-0 group-hover:opacity-100"
               sx={{
                 opacity: 0,
                 '.MuiCard-root:hover &': {

@@ -44,6 +44,7 @@ export type Task = {
   title: string;
   description?: string;
   order: number;
+  startDate?: Timestamp;
   dueDate?: Timestamp;
   calendarEventId?: string;
   calendarSyncEnabled: boolean;
@@ -71,6 +72,7 @@ export type BoardWithData = Board & {
 export type CreateTaskInput = {
   title: string;
   description?: string;
+  startDate?: Date;
   dueDate?: Date;
   calendarSyncEnabled?: boolean;
   assignedTo?: string[];
@@ -80,6 +82,7 @@ export type CreateTaskInput = {
 export type UpdateTaskInput = {
   title?: string;
   description?: string;
+  startDate?: Date | null;
   dueDate?: Date | null;
   calendarSyncEnabled?: boolean;
   assignedTo?: string[];
