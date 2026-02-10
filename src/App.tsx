@@ -1,0 +1,152 @@
+import { useState } from 'react';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { Box, Drawer, useMediaQuery } from '@mui/material';
+import { theme } from './config/theme';
+import { AuthGuard } from './components/auth/AuthGuard';
+import { AppBar } from './components/layout/AppBar';
+import { BoardList } from './components/layout/BoardList';
+import { Board } from './components/kanban/Board';
+import { ShareDialog } from './components/collaboration/ShareDialog';
+import { useUserBoardsQuery } from './hooks/useUserBoardsQuery';
+import { useAuthQuery } from './hooks/useAuthQuery';
+import { deleteBoard, updateBoard, shareBoard } from './services/boardService';
+
+const DRAWER_WIDTH = 280;
+
+export const App = () => {
+  const { user } = useAuthQuery();
+  const { boards, isLoading, createBoard } = useUserBoardsQuery();
+  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  const selectedBoard = boards.find((b) => b.id === selectedBoardId);
+
+  const handleCreateBoard = async (title: string) => {
+    const board = await createBoard({ title });
+    setSelectedBoardId(board.id);
+  };
+
+  const handleDeleteBoard = async (boardId: string) => {
+    await deleteBoard(boardId);
+    if (selectedBoardId === boardId) {
+      setSelectedBoardId(null);
+    }
+  };
+
+  const handleRenameBoard = async (boardId: string, title: string) => {
+    await updateBoard(boardId, { title });
+  };
+
+  const handleShareBoard = async (email: string) => {
+    if (!selectedBoardId) return;
+    // In a real app, you'd look up the user by email
+    // For now, we'll just use the email as a placeholder
+    await shareBoard(selectedBoardId, email);
+  };
+
+  const handleRemoveCollaborator = async (userId: string) => {
+    // In a real app, implement remove collaborator logic
+    console.log('Remove collaborator:', userId);
+  };
+
+  const collaborators = selectedBoard
+    ? [
+        {
+          id: selectedBoard.ownerId,
+          email: user?.email || '',
+          name: user?.displayName || 'Owner',
+          photoURL: user?.photoURL,
+          isOwner: true,
+        },
+      ]
+    : [];
+
+  const drawerContent = (
+    <BoardList
+      boards={boards}
+      selectedBoardId={selectedBoardId}
+      isLoading={isLoading}
+      onSelectBoard={setSelectedBoardId}
+      onCreateBoard={handleCreateBoard}
+      onDeleteBoard={handleDeleteBoard}
+      onRenameBoard={handleRenameBoard}
+    />
+  );
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthGuard>
+        <Box className="h-screen flex flex-col">
+          <AppBar
+            title={selectedBoard?.title || 'Board by Blotch'}
+            onMenuClick={() => setDrawerOpen(!drawerOpen)}
+            onShare={() => setShareDialogOpen(true)}
+            showShare={!!selectedBoard}
+          />
+
+          <Box className="flex-1 flex overflow-hidden">
+            {isMobile ? (
+              <Drawer
+                variant="temporary"
+                open={drawerOpen}
+                onClose={() => setDrawerOpen(false)}
+                sx={{
+                  '& .MuiDrawer-paper': {
+                    width: DRAWER_WIDTH,
+                    boxSizing: 'border-box',
+                  },
+                }}
+              >
+                {drawerContent}
+              </Drawer>
+            ) : (
+              <Drawer
+                variant="persistent"
+                open={drawerOpen}
+                sx={{
+                  width: drawerOpen ? DRAWER_WIDTH : 0,
+                  flexShrink: 0,
+                  '& .MuiDrawer-paper': {
+                    width: DRAWER_WIDTH,
+                    boxSizing: 'border-box',
+                    position: 'relative',
+                  },
+                }}
+              >
+                {drawerContent}
+              </Drawer>
+            )}
+
+            <Box
+              component="main"
+              className="flex-1 overflow-hidden bg-linear-to-br from-blue-50 to-indigo-100"
+            >
+              {selectedBoardId ? (
+                <Board boardId={selectedBoardId} />
+              ) : (
+                <Box className="flex items-center justify-center h-full text-gray-500">
+                  Select a board or create a new one to get started
+                </Box>
+              )}
+            </Box>
+          </Box>
+        </Box>
+
+        {selectedBoard && (
+          <ShareDialog
+            open={shareDialogOpen}
+            boardTitle={selectedBoard.title}
+            collaborators={collaborators}
+            onClose={() => setShareDialogOpen(false)}
+            onInvite={handleShareBoard}
+            onRemove={handleRemoveCollaborator}
+          />
+        )}
+      </AuthGuard>
+    </ThemeProvider>
+  );
+};
