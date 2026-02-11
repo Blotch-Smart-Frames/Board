@@ -35,8 +35,8 @@ describe('useDragAndDrop', () => {
   const mockReorderLists = vi.fn();
 
   const mockLists = [
-    { id: 'list-1', title: 'To Do', order: 0, createdAt: mockTimestamp },
-    { id: 'list-2', title: 'Done', order: 1, createdAt: mockTimestamp },
+    { id: 'list-1', title: 'To Do', order: 'a0', createdAt: mockTimestamp },
+    { id: 'list-2', title: 'Done', order: 'a1', createdAt: mockTimestamp },
   ];
 
   const mockTasks = [
@@ -44,7 +44,7 @@ describe('useDragAndDrop', () => {
       id: 'task-1',
       listId: 'list-1',
       title: 'Task 1',
-      order: 0,
+      order: 'a0',
       calendarSyncEnabled: false,
       createdBy: 'user-1',
       createdAt: mockTimestamp,
@@ -54,7 +54,7 @@ describe('useDragAndDrop', () => {
       id: 'task-2',
       listId: 'list-1',
       title: 'Task 2',
-      order: 1,
+      order: 'a1',
       calendarSyncEnabled: false,
       createdBy: 'user-1',
       createdAt: mockTimestamp,

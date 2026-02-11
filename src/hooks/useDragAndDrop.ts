@@ -8,6 +8,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../queries/queryKeys";
 import type { Task, List } from "../types/board";
+import { getOrderAtIndex, compareOrder } from "../utils/ordering";
 
 type UseDragAndDropOptions = {
   boardId: string | null;
@@ -16,9 +17,9 @@ type UseDragAndDropOptions = {
   onMoveTask?: (
     taskId: string,
     newListId: string,
-    newOrder: number,
+    newOrder: string,
   ) => Promise<void>;
-  onReorderLists?: (orderedIds: string[]) => Promise<void>;
+  onReorderLists?: (listId: string, newOrder: string) => Promise<void>;
 };
 
 export const useDragAndDrop = (options: UseDragAndDropOptions) => {
@@ -74,7 +75,7 @@ export const useDragAndDrop = (options: UseDragAndDropOptions) => {
       if (!activeTask) return;
 
       let targetListId: string;
-      let targetOrder: number;
+      let targetIndex: number;
 
       if (overData?.type === "task") {
         // Dropping on another task
@@ -83,44 +84,34 @@ export const useDragAndDrop = (options: UseDragAndDropOptions) => {
 
         targetListId = overTask.listId;
         const listTasks = tasks
-          .filter((t) => t.listId === targetListId)
-          .sort((a, b) => a.order - b.order);
+          .filter((t) => t.listId === targetListId && t.id !== activeIdStr)
+          .sort((a, b) => compareOrder(a.order, b.order));
 
         const overIndex = listTasks.findIndex((t) => t.id === overIdStr);
-
-        if (activeTask.listId === targetListId) {
-          // Same list reorder
-          const activeIndex = listTasks.findIndex((t) => t.id === activeIdStr);
-          const newTasks = arrayMove(listTasks, activeIndex, overIndex);
-          targetOrder = newTasks.findIndex((t) => t.id === activeIdStr);
-        } else {
-          // Cross-list move
-          targetOrder = overIndex;
-        }
+        targetIndex = overIndex >= 0 ? overIndex : listTasks.length;
       } else if (overData?.type === "list") {
         // Dropping on an empty list
         targetListId = overIdStr;
-        targetOrder = 0;
+        targetIndex = 0;
       } else {
         return;
       }
 
+      // Calculate the fractional order key
+      const destTasks = tasks
+        .filter((t) => t.listId === targetListId && t.id !== activeIdStr)
+        .sort((a, b) => compareOrder(a.order, b.order));
+      const newOrder = getOrderAtIndex(destTasks, targetIndex);
+
       // Optimistic update via React Query cache
       const previousTasks = queryClient.getQueryData<Task[]>(
-        queryKeys.boards.tasks(boardId)
+        queryKeys.boards.tasks(boardId),
       );
 
       if (previousTasks) {
         const updatedTasks = previousTasks.map((task) => {
           if (task.id === activeIdStr) {
-            return { ...task, listId: targetListId, order: targetOrder };
-          }
-          // Reorder other tasks in the destination list
-          if (task.listId === targetListId && task.id !== activeIdStr) {
-            const currentOrder = task.order;
-            if (currentOrder >= targetOrder) {
-              return { ...task, order: currentOrder + 1 };
-            }
+            return { ...task, listId: targetListId, order: newOrder };
           }
           return task;
         });
@@ -130,47 +121,59 @@ export const useDragAndDrop = (options: UseDragAndDropOptions) => {
       // Sync with server
       if (onMoveTask) {
         try {
-          await onMoveTask(activeIdStr, targetListId, targetOrder);
+          await onMoveTask(activeIdStr, targetListId, newOrder);
         } catch (error) {
           console.error("Failed to move task:", error);
           // Revert will happen via subscription
           if (previousTasks) {
-            queryClient.setQueryData(queryKeys.boards.tasks(boardId), previousTasks);
+            queryClient.setQueryData(
+              queryKeys.boards.tasks(boardId),
+              previousTasks,
+            );
           }
         }
       }
     } else if (activeData?.type === "list") {
       // Reordering lists
-      const activeIndex = lists.findIndex((l) => l.id === activeIdStr);
-      const overIndex = lists.findIndex((l) => l.id === overIdStr);
+      const sortedLists = [...lists].sort((a, b) =>
+        compareOrder(a.order, b.order),
+      );
+      const activeIndex = sortedLists.findIndex((l) => l.id === activeIdStr);
+      const overIndex = sortedLists.findIndex((l) => l.id === overIdStr);
 
       if (activeIndex === -1 || overIndex === -1) return;
 
-      const newLists = arrayMove(lists, activeIndex, overIndex);
-      const orderedIds = newLists.map((l) => l.id);
+      // Calculate the fractional order key for the new position
+      const otherLists = sortedLists.filter((l) => l.id !== activeIdStr);
+      const newOrder = getOrderAtIndex(otherLists, overIndex);
 
       // Optimistic update via React Query cache
       const previousLists = queryClient.getQueryData<List[]>(
-        queryKeys.boards.lists(boardId)
+        queryKeys.boards.lists(boardId),
       );
 
       if (previousLists) {
-        const updatedLists = orderedIds.map((id, index) => {
-          const list = previousLists.find((l) => l.id === id);
-          return list ? { ...list, order: index } : null;
-        }).filter((l): l is List => l !== null);
+        const updatedLists = previousLists.map((list) => {
+          if (list.id === activeIdStr) {
+            return { ...list, order: newOrder };
+          }
+          return list;
+        });
         queryClient.setQueryData(queryKeys.boards.lists(boardId), updatedLists);
       }
 
       // Sync with server
       if (onReorderLists) {
         try {
-          await onReorderLists(orderedIds);
+          await onReorderLists(activeIdStr, newOrder);
         } catch (error) {
           console.error("Failed to reorder lists:", error);
           // Revert
           if (previousLists) {
-            queryClient.setQueryData(queryKeys.boards.lists(boardId), previousLists);
+            queryClient.setQueryData(
+              queryKeys.boards.lists(boardId),
+              previousLists,
+            );
           }
         }
       }

@@ -14,26 +14,23 @@ import {
 import { db } from '../config/firebase';
 import type { Label, CreateLabelInput, UpdateLabelInput } from '../types/board';
 import { defaultLabels } from '../config/defaultLabels';
+import { getOrderAtEnd, getOrderBetween } from '../utils/ordering';
 
 export const createLabel = async (
   boardId: string,
-  input: CreateLabelInput
+  input: CreateLabelInput,
 ): Promise<Label> => {
-  const labelsSnap = await getDocs(
-    query(
-      collection(db, 'boards', boardId, 'labels'),
-      orderBy('order', 'desc')
-    )
+  const labelsSnap = await getDocs(collection(db, 'boards', boardId, 'labels'));
+  const existingLabels = labelsSnap.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() }) as Label,
   );
-  const maxOrder = labelsSnap.empty
-    ? -1
-    : (labelsSnap.docs[0].data().order as number);
+  const order = getOrderAtEnd(existingLabels);
 
   const labelRef = await addDoc(collection(db, 'boards', boardId, 'labels'), {
     name: input.name,
     color: input.color,
     emoji: input.emoji || null,
-    order: maxOrder + 1,
+    order,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -96,7 +93,7 @@ export const getBoardLabels = async (boardId: string): Promise<Label[]> => {
 };
 
 export const initializeDefaultLabels = async (
-  boardId: string
+  boardId: string,
 ): Promise<Label[]> => {
   // Check if labels already exist
   const existingLabels = await getBoardLabels(boardId);
@@ -104,20 +101,23 @@ export const initializeDefaultLabels = async (
     return existingLabels;
   }
 
-  // Create default labels
+  // Create default labels with fractional ordering
   const batch = writeBatch(db);
   const labelsRef = collection(db, 'boards', boardId, 'labels');
 
-  defaultLabels.forEach((label, index) => {
+  let prevOrder: string | null = null;
+  defaultLabels.forEach((label) => {
     const labelDocRef = doc(labelsRef);
+    const order = getOrderBetween(prevOrder, null);
     batch.set(labelDocRef, {
       name: label.name,
       color: label.color,
       emoji: label.emoji,
-      order: index,
+      order,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+    prevOrder = order;
   });
 
   await batch.commit();
@@ -128,16 +128,11 @@ export const initializeDefaultLabels = async (
 
 export const reorderLabels = async (
   boardId: string,
-  orderedLabelIds: string[]
+  labelId: string,
+  newOrder: string,
 ): Promise<void> => {
-  const batch = writeBatch(db);
-
-  orderedLabelIds.forEach((labelId, index) => {
-    batch.update(doc(db, 'boards', boardId, 'labels', labelId), {
-      order: index,
-      updatedAt: serverTimestamp(),
-    });
+  await updateDoc(doc(db, 'boards', boardId, 'labels', labelId), {
+    order: newOrder,
+    updatedAt: serverTimestamp(),
   });
-
-  await batch.commit();
 };

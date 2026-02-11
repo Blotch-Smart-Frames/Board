@@ -11,21 +11,30 @@ import {
   Divider,
   ListItemIcon,
   ListItemText,
+  ToggleButtonGroup,
+  ToggleButton,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
   Share as ShareIcon,
+  ViewKanban as KanbanIcon,
+  ViewTimeline as TimelineIcon,
 } from '@mui/icons-material';
 import { useAuthQuery } from '../../hooks/useAuthQuery';
 import { UserAvatar } from '../collaboration/UserAvatar';
+import { ThemeToggle } from './ThemeToggle';
+
+type ViewMode = 'kanban' | 'timeline';
 
 type AppBarProps = {
   title?: string;
   onMenuClick?: () => void;
   onShare?: () => void;
   showShare?: boolean;
+  viewMode?: ViewMode;
+  onViewModeChange?: (mode: ViewMode) => void;
 };
 
 export function AppBar({
@@ -33,6 +42,8 @@ export function AppBar({
   onMenuClick,
   onShare,
   showShare = false,
+  viewMode,
+  onViewModeChange,
 }: AppBarProps) {
   const { user, logout, isAuthenticated } = useAuthQuery();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -62,11 +73,33 @@ export function AppBar({
         <Typography
           variant="h6"
           component="div"
-          className="flex-grow font-semibold"
+          className="grow font-semibold"
           color="primary"
         >
           {title}
         </Typography>
+
+        {viewMode && onViewModeChange && (
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(_, newMode: ViewMode | null) => {
+              if (newMode) onViewModeChange(newMode);
+            }}
+            size="small"
+          >
+            <ToggleButton value="kanban" aria-label="Kanban view">
+              <KanbanIcon sx={{ mr: 0.5 }} />
+              Kanban
+            </ToggleButton>
+            <ToggleButton value="timeline" aria-label="Timeline view">
+              <TimelineIcon sx={{ mr: 0.5 }} />
+              Timeline
+            </ToggleButton>
+          </ToggleButtonGroup>
+        )}
+
+        <ThemeToggle />
 
         {showShare && onShare && (
           <Button

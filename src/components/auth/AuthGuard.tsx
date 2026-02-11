@@ -12,7 +12,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   if (isLoading) {
     return (
-      <Box className="flex items-center justify-center h-screen">
+      <Box className="flex h-screen items-center justify-center">
         <CircularProgress />
       </Box>
     );
@@ -20,19 +20,27 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   if (!isAuthenticated) {
     return (
-      <Box className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <Paper className="p-8 max-w-md w-full mx-4 text-center" elevation={3}>
+      <Box className="flex h-screen items-center justify-center gap-4 p-6">
+        <Paper
+          className="mx-4 flex w-full max-w-md flex-col gap-4 p-8 text-center"
+          elevation={3}
+        >
           <Typography
             variant="h4"
             component="h1"
             className="mb-2 font-bold text-gray-800"
           >
-            Board by Blotch
+            Board{' '}
+            <Typography
+              variant="caption"
+              component="sub"
+              className="text-gray-500"
+            >
+              by Blotch
+            </Typography>
           </Typography>
-          <Typography variant="body1" color="text.secondary" className="mb-6">
+          <Typography color="text.secondary">
             Organize your tasks with a beautiful, collaborative board.
-            <br />
-            Sync with Google Calendar to never miss a deadline.
           </Typography>
 
           <Box className="flex flex-col gap-4">
@@ -41,7 +49,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
             <Typography
               variant="caption"
               color="text.secondary"
-              className="block mt-4"
+              className="mt-4 block"
             >
               Sign in to access your boards and collaborate with your team.
             </Typography>

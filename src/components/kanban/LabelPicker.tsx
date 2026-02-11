@@ -57,7 +57,7 @@ export function LabelPicker({
     );
   }
 
-  const sortedLabels = [...labels].sort((a, b) => a.order - b.order);
+  const sortedLabels = [...labels].sort((a, b) => a.order.localeCompare(b.order));
 
   return (
     <Box>

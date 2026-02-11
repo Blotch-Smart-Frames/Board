@@ -8,7 +8,10 @@ type TimelineRowProps = {
 };
 
 export function TimelineRow({ row, children }: TimelineRowProps) {
-  const { setNodeRef, rowWrapperStyle, rowStyle } = useRow({ id: row.id });
+  const { setNodeRef, rowWrapperStyle, rowStyle } = useRow({
+    id: row.id,
+    data: { type: 'timeline-row', listId: row.id },
+  });
 
   return (
     <Box

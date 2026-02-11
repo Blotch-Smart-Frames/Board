@@ -15,7 +15,7 @@ const mockLabel: Label = {
   name: 'Bug',
   color: '#EF4444',
   emoji: '🐛',
-  order: 0,
+  order: 'a0',
   createdAt: mockTimestamp,
   updatedAt: mockTimestamp,
 };

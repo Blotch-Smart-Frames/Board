@@ -5,7 +5,7 @@ export type Label = {
   name: string;
   color: string; // hex color
   emoji?: string;
-  order: number;
+  order: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };
@@ -34,7 +34,7 @@ export type Board = {
 export type List = {
   id: string;
   title: string;
-  order: number;
+  order: string;
   createdAt: Timestamp;
 };
 
@@ -43,7 +43,7 @@ export type Task = {
   listId: string;
   title: string;
   description?: string;
-  order: number;
+  order: string;
   startDate?: Timestamp;
   dueDate?: Timestamp;
   calendarEventId?: string;

@@ -100,7 +100,7 @@ const createMockBoard = (overrides: Partial<BoardType> = {}): BoardType => ({
 const createMockList = (overrides: Partial<List> = {}): List => ({
   id: 'list-1',
   title: 'Test List',
-  order: 0,
+  order: 'a0',
   createdAt: Timestamp.now(),
   ...overrides,
 });
@@ -109,7 +109,7 @@ const createMockTask = (overrides: Partial<Task> = {}): Task => ({
   id: 'task-1',
   listId: 'list-1',
   title: 'Test Task',
-  order: 0,
+  order: 'a0',
   calendarSyncEnabled: false,
   createdBy: 'user-1',
   createdAt: Timestamp.now(),
@@ -198,36 +198,12 @@ describe('Board', () => {
     expect(screen.getByText('Board not found')).toBeInTheDocument();
   });
 
-  it('renders board title', () => {
-    const board = createMockBoard({ title: 'My Board' });
-    mockUseBoardQuery.mockReturnValue({
-      board,
-      lists: [],
-      tasks: [],
-      isLoading: false,
-      error: null,
-      addList: vi.fn(),
-      updateList: vi.fn(),
-      deleteList: vi.fn(),
-      addTask: vi.fn(),
-      updateTask: vi.fn(),
-      deleteTask: vi.fn(),
-      moveTask: vi.fn(),
-    });
-
-    render(<Board boardId="board-1" />);
-
-    expect(
-      screen.getByRole('heading', { name: 'My Board' }),
-    ).toBeInTheDocument();
-  });
-
   it('renders all lists', () => {
     const board = createMockBoard();
     const lists = [
-      createMockList({ id: 'list-1', title: 'To Do', order: 0 }),
-      createMockList({ id: 'list-2', title: 'In Progress', order: 1 }),
-      createMockList({ id: 'list-3', title: 'Done', order: 2 }),
+      createMockList({ id: 'list-1', title: 'To Do', order: 'a0' }),
+      createMockList({ id: 'list-2', title: 'In Progress', order: 'a1' }),
+      createMockList({ id: 'list-3', title: 'Done', order: 'a2' }),
     ];
 
     mockUseBoardQuery.mockReturnValue({
@@ -245,7 +221,7 @@ describe('Board', () => {
       moveTask: vi.fn(),
     });
 
-    render(<Board boardId="board-1" />);
+    render(<Board boardId="board-1" viewMode="kanban" />);
 
     expect(screen.getByRole('heading', { name: 'To Do' })).toBeInTheDocument();
     expect(
@@ -271,7 +247,7 @@ describe('Board', () => {
       moveTask: vi.fn(),
     });
 
-    render(<Board boardId="board-1" />);
+    render(<Board boardId="board-1" viewMode="kanban" />);
 
     expect(
       screen.getByRole('button', { name: /add another list/i }),
@@ -301,7 +277,7 @@ describe('Board', () => {
       moveTask: vi.fn(),
     });
 
-    render(<Board boardId="board-1" />);
+    render(<Board boardId="board-1" viewMode="kanban" />);
 
     expect(screen.getByText('Task 1')).toBeInTheDocument();
     expect(screen.getByText('Task 2')).toBeInTheDocument();
@@ -310,9 +286,9 @@ describe('Board', () => {
   it('sorts lists by order', () => {
     const board = createMockBoard();
     const lists = [
-      createMockList({ id: 'list-2', title: 'Second', order: 1 }),
-      createMockList({ id: 'list-1', title: 'First', order: 0 }),
-      createMockList({ id: 'list-3', title: 'Third', order: 2 }),
+      createMockList({ id: 'list-2', title: 'Second', order: 'a1' }),
+      createMockList({ id: 'list-1', title: 'First', order: 'a0' }),
+      createMockList({ id: 'list-3', title: 'Third', order: 'a2' }),
     ];
 
     mockUseBoardQuery.mockReturnValue({
@@ -330,7 +306,7 @@ describe('Board', () => {
       moveTask: vi.fn(),
     });
 
-    render(<Board boardId="board-1" />);
+    render(<Board boardId="board-1" viewMode="kanban" />);
 
     const headings = screen.getAllByRole('heading', { level: 2 });
     const titles = headings.map((h) => h.textContent);

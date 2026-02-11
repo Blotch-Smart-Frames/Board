@@ -46,7 +46,7 @@ const createMockTask = (overrides: Partial<Task> = {}): Task => ({
   listId: "list-1",
   title: "Test Task",
   description: "Test description",
-  order: 0,
+  order: "a0",
   calendarSyncEnabled: false,
   createdBy: "user-1",
   createdAt: Timestamp.now(),

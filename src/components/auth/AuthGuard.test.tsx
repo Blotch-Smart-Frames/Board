@@ -68,7 +68,9 @@ describe('AuthGuard', () => {
     );
 
     expect(screen.getByText(/organize your tasks/i)).toBeInTheDocument();
-    expect(screen.getByText(/sync with google calendar/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/sign in to access your boards/i),
+    ).toBeInTheDocument();
   });
 
   it('renders children when authenticated', () => {

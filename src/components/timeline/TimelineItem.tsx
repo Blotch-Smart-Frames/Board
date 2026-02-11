@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useItem } from 'dnd-timeline';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, useTheme } from '@mui/material';
 import type { TimelineItem as TimelineItemType } from '../../hooks/useTimelineData';
 import type { Label } from '../../types/board';
 
@@ -13,6 +13,7 @@ type TimelineItemProps = {
 const DRAG_THRESHOLD = 5;
 
 export function TimelineItem({ item, labels, onClick }: TimelineItemProps) {
+  const theme = useTheme();
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null);
 
   const { setNodeRef, attributes, listeners, itemStyle, itemContentStyle } =
@@ -27,7 +28,7 @@ export function TimelineItem({ item, labels, onClick }: TimelineItemProps) {
     item.task.labelIds?.includes(label.id),
   );
   const primaryColor =
-    taskLabels.length > 0 ? taskLabels[0].color : '#1976d2';
+    taskLabels.length > 0 ? taskLabels[0].color : theme.palette.primary.main;
 
   const handlePointerDown = (e: React.PointerEvent) => {
     mouseDownPos.current = { x: e.clientX, y: e.clientY };

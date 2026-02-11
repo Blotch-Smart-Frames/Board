@@ -1,17 +1,9 @@
-import { useState } from "react";
-import { Button, CircularProgress } from "@mui/material";
-import { Google as GoogleIcon } from "@mui/icons-material";
-import { useAuthQuery } from "../../hooks/useAuthQuery";
+import { useState } from 'react';
+import { Button, CircularProgress } from '@mui/material';
+import { Google as GoogleIcon } from '@mui/icons-material';
+import { useAuthQuery } from '../../hooks/useAuthQuery';
 
-type GoogleAuthButtonProps = {
-  variant?: "text" | "outlined" | "contained";
-  size?: "small" | "medium" | "large";
-};
-
-export function GoogleAuthButton({
-  variant = "contained",
-  size = "medium",
-}: GoogleAuthButtonProps) {
+export function GoogleAuthButton() {
   const { login } = useAuthQuery();
   const [isLoading, setIsLoading] = useState(false);
   const handleClick = async () => {
@@ -19,7 +11,7 @@ export function GoogleAuthButton({
       setIsLoading(true);
       await login();
     } catch (err) {
-      console.error("Login failed:", err);
+      console.error('Login failed:', err);
     } finally {
       setIsLoading(false);
     }
@@ -27,21 +19,21 @@ export function GoogleAuthButton({
 
   return (
     <Button
-      variant={variant}
-      size={size}
+      variant="contained"
+      size="medium"
       onClick={handleClick}
       disabled={isLoading}
       startIcon={isLoading ? <CircularProgress size={20} /> : <GoogleIcon />}
       sx={{
-        backgroundColor: variant === "contained" ? "#fff" : undefined,
-        color: variant === "contained" ? "#757575" : undefined,
-        border: variant === "contained" ? "1px solid #dadce0" : undefined,
-        "&:hover": {
-          backgroundColor: variant === "contained" ? "#f8f9fa" : undefined,
+        backgroundColor: '#fff',
+        color: '#757575',
+        border: '1px solid #dadce0',
+        '&:hover': {
+          backgroundColor: '#f8f9fa',
         },
       }}
     >
-      {isLoading ? "Signing in..." : "Sign in with Google"}
+      {isLoading ? 'Signing in...' : 'Sign in with Google'}
     </Button>
   );
 }

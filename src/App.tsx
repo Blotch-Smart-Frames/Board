@@ -14,12 +14,15 @@ import { deleteBoard, updateBoard, shareBoard } from './services/boardService';
 
 const DRAWER_WIDTH = 280;
 
+type ViewMode = 'kanban' | 'timeline';
+
 export const App = () => {
   const { user } = useAuthQuery();
   const { boards, isLoading, createBoard } = useUserBoardsQuery();
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const selectedBoard = boards.find((b) => b.id === selectedBoardId);
@@ -86,6 +89,8 @@ export const App = () => {
             onMenuClick={() => setDrawerOpen(!drawerOpen)}
             onShare={() => setShareDialogOpen(true)}
             showShare={!!selectedBoard}
+            viewMode={selectedBoardId ? viewMode : undefined}
+            onViewModeChange={selectedBoardId ? setViewMode : undefined}
           />
 
           <Box className="flex-1 flex overflow-hidden">
@@ -123,12 +128,16 @@ export const App = () => {
 
             <Box
               component="main"
-              className="flex-1 overflow-hidden bg-linear-to-br from-blue-50 to-indigo-100"
+              className="flex-1 overflow-hidden"
+              sx={{ bgcolor: 'background.default' }}
             >
               {selectedBoardId ? (
-                <Board boardId={selectedBoardId} />
+                <Board boardId={selectedBoardId} viewMode={viewMode} />
               ) : (
-                <Box className="flex items-center justify-center h-full text-gray-500">
+                <Box
+                  className="flex items-center justify-center h-full"
+                  sx={{ color: 'text.secondary' }}
+                >
                   Select a board or create a new one to get started
                 </Box>
               )}

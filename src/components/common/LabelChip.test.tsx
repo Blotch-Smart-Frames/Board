@@ -10,7 +10,7 @@ const createMockLabel = (overrides: Partial<Label> = {}): Label => ({
   name: 'Urgent',
   color: '#EF4444',
   emoji: '⚡',
-  order: 0,
+  order: 'a0',
   createdAt: Timestamp.now(),
   updatedAt: Timestamp.now(),
   ...overrides,

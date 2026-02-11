@@ -25,7 +25,7 @@ export function useTimelineData(
   tasks: Task[],
   lists: List[],
 ): UseTimelineDataResult {
-  const sortedLists = [...lists].sort((a, b) => a.order - b.order);
+  const sortedLists = [...lists].sort((a, b) => a.order.localeCompare(b.order));
 
   const rows: TimelineRow[] = sortedLists.map((list) => ({
     id: list.id,

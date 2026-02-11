@@ -9,18 +9,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import {
-  Box,
-  CircularProgress,
-  Typography,
-  Alert,
-  ToggleButtonGroup,
-  ToggleButton,
-} from '@mui/material';
-import {
-  ViewKanban as KanbanIcon,
-  ViewTimeline as TimelineIcon,
-} from '@mui/icons-material';
+import { Box, CircularProgress, Typography, Alert } from '@mui/material';
 import { List } from './List';
 import { Task } from './Task';
 import { AddListButton } from './AddListButton';
@@ -36,13 +25,12 @@ import type {
   UpdateTaskInput,
 } from '../../types/board';
 
-type ViewMode = 'kanban' | 'timeline';
-
 type BoardProps = {
   boardId: string;
+  viewMode: 'kanban' | 'timeline';
 };
 
-export function Board({ boardId }: BoardProps) {
+export function Board({ boardId, viewMode }: BoardProps) {
   const {
     board,
     lists,
@@ -60,21 +48,20 @@ export function Board({ boardId }: BoardProps) {
 
   const { labels } = useLabelsQuery(boardId);
 
-  const sortedLists = [...lists].sort((a, b) => a.order - b.order);
+  const sortedLists = [...lists].sort((a, b) => a.order.localeCompare(b.order));
   const listsWithTasks = sortedLists.map((list) => ({
     ...list,
     tasks: tasks
       .filter((task) => task.listId === list.id)
-      .sort((a, b) => a.order - b.order),
+      .sort((a, b) => a.order.localeCompare(b.order)),
   }));
   const { syncTaskToCalendar } = useCalendarSync(boardId, tasks);
 
-  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [addingToListId, setAddingToListId] = useState<string | null>(null);
 
   const editingTask = editingTaskId
-    ? tasks.find((t) => t.id === editingTaskId) ?? null
+    ? (tasks.find((t) => t.id === editingTaskId) ?? null)
     : null;
 
   const handleEditTask = (task: TaskType) => setEditingTaskId(task.id);
@@ -192,38 +179,8 @@ export function Board({ boardId }: BoardProps) {
     );
   }
 
-  const handleViewModeChange = (
-    _: React.MouseEvent<HTMLElement>,
-    newMode: ViewMode | null,
-  ) => {
-    if (newMode) {
-      setViewMode(newMode);
-    }
-  };
-
   return (
     <Box className="h-full flex flex-col">
-      <Box className="px-4 py-3 bg-white/50 backdrop-blur-sm border-b flex items-center justify-between">
-        <Typography variant="h5" component="h1" className="font-semibold">
-          {board.title}
-        </Typography>
-        <ToggleButtonGroup
-          value={viewMode}
-          exclusive
-          onChange={handleViewModeChange}
-          size="small"
-        >
-          <ToggleButton value="kanban" aria-label="Kanban view">
-            <KanbanIcon sx={{ mr: 0.5 }} />
-            Kanban
-          </ToggleButton>
-          <ToggleButton value="timeline" aria-label="Timeline view">
-            <TimelineIcon sx={{ mr: 0.5 }} />
-            Timeline
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
-
       {viewMode === 'kanban' ? (
         <DndContext
           sensors={sensors}
@@ -267,6 +224,7 @@ export function Board({ boardId }: BoardProps) {
           labels={labels}
           onUpdateTask={updateTask}
           onEditTask={handleEditTask}
+          moveTask={moveTask}
         />
       )}
 
@@ -274,7 +232,7 @@ export function Board({ boardId }: BoardProps) {
         key={
           editingTask
             ? `${editingTask.id}-${editingTask.startDate?.seconds ?? 0}-${editingTask.dueDate?.seconds ?? 0}`
-            : addingToListId ?? 'closed'
+            : (addingToListId ?? 'closed')
         }
         open={!!editingTask || !!addingToListId}
         boardId={boardId}

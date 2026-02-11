@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   TimelineContext,
   useTimelineContext,
@@ -16,6 +16,7 @@ import {
   type TimelineItem as TimelineItemType,
 } from '../../hooks/useTimelineData';
 import type { Task, List, Label, UpdateTaskInput } from '../../types/board';
+import { getOrderAtEnd } from '../../utils/ordering';
 
 type Span = { start: number; end: number };
 
@@ -25,6 +26,11 @@ type TimelineViewProps = {
   labels: Label[];
   onUpdateTask: (taskId: string, updates: UpdateTaskInput) => Promise<void>;
   onEditTask: (task: Task) => void;
+  moveTask: (
+    taskId: string,
+    newListId: string,
+    newOrder: string,
+  ) => Promise<void>;
 };
 
 type TimelineContentProps = {
@@ -33,6 +39,8 @@ type TimelineContentProps = {
   labels: Label[];
   remountKeys: Map<string, number>;
   onEditTask: (task: Task) => void;
+  onExpandPast: () => void;
+  onExpandFuture: () => void;
 };
 
 function TimelineContent({
@@ -41,11 +49,102 @@ function TimelineContent({
   labels,
   remountKeys,
   onEditTask,
+  onExpandPast,
+  onExpandFuture,
 }: TimelineContentProps) {
-  const { setTimelineRef, style } = useTimelineContext();
+  const { setTimelineRef, style, range, valueToPixels } = useTimelineContext();
+  const dayWidthPixels = valueToPixels(24 * 60 * 60 * 1000);
 
+  // Scroll state for virtualization
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const [scrollState, setScrollState] = useState({
+    scrollLeft: 0,
+    viewportWidth: 0,
+  });
+
+  // Expansion state
+  const isExpandingRef = useRef(false);
+  const prevScrollWidthRef = useRef(0);
+  const prevScrollLeftRef = useRef(0);
+
+  // Handle scroll events
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollLeft, clientWidth, scrollWidth } = container;
+
+      setScrollState({
+        scrollLeft,
+        viewportWidth: clientWidth,
+      });
+
+      // Skip expansion if already expanding
+      if (isExpandingRef.current) return;
+
+      // Don't expand if no scrollable content
+      if (scrollWidth <= clientWidth) return;
+
+      const threshold = 200;
+      const distanceFromLeft = scrollLeft;
+      const distanceFromRight = scrollWidth - scrollLeft - clientWidth;
+
+      if (distanceFromLeft < threshold && distanceFromLeft > 0) {
+        isExpandingRef.current = true;
+        prevScrollWidthRef.current = scrollWidth;
+        prevScrollLeftRef.current = scrollLeft;
+        onExpandPast();
+      } else if (distanceFromRight < threshold) {
+        isExpandingRef.current = true;
+        onExpandFuture();
+      }
+    };
+
+    const resizeObserver = new ResizeObserver(() => {
+      setScrollState({
+        scrollLeft: container.scrollLeft,
+        viewportWidth: container.clientWidth,
+      });
+    });
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    resizeObserver.observe(container);
+
+    // Initial state
+    setScrollState({
+      scrollLeft: container.scrollLeft,
+      viewportWidth: container.clientWidth,
+    });
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      resizeObserver.disconnect();
+    };
+  }, [onExpandPast, onExpandFuture]);
+
+  // Preserve scroll position when range.start changes (left expansion)
+  const prevRangeStartRef = useRef(range.start);
+  useEffect(() => {
+    if (range.start !== prevRangeStartRef.current) {
+      prevRangeStartRef.current = range.start;
+      const container = scrollContainerRef.current;
+      if (container && isExpandingRef.current) {
+        requestAnimationFrame(() => {
+          const addedWidth = container.scrollWidth - prevScrollWidthRef.current;
+          if (addedWidth > 0) {
+            container.scrollLeft = prevScrollLeftRef.current + addedWidth;
+          }
+          isExpandingRef.current = false;
+        });
+      }
+    } else {
+      isExpandingRef.current = false;
+    }
+  }, [range.start]);
   return (
     <Box
+      ref={scrollContainerRef}
       sx={{
         flex: 1,
         overflow: 'auto',
@@ -54,7 +153,7 @@ function TimelineContent({
         border: '1px solid',
         borderColor: 'divider',
         borderRadius: 1,
-        backgroundColor: 'white',
+        bgcolor: 'background.paper',
       }}
     >
       <Box sx={{ display: 'flex', minWidth: 'fit-content' }}>
@@ -67,7 +166,7 @@ function TimelineContent({
               borderBottom: '2px solid',
               borderRight: '1px solid',
               borderColor: 'divider',
-              backgroundColor: 'grey.100',
+              bgcolor: 'action.hover',
               px: 2,
               display: 'flex',
               alignItems: 'center',
@@ -86,7 +185,7 @@ function TimelineContent({
                 borderBottom: '1px solid',
                 borderRight: '1px solid',
                 borderColor: 'divider',
-                backgroundColor: 'grey.50',
+                bgcolor: 'background.default',
                 px: 2,
                 display: 'flex',
                 alignItems: 'center',
@@ -124,11 +223,14 @@ function TimelineContent({
               height: '40px',
               borderBottom: '2px solid',
               borderColor: 'divider',
-              backgroundColor: 'grey.100',
+              bgcolor: 'action.hover',
               position: 'relative',
             }}
           >
-            <TimelineHeader />
+            <TimelineHeader
+              scrollState={scrollState}
+              dayWidthPixels={dayWidthPixels}
+            />
           </Box>
           {/* Data rows */}
           {rows.map((row) => {
@@ -160,6 +262,7 @@ export function TimelineView({
   labels,
   onUpdateTask,
   onEditTask,
+  moveTask,
 }: TimelineViewProps) {
   const {
     items: serverItems,
@@ -169,6 +272,11 @@ export function TimelineView({
 
   // Optimistic span overrides - updated immediately on drag/resize
   const [spanOverrides, setSpanOverrides] = useState<Map<string, Span>>(
+    () => new Map(),
+  );
+
+  // Optimistic row overrides - updated immediately on cross-lane drag
+  const [rowOverrides, setRowOverrides] = useState<Map<string, string>>(
     () => new Map(),
   );
 
@@ -182,17 +290,23 @@ export function TimelineView({
   if (tasks !== prevTasks) {
     setPrevTasks(tasks);
     setSpanOverrides(new Map());
+    setRowOverrides(new Map());
     setRemountKeys(new Map());
   }
 
   // Apply optimistic overrides to items
   const items =
-    spanOverrides.size === 0
+    spanOverrides.size === 0 && rowOverrides.size === 0
       ? serverItems
       : serverItems.map((item) => {
-          const override = spanOverrides.get(item.id);
-          if (!override) return item;
-          return { ...item, span: override };
+          const spanOverride = spanOverrides.get(item.id);
+          const rowOverride = rowOverrides.get(item.id);
+          if (!spanOverride && !rowOverride) return item;
+          return {
+            ...item,
+            ...(spanOverride && { span: spanOverride }),
+            ...(rowOverride && { rowId: rowOverride }),
+          };
         });
 
   const [range, setRange] = useState(() => {
@@ -203,9 +317,27 @@ export function TimelineView({
     };
   });
 
+  const EXPANSION_DAYS = 7;
+
+  const handleExpandPast = useCallback(() => {
+    setRange((prev) => ({
+      ...prev,
+      start: addDays(new Date(prev.start), -EXPANSION_DAYS).getTime(),
+    }));
+  }, []);
+
+  const handleExpandFuture = useCallback(() => {
+    setRange((prev) => ({
+      ...prev,
+      end: endOfDay(addDays(new Date(prev.end), EXPANSION_DAYS)).getTime(),
+    }));
+  }, []);
+
   const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
+    async (event: DragEndEvent) => {
       const activeId = event.active.id as string;
+      const activeItem = items.find((item) => item.id === activeId);
+      if (!activeItem) return;
 
       const getSpanFromDragEvent =
         event.active.data.current?.getSpanFromDragEvent;
@@ -214,16 +346,41 @@ export function TimelineView({
       const updatedSpan = getSpanFromDragEvent(event) as Span | null;
       if (!updatedSpan) return;
 
-      // Optimistic update - immediately update local state
+      // Detect lane/list change from drop target
+      const overData = event.over?.data.current;
+      const targetListId =
+        overData?.type === 'timeline-row'
+          ? overData.listId
+          : activeItem.task.listId;
+
+      const isListChange = targetListId !== activeItem.task.listId;
+
+      // Optimistic span update
       setSpanOverrides((prev) => new Map(prev).set(activeId, updatedSpan));
 
-      // Persist to server (async, non-blocking)
-      onUpdateTask(activeId, {
-        startDate: new Date(updatedSpan.start),
-        dueDate: new Date(updatedSpan.end),
-      });
+      if (isListChange) {
+        // Optimistic row update
+        setRowOverrides((prev) => new Map(prev).set(activeId, targetListId));
+
+        // Calculate order (append to end of destination list)
+        const destListTasks = tasks.filter((t) => t.listId === targetListId);
+        const newOrder = getOrderAtEnd(destListTasks);
+
+        // Persist list change, then date change
+        await moveTask(activeId, targetListId, newOrder);
+        await onUpdateTask(activeId, {
+          startDate: new Date(updatedSpan.start),
+          dueDate: new Date(updatedSpan.end),
+        });
+      } else {
+        // Only dates changed
+        onUpdateTask(activeId, {
+          startDate: new Date(updatedSpan.start),
+          dueDate: new Date(updatedSpan.end),
+        });
+      }
     },
-    [onUpdateTask],
+    [items, tasks, onUpdateTask, moveTask],
   );
 
   const handleResizeEnd = useCallback(
@@ -324,6 +481,8 @@ export function TimelineView({
             labels={labels}
             remountKeys={remountKeys}
             onEditTask={onEditTask}
+            onExpandPast={handleExpandPast}
+            onExpandFuture={handleExpandFuture}
           />
         </TimelineContext>
       )}

@@ -63,7 +63,7 @@ const mockTask: Task = {
   id: 'task-1',
   listId: 'list-1',
   title: 'Test Task',
-  order: 0,
+  order: 'a0',
   calendarSyncEnabled: false,
   createdBy: 'user-123',
   createdAt: mockTimestamp,

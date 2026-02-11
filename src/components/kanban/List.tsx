@@ -98,7 +98,7 @@ export function List({
         isOver ? 'ring-2 ring-primary-500' : ''
       }`}
       sx={{
-        backgroundColor: '#f4f5f7',
+        bgcolor: 'background.default',
         borderRadius: 2,
         maxHeight: 'calc(100vh - 140px)',
       }}
@@ -112,7 +112,7 @@ export function List({
 
       <Box
         ref={setNodeRef}
-        className="flex-1 overflow-y-auto px-2 py-2 min-h-[100px]"
+        className="flex-1 overflow-y-auto px-2 py-2 min-h-25"
         sx={{
           scrollbarWidth: 'none', // Firefox - no zero-width visible option
           scrollbarGutter: 'stable',
@@ -186,7 +186,7 @@ export function List({
               maxRows={3}
               sx={{
                 '& .MuiOutlinedInput-root': {
-                  backgroundColor: 'white',
+                  bgcolor: 'background.paper',
                 },
               }}
             />
@@ -219,7 +219,7 @@ export function List({
               justifyContent: 'flex-start',
               color: 'text.secondary',
               '&:hover': {
-                backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                bgcolor: 'action.hover',
               },
             }}
           >

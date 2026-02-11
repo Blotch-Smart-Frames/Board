@@ -33,18 +33,27 @@ export function AddListButton({ onAdd }: AddListButtonProps) {
         startIcon={<AddIcon />}
         onClick={() => setIsAdding(true)}
         className="w-72 shrink-0"
-        sx={{
-          backgroundColor: 'rgba(255, 255, 255, 0.3)',
-          color: 'text.secondary',
-          justifyContent: 'flex-start',
-          height: 'fit-content',
-          py: 1.5,
-          px: 2,
-          borderRadius: 2,
-          '&:hover': {
-            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        sx={[
+          {
+            bgcolor: 'rgba(255, 255, 255, 0.3)',
+            color: 'text.secondary',
+            justifyContent: 'flex-start',
+            height: 'fit-content',
+            py: 1.5,
+            px: 2,
+            borderRadius: 2,
+            '&:hover': {
+              bgcolor: 'rgba(255, 255, 255, 0.5)',
+            },
           },
-        }}
+          (theme) =>
+            theme.applyStyles('dark', {
+              bgcolor: 'rgba(255, 255, 255, 0.08)',
+              '&:hover': {
+                bgcolor: 'rgba(255, 255, 255, 0.12)',
+              },
+            }),
+        ]}
       >
         Add another list
       </Button>
@@ -54,7 +63,7 @@ export function AddListButton({ onAdd }: AddListButtonProps) {
   return (
     <Paper
       className="w-72 shrink-0 p-2"
-      sx={{ backgroundColor: '#ebecf0', borderRadius: 2 }}
+      sx={{ bgcolor: 'background.default', borderRadius: 2 }}
     >
       <form.Field name="title">
         {(field) => (
@@ -75,7 +84,7 @@ export function AddListButton({ onAdd }: AddListButtonProps) {
             autoFocus
             sx={{
               '& .MuiOutlinedInput-root': {
-                backgroundColor: 'white',
+                bgcolor: 'background.paper',
               },
             }}
           />

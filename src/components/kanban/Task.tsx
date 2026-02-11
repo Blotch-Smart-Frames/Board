@@ -91,7 +91,7 @@ export function Task({
         },
       }}
     >
-      <CardContent className="!p-3">
+      <CardContent className="p-3!">
         <Box className="flex items-start gap-2">
           <Checkbox
             checked={!!task.completedAt}
@@ -105,7 +105,8 @@ export function Task({
             <Typography
               variant="body2"
               component="h3"
-              className="font-medium text-gray-900"
+              className="font-medium"
+              color="text.primary"
               sx={{
                 wordBreak: 'break-word',
                 textDecoration: task.completedAt ? 'line-through' : 'none',
@@ -144,7 +145,7 @@ export function Task({
                   label={formatDueDate(task.dueDate)}
                   variant="outlined"
                   color={task.calendarSyncEnabled ? 'primary' : 'default'}
-                  className="!h-6"
+                  className="h-6!"
                 />
               )}
 

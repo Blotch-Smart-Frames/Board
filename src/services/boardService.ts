@@ -26,6 +26,7 @@ import type {
   UpdateTaskInput,
 } from '../types/board';
 import { initializeDefaultLabels } from './labelService';
+import { getOrderAtEnd, getOrderAtIndex } from '../utils/ordering';
 
 // Board operations
 export const createBoard = async (
@@ -138,16 +139,15 @@ export const addList = async (
   boardId: string,
   input: CreateListInput,
 ): Promise<List> => {
-  const listsSnap = await getDocs(
-    query(collection(db, 'boards', boardId, 'lists'), orderBy('order', 'desc')),
+  const listsSnap = await getDocs(collection(db, 'boards', boardId, 'lists'));
+  const existingLists = listsSnap.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() }) as List,
   );
-  const maxOrder = listsSnap.empty
-    ? -1
-    : (listsSnap.docs[0].data().order as number);
+  const order = getOrderAtEnd(existingLists);
 
   const listRef = await addDoc(collection(db, 'boards', boardId, 'lists'), {
     title: input.title,
-    order: maxOrder + 1,
+    order,
     createdAt: serverTimestamp(),
   });
 
@@ -186,15 +186,12 @@ export const deleteList = async (
 
 export const reorderLists = async (
   boardId: string,
-  orderedListIds: string[],
+  listId: string,
+  newOrder: string,
 ): Promise<void> => {
-  const batch = writeBatch(db);
-
-  orderedListIds.forEach((listId, index) => {
-    batch.update(doc(db, 'boards', boardId, 'lists', listId), { order: index });
+  await updateDoc(doc(db, 'boards', boardId, 'lists', listId), {
+    order: newOrder,
   });
-
-  await batch.commit();
 };
 
 // Task operations
@@ -208,18 +205,18 @@ export const addTask = async (
     query(
       collection(db, 'boards', boardId, 'tasks'),
       where('listId', '==', listId),
-      orderBy('order', 'desc'),
     ),
   );
-  const maxOrder = tasksSnap.empty
-    ? -1
-    : (tasksSnap.docs[0].data().order as number);
+  const existingTasks = tasksSnap.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() }) as Task,
+  );
+  const order = getOrderAtEnd(existingTasks);
 
   const taskData = {
     listId,
     title: input.title,
     description: input.description || '',
-    order: maxOrder + 1,
+    order,
     startDate: input.startDate ? Timestamp.fromDate(input.startDate) : null,
     dueDate: input.dueDate ? Timestamp.fromDate(input.dueDate) : null,
     calendarEventId: null,
@@ -286,66 +283,13 @@ export const moveTask = async (
   boardId: string,
   taskId: string,
   newListId: string,
-  newOrder: number,
+  newOrder: string,
 ): Promise<void> => {
-  const batch = writeBatch(db);
-
-  // Get the task to find its current list
-  const taskDoc = await getDoc(doc(db, 'boards', boardId, 'tasks', taskId));
-  if (!taskDoc.exists()) throw new Error('Task not found');
-
-  const task = taskDoc.data() as Task;
-  const oldListId = task.listId;
-
-  // Update the moved task
-  batch.update(doc(db, 'boards', boardId, 'tasks', taskId), {
+  await updateDoc(doc(db, 'boards', boardId, 'tasks', taskId), {
     listId: newListId,
     order: newOrder,
     updatedAt: serverTimestamp(),
   });
-
-  // Get all tasks in source and destination lists
-  const [sourceTasks, destTasks] = await Promise.all([
-    getDocs(
-      query(
-        collection(db, 'boards', boardId, 'tasks'),
-        where('listId', '==', oldListId),
-        orderBy('order'),
-      ),
-    ),
-    oldListId !== newListId
-      ? getDocs(
-          query(
-            collection(db, 'boards', boardId, 'tasks'),
-            where('listId', '==', newListId),
-            orderBy('order'),
-          ),
-        )
-      : null,
-  ]);
-
-  // Reorder source list (if moving to different list)
-  if (oldListId !== newListId) {
-    let order = 0;
-    sourceTasks.forEach((doc) => {
-      if (doc.id !== taskId) {
-        batch.update(doc.ref, { order });
-        order++;
-      }
-    });
-  }
-
-  // Reorder destination list
-  if (destTasks) {
-    let order = 0;
-    destTasks.forEach((doc) => {
-      if (order === newOrder) order++; // Skip the position for the new task
-      batch.update(doc.ref, { order });
-      order++;
-    });
-  }
-
-  await batch.commit();
 };
 
 // Real-time subscriptions

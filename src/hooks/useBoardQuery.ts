@@ -162,7 +162,7 @@ export const useBoardQuery = (boardId: string | null) => {
   const moveTask = async (
     taskId: string,
     newListId: string,
-    newOrder: number,
+    newOrder: string,
   ) => {
     if (!boardId) throw new Error('No board selected');
     return moveTaskService(boardId, taskId, newListId, newOrder);
@@ -205,11 +205,11 @@ export const useListsWithTasks = (boardId: string | null) => {
   const { lists, tasks } = useBoardQuery(boardId);
 
   return [...lists]
-    .sort((a, b) => a.order - b.order)
+    .sort((a, b) => a.order.localeCompare(b.order))
     .map((list) => ({
       ...list,
       tasks: tasks
         .filter((task) => task.listId === list.id)
-        .sort((a, b) => a.order - b.order),
+        .sort((a, b) => a.order.localeCompare(b.order)),
     }));
 };

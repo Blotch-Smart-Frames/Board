@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -6,13 +6,13 @@ import {
   TextField,
   Menu,
   MenuItem,
-} from "@mui/material";
+} from '@mui/material';
 import {
   MoreVert as MoreIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
-} from "@mui/icons-material";
-import { useForm } from "@tanstack/react-form";
+} from '@mui/icons-material';
+import { useForm } from '@tanstack/react-form';
 
 type ListHeaderProps = {
   title: string;
@@ -50,7 +50,7 @@ export function ListHeader({
   }, [isEditing]);
 
   const handleCancel = () => {
-    form.setFieldValue("title", title);
+    form.setFieldValue('title', title);
     setIsEditing(false);
   };
 
@@ -64,7 +64,7 @@ export function ListHeader({
 
   const handleEdit = () => {
     handleMenuClose();
-    form.setFieldValue("title", title);
+    form.setFieldValue('title', title);
     setIsEditing(true);
   };
 
@@ -74,7 +74,7 @@ export function ListHeader({
   };
 
   return (
-    <Box className="flex items-center justify-between px-2 py-2 bg-gray-100 rounded-t-lg">
+    <Box className="flex items-center justify-between px-2 py-2">
       {isEditing ? (
         <form.Field name="title">
           {(field) => (
@@ -84,9 +84,9 @@ export function ListHeader({
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={() => form.handleSubmit()}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === 'Enter') {
                   form.handleSubmit();
-                } else if (e.key === "Escape") {
+                } else if (e.key === 'Escape') {
                   handleCancel();
                 }
               }}
@@ -94,8 +94,8 @@ export function ListHeader({
               variant="outlined"
               fullWidth
               sx={{
-                "& .MuiOutlinedInput-root": {
-                  backgroundColor: "white",
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: 'background.paper',
                 },
               }}
             />
@@ -106,9 +106,10 @@ export function ListHeader({
           <Typography
             variant="subtitle1"
             component="h2"
-            className="font-semibold text-gray-700 truncate cursor-pointer"
+            className="font-semibold truncate cursor-pointer"
+            color="text.primary"
             onClick={() => {
-              form.setFieldValue("title", title);
+              form.setFieldValue('title', title);
               setIsEditing(true);
             }}
           >
@@ -116,7 +117,8 @@ export function ListHeader({
           </Typography>
           <Typography
             variant="caption"
-            className="text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full"
+            className="px-2 py-0.5 rounded-full"
+            sx={{ color: 'text.secondary', bgcolor: 'action.selected' }}
           >
             {taskCount}
           </Typography>
@@ -136,7 +138,7 @@ export function ListHeader({
           <EditIcon fontSize="small" className="mr-2" />
           Edit title
         </MenuItem>
-        <MenuItem onClick={handleDelete} sx={{ color: "error.main" }}>
+        <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
           <DeleteIcon fontSize="small" className="mr-2" />
           Delete list
         </MenuItem>
