@@ -150,7 +150,7 @@ describe('Board', () => {
       moveTask: vi.fn(),
     });
 
-    render(<Board boardId="board-1" />);
+    render(<Board boardId="board-1" viewMode="kanban" />);
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
@@ -171,7 +171,7 @@ describe('Board', () => {
       moveTask: vi.fn(),
     });
 
-    render(<Board boardId="board-1" />);
+    render(<Board boardId="board-1" viewMode="kanban" />);
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(screen.getByText('Failed to load board')).toBeInTheDocument();
@@ -193,7 +193,7 @@ describe('Board', () => {
       moveTask: vi.fn(),
     });
 
-    render(<Board boardId="board-1" />);
+    render(<Board boardId="board-1" viewMode="kanban" />);
 
     expect(screen.getByText('Board not found')).toBeInTheDocument();
   });

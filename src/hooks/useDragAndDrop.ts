@@ -1,14 +1,13 @@
-import { useState } from "react";
+import { useState } from 'react';
 import type {
   DragStartEvent,
   DragEndEvent,
   DragOverEvent,
-} from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
-import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "../queries/queryKeys";
-import type { Task, List } from "../types/board";
-import { getOrderAtIndex, compareOrder } from "../utils/ordering";
+} from '@dnd-kit/core';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '../queries/queryKeys';
+import type { Task, List } from '../types/board';
+import { getOrderAtIndex, compareOrder } from '../utils/ordering';
 
 type UseDragAndDropOptions = {
   boardId: string | null;
@@ -27,22 +26,22 @@ export const useDragAndDrop = (options: UseDragAndDropOptions) => {
   const queryClient = useQueryClient();
 
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [activeType, setActiveType] = useState<"task" | "list" | null>(null);
+  const [activeType, setActiveType] = useState<'task' | 'list' | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
 
   const getActiveTask = (): Task | undefined => {
-    if (activeType !== "task" || !activeId) return undefined;
+    if (activeType !== 'task' || !activeId) return undefined;
     return tasks.find((t) => t.id === activeId);
   };
 
   const getActiveList = (): List | undefined => {
-    if (activeType !== "list" || !activeId) return undefined;
+    if (activeType !== 'list' || !activeId) return undefined;
     return lists.find((l) => l.id === activeId);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
-    const type = active.data.current?.type as "task" | "list";
+    const type = active.data.current?.type as 'task' | 'list';
 
     setActiveId(active.id as string);
     setActiveType(type);
@@ -70,14 +69,14 @@ export const useDragAndDrop = (options: UseDragAndDropOptions) => {
     const activeData = active.data.current;
     const overData = over.data.current;
 
-    if (activeData?.type === "task") {
+    if (activeData?.type === 'task') {
       const activeTask = tasks.find((t) => t.id === activeIdStr);
       if (!activeTask) return;
 
       let targetListId: string;
       let targetIndex: number;
 
-      if (overData?.type === "task") {
+      if (overData?.type === 'task') {
         // Dropping on another task
         const overTask = tasks.find((t) => t.id === overIdStr);
         if (!overTask) return;
@@ -89,7 +88,7 @@ export const useDragAndDrop = (options: UseDragAndDropOptions) => {
 
         const overIndex = listTasks.findIndex((t) => t.id === overIdStr);
         targetIndex = overIndex >= 0 ? overIndex : listTasks.length;
-      } else if (overData?.type === "list") {
+      } else if (overData?.type === 'list') {
         // Dropping on an empty list
         targetListId = overIdStr;
         targetIndex = 0;
@@ -123,7 +122,7 @@ export const useDragAndDrop = (options: UseDragAndDropOptions) => {
         try {
           await onMoveTask(activeIdStr, targetListId, newOrder);
         } catch (error) {
-          console.error("Failed to move task:", error);
+          console.error('Failed to move task:', error);
           // Revert will happen via subscription
           if (previousTasks) {
             queryClient.setQueryData(
@@ -133,7 +132,7 @@ export const useDragAndDrop = (options: UseDragAndDropOptions) => {
           }
         }
       }
-    } else if (activeData?.type === "list") {
+    } else if (activeData?.type === 'list') {
       // Reordering lists
       const sortedLists = [...lists].sort((a, b) =>
         compareOrder(a.order, b.order),
@@ -167,7 +166,7 @@ export const useDragAndDrop = (options: UseDragAndDropOptions) => {
         try {
           await onReorderLists(activeIdStr, newOrder);
         } catch (error) {
-          console.error("Failed to reorder lists:", error);
+          console.error('Failed to reorder lists:', error);
           // Revert
           if (previousLists) {
             queryClient.setQueryData(

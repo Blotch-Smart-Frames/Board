@@ -87,7 +87,7 @@ export function LabelEditor({
                   name: name || 'Label',
                   color,
                   emoji: emoji || undefined,
-                  order: 0,
+                  order: '0',
                   createdAt: Timestamp.now(),
                   updatedAt: Timestamp.now(),
                 };
@@ -112,7 +112,9 @@ export function LabelEditor({
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}
-                  error={field.state.meta.isTouched && !field.state.meta.isValid}
+                  error={
+                    field.state.meta.isTouched && !field.state.meta.isValid
+                  }
                   helperText={
                     field.state.meta.isTouched &&
                     field.state.meta.errors.join(', ')

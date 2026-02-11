@@ -255,14 +255,14 @@ describe('useBoardQuery', () => {
       });
 
       await act(async () => {
-        await result.current.moveTask('task-1', 'list-2', 0);
+        await result.current.moveTask('task-1', 'list-2', '0');
       });
 
       expect(mockMoveTask).toHaveBeenCalledWith(
         'board-1',
         'task-1',
         'list-2',
-        0,
+        '0',
       );
     });
   });

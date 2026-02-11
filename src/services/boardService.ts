@@ -26,7 +26,7 @@ import type {
   UpdateTaskInput,
 } from '../types/board';
 import { initializeDefaultLabels } from './labelService';
-import { getOrderAtEnd, getOrderAtIndex } from '../utils/ordering';
+import { getOrderAtEnd } from '../utils/ordering';
 
 // Board operations
 export const createBoard = async (
