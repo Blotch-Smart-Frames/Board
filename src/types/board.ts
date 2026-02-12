@@ -27,6 +27,7 @@ export type Board = {
   title: string;
   ownerId: string;
   collaborators: string[];
+  backgroundImageUrl?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

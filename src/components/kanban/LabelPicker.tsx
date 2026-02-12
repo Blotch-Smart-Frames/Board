@@ -11,6 +11,7 @@ import { LabelChip } from '../common/LabelChip';
 import { LabelEditor } from './LabelEditor';
 import { LabelManagement } from './LabelManagement';
 import { useLabelsQuery } from '../../hooks/useLabelsQuery';
+import { compareOrder } from '../../utils/ordering';
 
 type LabelPickerProps = {
   boardId: string;
@@ -57,7 +58,7 @@ export function LabelPicker({
     );
   }
 
-  const sortedLabels = [...labels].sort((a, b) => a.order.localeCompare(b.order));
+  const sortedLabels = [...labels].sort((a, b) => compareOrder(a.order, b.order));
 
   return (
     <Box>

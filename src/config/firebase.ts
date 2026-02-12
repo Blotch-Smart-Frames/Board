@@ -7,6 +7,7 @@ import {
   type Auth,
 } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -20,6 +21,7 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
+let storage: FirebaseStorage;
 let googleProvider: GoogleAuthProvider;
 
 try {
@@ -27,6 +29,7 @@ try {
   auth = getAuth(app);
   setPersistence(auth, browserLocalPersistence);
   db = getFirestore(app);
+  storage = getStorage(app);
 
   googleProvider = new GoogleAuthProvider();
   googleProvider.addScope('https://www.googleapis.com/auth/calendar');
@@ -36,4 +39,4 @@ try {
   throw error;
 }
 
-export { app, auth, db, googleProvider };
+export { app, auth, db, storage, googleProvider };

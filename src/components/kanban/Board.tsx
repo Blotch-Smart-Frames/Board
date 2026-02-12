@@ -14,9 +14,12 @@ import { List } from './List';
 import { Task } from './Task';
 import { AddListButton } from './AddListButton';
 import { TaskDialog } from './TaskDialog';
+import { BoardBackground } from './BoardBackground';
+import { BackgroundImageUpload } from './BackgroundImageUpload';
 import { TimelineView } from '../timeline';
 import { useDragAndDrop } from '../../hooks/useDragAndDrop';
 import { useBoardQuery } from '../../hooks/useBoardQuery';
+import { compareOrder } from '../../utils/ordering';
 import { useLabelsQuery } from '../../hooks/useLabelsQuery';
 import { useCalendarSync } from '../../hooks/useCalendarSync';
 import type {
@@ -48,12 +51,12 @@ export function Board({ boardId, viewMode }: BoardProps) {
 
   const { labels } = useLabelsQuery(boardId);
 
-  const sortedLists = [...lists].sort((a, b) => a.order.localeCompare(b.order));
+  const sortedLists = [...lists].sort((a, b) => compareOrder(a.order, b.order));
   const listsWithTasks = sortedLists.map((list) => ({
     ...list,
     tasks: tasks
       .filter((task) => task.listId === list.id)
-      .sort((a, b) => a.order.localeCompare(b.order)),
+      .sort((a, b) => compareOrder(a.order, b.order)),
   }));
   const { syncTaskToCalendar } = useCalendarSync(boardId, tasks);
 
@@ -180,70 +183,74 @@ export function Board({ boardId, viewMode }: BoardProps) {
   }
 
   return (
-    <Box className="h-full flex flex-col">
-      {viewMode === 'kanban' ? (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          <Box className="flex-1 overflow-x-auto overflow-y-hidden p-4">
-            <Box className="flex gap-4 h-full items-start">
-              {listsWithTasks.map((list) => (
-                <List
-                  key={list.id}
-                  list={list}
-                  tasks={list.tasks}
-                  labels={labels}
-                  onUpdateTitle={(title) =>
-                    handleUpdateListTitle(list.id, title)
-                  }
-                  onDelete={() => handleDeleteList(list.id)}
-                  onAddTask={(input) => handleAddTask(list.id, input)}
-                  onEditTask={handleEditTask}
-                  onUpdateTask={updateTask}
-                />
-              ))}
+    <BoardBackground imageUrl={board.backgroundImageUrl}>
+      <Box className="h-full flex flex-col">
+        {viewMode === 'kanban' ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <Box className="flex-1 overflow-x-auto overflow-y-hidden p-4">
+              <Box className="flex gap-4 h-full items-start">
+                {listsWithTasks.map((list) => (
+                  <List
+                    key={list.id}
+                    list={list}
+                    tasks={list.tasks}
+                    labels={labels}
+                    onUpdateTitle={(title) =>
+                      handleUpdateListTitle(list.id, title)
+                    }
+                    onDelete={() => handleDeleteList(list.id)}
+                    onAddTask={(input) => handleAddTask(list.id, input)}
+                    onEditTask={handleEditTask}
+                    onUpdateTask={updateTask}
+                  />
+                ))}
 
-              <AddListButton onAdd={handleAddList} />
+                <AddListButton onAdd={handleAddList} />
+              </Box>
             </Box>
-          </Box>
 
-          <DragOverlay>
-            {activeId && activeTask ? (
-              <Task task={activeTask} labels={labels} isDragging />
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      ) : (
-        <TimelineView
-          tasks={tasks}
-          lists={lists}
-          labels={labels}
-          onUpdateTask={updateTask}
-          onEditTask={handleEditTask}
-          moveTask={moveTask}
+            <DragOverlay>
+              {activeId && activeTask ? (
+                <Task task={activeTask} labels={labels} isDragging />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        ) : (
+          <TimelineView
+            tasks={tasks}
+            lists={lists}
+            labels={labels}
+            onUpdateTask={updateTask}
+            onEditTask={handleEditTask}
+            moveTask={moveTask}
+          />
+        )}
+
+        <TaskDialog
+          key={
+            editingTask
+              ? `${editingTask.id}-${editingTask.startDate?.seconds ?? 0}-${editingTask.dueDate?.seconds ?? 0}`
+              : (addingToListId ?? 'closed')
+          }
+          open={!!editingTask || !!addingToListId}
+          boardId={boardId}
+          task={editingTask}
+          onClose={() => {
+            setEditingTaskId(null);
+            setAddingToListId(null);
+          }}
+          onSave={handleSaveTask}
+          onDelete={editingTask ? handleDeleteTask : undefined}
         />
-      )}
 
-      <TaskDialog
-        key={
-          editingTask
-            ? `${editingTask.id}-${editingTask.startDate?.seconds ?? 0}-${editingTask.dueDate?.seconds ?? 0}`
-            : (addingToListId ?? 'closed')
-        }
-        open={!!editingTask || !!addingToListId}
-        boardId={boardId}
-        task={editingTask}
-        onClose={() => {
-          setEditingTaskId(null);
-          setAddingToListId(null);
-        }}
-        onSave={handleSaveTask}
-        onDelete={editingTask ? handleDeleteTask : undefined}
-      />
-    </Box>
+        <BackgroundImageUpload boardId={boardId} />
+      </Box>
+    </BoardBackground>
   );
 }

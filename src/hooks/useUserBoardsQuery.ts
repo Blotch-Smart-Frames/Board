@@ -52,13 +52,6 @@ export const useUserBoardsQuery = () => {
       if (!user) throw new Error('Not authenticated');
       return createBoardService(input, user.uid);
     },
-    onSuccess: (newBoard) => {
-      // Optimistically add the new board to the cache
-      queryClient.setQueryData<Board[]>(
-        queryKeys.boards.user(user?.uid ?? ''),
-        (old = []) => [newBoard, ...old]
-      );
-    },
   });
 
   const createBoard = async (input: CreateBoardInput) => {

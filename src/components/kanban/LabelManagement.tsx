@@ -22,6 +22,7 @@ import { LabelChip } from '../common/LabelChip';
 import { LabelEditor } from './LabelEditor';
 import { useLabelsQuery } from '../../hooks/useLabelsQuery';
 import type { Label, CreateLabelInput } from '../../types/board';
+import { compareOrder } from '../../utils/ordering';
 
 type LabelManagementProps = {
   boardId: string;
@@ -74,7 +75,7 @@ export function LabelManagement({
     setEditingLabel(null);
   };
 
-  const sortedLabels = [...labels].sort((a, b) => a.order.localeCompare(b.order));
+  const sortedLabels = [...labels].sort((a, b) => compareOrder(a.order, b.order));
 
   return (
     <>

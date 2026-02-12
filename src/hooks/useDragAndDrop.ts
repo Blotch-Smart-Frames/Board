@@ -82,12 +82,27 @@ export const useDragAndDrop = (options: UseDragAndDropOptions) => {
         if (!overTask) return;
 
         targetListId = overTask.listId;
+
+        // Get original indices from sortable data
+        const activeSortableIndex = activeData?.sortable?.index ?? -1;
+        const overSortableIndex = overData?.sortable?.index ?? -1;
+
+        // Check if moving within the same list
+        const sameList = activeTask.listId === targetListId;
+
         const listTasks = tasks
           .filter((t) => t.listId === targetListId && t.id !== activeIdStr)
           .sort((a, b) => compareOrder(a.order, b.order));
 
         const overIndex = listTasks.findIndex((t) => t.id === overIdStr);
-        targetIndex = overIndex >= 0 ? overIndex : listTasks.length;
+
+        // When moving down within the same list, we need to place AFTER the over item
+        // When moving up or across lists, we place BEFORE the over item
+        const movingDown = sameList && activeSortableIndex < overSortableIndex;
+
+        targetIndex = overIndex >= 0
+          ? (movingDown ? overIndex + 1 : overIndex)
+          : listTasks.length;
       } else if (overData?.type === 'list') {
         // Dropping on an empty list
         targetListId = overIdStr;

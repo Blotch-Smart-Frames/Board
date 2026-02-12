@@ -87,7 +87,7 @@ export const getUserBoards = async (userId: string): Promise<Board[]> => {
 
 export const updateBoard = async (
   boardId: string,
-  updates: Partial<Pick<Board, 'title'>>,
+  updates: Partial<Pick<Board, 'title' | 'backgroundImageUrl'>>,
 ): Promise<void> => {
   await updateDoc(doc(db, 'boards', boardId), {
     ...updates,
