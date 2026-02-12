@@ -52,6 +52,7 @@ export type Task = {
   createdBy: string;
   assignedTo?: string[];
   labelIds?: string[];
+  color?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   completedAt?: Timestamp;
@@ -78,6 +79,7 @@ export type CreateTaskInput = {
   calendarSyncEnabled?: boolean;
   assignedTo?: string[];
   labelIds?: string[];
+  color?: string;
 };
 
 export type UpdateTaskInput = {
@@ -88,6 +90,7 @@ export type UpdateTaskInput = {
   calendarSyncEnabled?: boolean;
   assignedTo?: string[];
   labelIds?: string[];
+  color?: string | null;
   completedAt?: Date | null;
 };
 

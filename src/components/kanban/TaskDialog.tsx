@@ -18,6 +18,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { Close as CloseIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useForm } from '@tanstack/react-form';
 import { LabelPicker } from './LabelPicker';
+import { ColorPicker } from '../common/ColorPicker';
 import type { Task, CreateTaskInput, UpdateTaskInput } from '../../types/board';
 
 type TaskDialogProps = {
@@ -47,6 +48,7 @@ export function TaskDialog({
       dueDate: (task?.dueDate?.toDate() ?? null) as Date | null,
       calendarSyncEnabled: task?.calendarSyncEnabled ?? false,
       labelIds: task?.labelIds ?? [],
+      color: task?.color ?? '',
     },
     onSubmit: async ({ value }) => {
       const data: CreateTaskInput | UpdateTaskInput = {
@@ -56,6 +58,7 @@ export function TaskDialog({
         dueDate: value.dueDate || undefined,
         calendarSyncEnabled: value.calendarSyncEnabled,
         labelIds: value.labelIds,
+        color: value.color || (isEditing ? null : undefined),
       };
       onSave(data);
       onClose();
@@ -141,6 +144,37 @@ export function TaskDialog({
                   />
                 )}
               </form.Field>
+
+              <Divider />
+
+              <Box>
+                <Box className="flex items-center justify-between mb-2">
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Card Color
+                  </Typography>
+                  <form.Field name="color">
+                    {(field) =>
+                      field.state.value && (
+                        <Button
+                          size="small"
+                          onClick={() => field.handleChange('')}
+                          type="button"
+                        >
+                          Clear
+                        </Button>
+                      )
+                    }
+                  </form.Field>
+                </Box>
+                <form.Field name="color">
+                  {(field) => (
+                    <ColorPicker
+                      value={field.state.value}
+                      onChange={field.handleChange}
+                    />
+                  )}
+                </form.Field>
+              </Box>
 
               <Divider />
 

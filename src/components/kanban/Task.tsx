@@ -85,7 +85,9 @@ export function Task({
           : ''
       }`}
       sx={{
-        backgroundColor: 'background.paper',
+        backgroundColor: task.color
+          ? `${task.color}15`
+          : 'background.paper',
         '&:hover': {
           boxShadow: 3,
         },
