@@ -18,13 +18,18 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { Close as CloseIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useForm } from '@tanstack/react-form';
 import { LabelPicker } from './LabelPicker';
+import { AssigneePicker } from './AssigneePicker';
 import { ColorPicker } from '../common/ColorPicker';
-import type { Task, CreateTaskInput, UpdateTaskInput } from '../../types/board';
+import { SprintPicker } from '../sprints';
+import type { Task, CreateTaskInput, UpdateTaskInput, Board } from '../../types/board';
+import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
 
 type TaskDialogProps = {
   open: boolean;
   boardId: string;
+  board?: Board | null;
   task?: Task | null;
+  collaborators?: Collaborator[];
   onClose: () => void;
   onSave: (data: CreateTaskInput | UpdateTaskInput) => void;
   onDelete?: () => void;
@@ -33,7 +38,9 @@ type TaskDialogProps = {
 export function TaskDialog({
   open,
   boardId,
+  board,
   task,
+  collaborators,
   onClose,
   onSave,
   onDelete,
@@ -48,7 +55,9 @@ export function TaskDialog({
       dueDate: (task?.dueDate?.toDate() ?? null) as Date | null,
       calendarSyncEnabled: task?.calendarSyncEnabled ?? false,
       labelIds: task?.labelIds ?? [],
+      assignedTo: task?.assignedTo ?? [],
       color: task?.color ?? '',
+      sprintId: (task?.sprintId ?? null) as string | null,
     },
     onSubmit: async ({ value }) => {
       const data: CreateTaskInput | UpdateTaskInput = {
@@ -58,7 +67,9 @@ export function TaskDialog({
         dueDate: value.dueDate || undefined,
         calendarSyncEnabled: value.calendarSyncEnabled,
         labelIds: value.labelIds,
+        assignedTo: value.assignedTo,
         color: value.color || (isEditing ? null : undefined),
+        sprintId: value.sprintId || (isEditing ? null : undefined),
       };
       onSave(data);
       onClose();
@@ -140,6 +151,31 @@ export function TaskDialog({
                   <LabelPicker
                     boardId={boardId}
                     selectedLabelIds={field.state.value}
+                    onChange={field.handleChange}
+                  />
+                )}
+              </form.Field>
+
+              <Divider />
+
+              <form.Field name="assignedTo">
+                {(field) => (
+                  <AssigneePicker
+                    collaborators={collaborators ?? []}
+                    selectedUserIds={field.state.value}
+                    onChange={field.handleChange}
+                  />
+                )}
+              </form.Field>
+
+              <Divider />
+
+              <form.Field name="sprintId">
+                {(field) => (
+                  <SprintPicker
+                    boardId={boardId}
+                    board={board}
+                    selectedSprintId={field.state.value}
                     onChange={field.handleChange}
                   />
                 )}

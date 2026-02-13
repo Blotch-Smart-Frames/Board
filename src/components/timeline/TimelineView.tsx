@@ -11,11 +11,12 @@ import { TimelineHeader } from './TimelineHeader';
 import { TimelineRow } from './TimelineRow';
 import { TimelineItem } from './TimelineItem';
 import { CurrentTimeLine } from './CurrentTimeLine';
+import { SprintOverlays } from './SprintOverlays';
 import {
   useTimelineData,
   type TimelineItem as TimelineItemType,
 } from '../../hooks/useTimelineData';
-import type { Task, List, Label, UpdateTaskInput } from '../../types/board';
+import type { Task, List, Label, Sprint, UpdateTaskInput } from '../../types/board';
 import { getOrderAtEnd } from '../../utils/ordering';
 
 type Span = { start: number; end: number };
@@ -24,6 +25,7 @@ type TimelineViewProps = {
   tasks: Task[];
   lists: List[];
   labels: Label[];
+  sprints: Sprint[];
   onUpdateTask: (taskId: string, updates: UpdateTaskInput) => Promise<void>;
   onEditTask: (task: Task) => void;
   moveTask: (
@@ -37,6 +39,7 @@ type TimelineContentProps = {
   rows: { id: string; title: string }[];
   items: TimelineItemType[];
   labels: Label[];
+  sprints: Sprint[];
   remountKeys: Map<string, number>;
   onEditTask: (task: Task) => void;
   onExpandPast: () => void;
@@ -47,6 +50,7 @@ function TimelineContent({
   rows,
   items,
   labels,
+  sprints,
   remountKeys,
   onEditTask,
   onExpandPast,
@@ -216,6 +220,13 @@ function TimelineContent({
             position: 'relative',
           }}
         >
+          {/* Sprint background bands */}
+          <SprintOverlays
+            sprints={sprints}
+            rowCount={rows.length}
+            rowHeight={48}
+            headerHeight={40}
+          />
           <CurrentTimeLine />
           {/* Header row */}
           <Box
@@ -260,6 +271,7 @@ export function TimelineView({
   tasks,
   lists,
   labels,
+  sprints,
   onUpdateTask,
   onEditTask,
   moveTask,
@@ -479,6 +491,7 @@ export function TimelineView({
             rows={rows}
             items={items}
             labels={labels}
+            sprints={sprints}
             remountKeys={remountKeys}
             onEditTask={onEditTask}
             onExpandPast={handleExpandPast}

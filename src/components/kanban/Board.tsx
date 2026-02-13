@@ -21,6 +21,7 @@ import { useDragAndDrop } from '../../hooks/useDragAndDrop';
 import { useBoardQuery } from '../../hooks/useBoardQuery';
 import { compareOrder } from '../../utils/ordering';
 import { useLabelsQuery } from '../../hooks/useLabelsQuery';
+import { useSprintsQuery } from '../../hooks/useSprintsQuery';
 import { useCalendarSync } from '../../hooks/useCalendarSync';
 import type {
   Task as TaskType,
@@ -52,6 +53,7 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
   } = useBoardQuery(boardId);
 
   const { labels } = useLabelsQuery(boardId);
+  const { sprints } = useSprintsQuery(boardId);
 
   const sortedLists = [...lists].sort((a, b) => compareOrder(a.order, b.order));
   const listsWithTasks = sortedLists.map((list) => ({
@@ -229,6 +231,7 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
             tasks={tasks}
             lists={lists}
             labels={labels}
+            sprints={sprints}
             onUpdateTask={updateTask}
             onEditTask={handleEditTask}
             moveTask={moveTask}
@@ -243,7 +246,9 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
           }
           open={!!editingTask || !!addingToListId}
           boardId={boardId}
+          board={board}
           task={editingTask}
+          collaborators={collaborators}
           onClose={() => {
             setEditingTaskId(null);
             setAddingToListId(null);

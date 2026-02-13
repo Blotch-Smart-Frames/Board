@@ -46,6 +46,19 @@ vi.mock('../../hooks/useLabelsQuery', () => ({
   }),
 }));
 
+vi.mock('../../hooks/useSprintsQuery', () => ({
+  useSprintsQuery: () => ({
+    sprints: [],
+    isLoading: false,
+    createSprint: vi.fn(),
+    updateSprint: vi.fn(),
+    deleteSprint: vi.fn(),
+    canDeleteSprint: vi.fn(),
+    calculateNextSprintDates: vi.fn(),
+    updateSprintConfig: vi.fn(),
+  }),
+}));
+
 vi.mock('../../hooks/useDragAndDrop', () => ({
   useDragAndDrop: () => mockUseDragAndDrop(),
 }));

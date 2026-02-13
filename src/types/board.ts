@@ -1,5 +1,32 @@
 import type { Timestamp } from "firebase/firestore";
 
+// Sprint types
+export type Sprint = {
+  id: string;
+  name: string;
+  startDate: Timestamp;
+  endDate: Timestamp;
+  order: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
+
+export type SprintConfig = {
+  durationDays: number; // e.g., 14 for two-week sprints
+};
+
+export type CreateSprintInput = {
+  name: string;
+  startDate: Date;
+  endDate: Date;
+};
+
+export type UpdateSprintInput = {
+  name?: string;
+  startDate?: Date;
+  endDate?: Date;
+};
+
 export type Label = {
   id: string;
   name: string;
@@ -28,6 +55,7 @@ export type Board = {
   ownerId: string;
   collaborators: string[];
   backgroundImageUrl?: string;
+  sprintConfig?: SprintConfig;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };
@@ -53,6 +81,7 @@ export type Task = {
   assignedTo?: string[];
   labelIds?: string[];
   color?: string;
+  sprintId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   completedAt?: Timestamp;
@@ -80,6 +109,7 @@ export type CreateTaskInput = {
   assignedTo?: string[];
   labelIds?: string[];
   color?: string;
+  sprintId?: string;
 };
 
 export type UpdateTaskInput = {
@@ -91,6 +121,7 @@ export type UpdateTaskInput = {
   assignedTo?: string[];
   labelIds?: string[];
   color?: string | null;
+  sprintId?: string | null;
   completedAt?: Date | null;
 };
 

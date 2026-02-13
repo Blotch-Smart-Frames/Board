@@ -224,6 +224,7 @@ export const addTask = async (
     createdBy: userId,
     assignedTo: input.assignedTo || [],
     labelIds: input.labelIds || [],
+    sprintId: input.sprintId || null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -262,6 +263,10 @@ export const updateTask = async (
     updateData.completedAt = updates.completedAt
       ? Timestamp.fromDate(updates.completedAt)
       : null;
+  }
+
+  if (updates.sprintId !== undefined) {
+    updateData.sprintId = updates.sprintId;
   }
 
   // Remove undefined values - Firebase doesn't accept them

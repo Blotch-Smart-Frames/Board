@@ -10,6 +10,11 @@ vi.mock("./LabelPicker", () => ({
   LabelPicker: () => <div data-testid="label-picker">Labels</div>,
 }));
 
+// Mock the SprintPicker component to avoid Firestore dependencies
+vi.mock("../sprints", () => ({
+  SprintPicker: () => <div data-testid="sprint-picker">Sprint</div>,
+}));
+
 // Mock the date pickers to simplify testing
 vi.mock("@mui/x-date-pickers/DatePicker", () => ({
   DatePicker: ({

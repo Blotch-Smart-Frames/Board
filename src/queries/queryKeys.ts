@@ -7,6 +7,7 @@ export const queryKeys = {
     lists: (boardId: string) => ['boards', boardId, 'lists'] as const,
     tasks: (boardId: string) => ['boards', boardId, 'tasks'] as const,
     labels: (boardId: string) => ['boards', boardId, 'labels'] as const,
+    sprints: (boardId: string) => ['boards', boardId, 'sprints'] as const,
   },
   users: {
     all: ['users'] as const,
