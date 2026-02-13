@@ -27,13 +27,15 @@ import type {
   CreateTaskInput,
   UpdateTaskInput,
 } from '../../types/board';
+import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
 
 type BoardProps = {
   boardId: string;
   viewMode: 'kanban' | 'timeline';
+  collaborators?: Collaborator[];
 };
 
-export function Board({ boardId, viewMode }: BoardProps) {
+export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
   const {
     board,
     lists,
@@ -201,6 +203,7 @@ export function Board({ boardId, viewMode }: BoardProps) {
                     list={list}
                     tasks={list.tasks}
                     labels={labels}
+                    collaborators={collaborators}
                     onUpdateTitle={(title) =>
                       handleUpdateListTitle(list.id, title)
                     }
@@ -217,7 +220,7 @@ export function Board({ boardId, viewMode }: BoardProps) {
 
             <DragOverlay>
               {activeId && activeTask ? (
-                <Task task={activeTask} labels={labels} isDragging />
+                <Task task={activeTask} labels={labels} collaborators={collaborators} isDragging />
               ) : null}
             </DragOverlay>
           </DndContext>

@@ -10,7 +10,9 @@ import { Board } from './components/kanban/Board';
 import { ShareDialog } from './components/collaboration/ShareDialog';
 import { useUserBoardsQuery } from './hooks/useUserBoardsQuery';
 import { useAuthQuery } from './hooks/useAuthQuery';
+import { useCollaboratorsQuery } from './hooks/useCollaboratorsQuery';
 import { deleteBoard, updateBoard, shareBoard } from './services/boardService';
+import { getUserByEmail } from './services/userService';
 
 const DRAWER_WIDTH = 280;
 
@@ -45,9 +47,11 @@ export const App = () => {
 
   const handleShareBoard = async (email: string) => {
     if (!selectedBoardId) return;
-    // In a real app, you'd look up the user by email
-    // For now, we'll just use the email as a placeholder
-    await shareBoard(selectedBoardId, email);
+    const targetUser = await getUserByEmail(email);
+    if (!targetUser) {
+      throw new Error(`No user found with email: ${email}`);
+    }
+    await shareBoard(selectedBoardId, targetUser.id);
   };
 
   const handleRemoveCollaborator = async (userId: string) => {
@@ -55,17 +59,7 @@ export const App = () => {
     console.log('Remove collaborator:', userId);
   };
 
-  const collaborators = selectedBoard
-    ? [
-        {
-          id: selectedBoard.ownerId,
-          email: user?.email || '',
-          name: user?.displayName || 'Owner',
-          photoURL: user?.photoURL,
-          isOwner: true,
-        },
-      ]
-    : [];
+  const { collaborators } = useCollaboratorsQuery(selectedBoard, user);
 
   const drawerContent = (
     <BoardList
@@ -132,7 +126,7 @@ export const App = () => {
               sx={{ bgcolor: 'background.default' }}
             >
               {selectedBoardId ? (
-                <Board boardId={selectedBoardId} viewMode={viewMode} />
+                <Board boardId={selectedBoardId} viewMode={viewMode} collaborators={collaborators} />
               ) : (
                 <Box
                   className="flex items-center justify-center h-full"

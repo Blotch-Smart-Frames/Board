@@ -27,11 +27,13 @@ import type {
   CreateTaskInput,
   UpdateTaskInput,
 } from '../../types/board';
+import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
 
 type ListProps = {
   list: ListType;
   tasks: TaskType[];
   labels?: Label[];
+  collaborators?: Collaborator[];
   onUpdateTitle: (title: string) => void;
   onDelete: () => void;
   onAddTask: (input: CreateTaskInput) => void;
@@ -43,6 +45,7 @@ export function List({
   list,
   tasks,
   labels = [],
+  collaborators = [],
   onUpdateTitle,
   onDelete,
   onAddTask,
@@ -132,6 +135,7 @@ export function List({
               key={task.id}
               task={task}
               labels={labels}
+              collaborators={collaborators}
               onEdit={onEditTask}
               onUpdate={onUpdateTask}
             />
@@ -161,6 +165,7 @@ export function List({
                   key={task.id}
                   task={task}
                   labels={labels}
+                  collaborators={collaborators}
                   onEdit={onEditTask}
                   onUpdate={onUpdateTask}
                 />

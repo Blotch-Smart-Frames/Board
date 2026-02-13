@@ -15,15 +15,18 @@ import {
   Edit as EditIcon,
 } from '@mui/icons-material';
 import { LabelChip } from '../common/LabelChip';
+import { TaskAssignees } from './TaskAssignees';
 import type {
   Task as TaskType,
   UpdateTaskInput,
   Label,
 } from '../../types/board';
+import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
 
 type TaskProps = {
   task: TaskType;
   labels?: Label[];
+  collaborators?: Collaborator[];
   onEdit?: (task: TaskType) => void;
   onUpdate?: (taskId: string, updates: UpdateTaskInput) => void;
   isDragging?: boolean;
@@ -32,10 +35,14 @@ type TaskProps = {
 export function Task({
   task,
   labels = [],
+  collaborators = [],
   onEdit,
   onUpdate,
   isDragging = false,
 }: TaskProps) {
+  const assignedUsers = collaborators.filter((c) =>
+    task.assignedTo?.includes(c.id)
+  );
   const {
     attributes,
     listeners,
@@ -150,6 +157,8 @@ export function Task({
                   className="h-6!"
                 />
               )}
+
+              <TaskAssignees assignedUsers={assignedUsers} />
 
               {task.calendarSyncEnabled && (
                 <Tooltip title="Synced with Google Calendar">

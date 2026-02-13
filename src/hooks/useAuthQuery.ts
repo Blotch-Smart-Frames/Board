@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { signInWithGoogle, signOut as firebaseSignOut, onAuthChange } from '../services/firebase';
 import { calendarService } from '../services/calendarService';
+import { syncUserProfile } from '../services/userService';
 import { queryKeys } from '../queries/queryKeys';
 
 type AuthData = {
@@ -39,9 +40,10 @@ export const useAuthQuery = () => {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: signInWithGoogle,
-    onSuccess: ({ user, accessToken }) => {
+    onSuccess: async ({ user, accessToken }) => {
       queryClient.setQueryData<AuthData>(queryKeys.auth, { user, accessToken });
       calendarService.setAccessToken(accessToken);
+      await syncUserProfile(user);
     },
   });
 
