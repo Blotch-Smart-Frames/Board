@@ -31,6 +31,13 @@ vi.mock('./hooks/useUserBoardsQuery', () => ({
   useUserBoardsQuery: () => mockUseUserBoardsQuery(),
 }));
 
+vi.mock('./hooks/useCollaboratorsQuery', () => ({
+  useCollaboratorsQuery: () => ({
+    collaborators: [],
+    isLoading: false,
+  }),
+}));
+
 vi.mock('./hooks/useBoardQuery', () => ({
   useBoardQuery: () => ({
     board: null,

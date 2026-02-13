@@ -56,6 +56,14 @@ vi.mock('firebase/firestore', () => ({
   },
 }));
 
+vi.mock('firebase/storage', () => ({
+  getStorage: vi.fn(() => ({})),
+  ref: vi.fn(),
+  uploadBytes: vi.fn(),
+  getDownloadURL: vi.fn(),
+  deleteObject: vi.fn(),
+}));
+
 // Mock matchMedia for MUI
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
