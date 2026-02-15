@@ -39,7 +39,7 @@ export const useLabelsQuery = (boardId: string | null) => {
       },
       (error) => {
         console.error('Labels subscription error:', error);
-      }
+      },
     );
 
     return () => {

@@ -100,9 +100,12 @@ export const useDragAndDrop = (options: UseDragAndDropOptions) => {
         // When moving up or across lists, we place BEFORE the over item
         const movingDown = sameList && activeSortableIndex < overSortableIndex;
 
-        targetIndex = overIndex >= 0
-          ? (movingDown ? overIndex + 1 : overIndex)
-          : listTasks.length;
+        targetIndex =
+          overIndex >= 0
+            ? movingDown
+              ? overIndex + 1
+              : overIndex
+            : listTasks.length;
       } else if (overData?.type === 'list') {
         // Dropping on an empty list
         targetListId = overIdStr;

@@ -13,7 +13,7 @@ export type CalendarEvent = {
     timeZone?: string;
   };
   htmlLink?: string;
-  status?: "confirmed" | "tentative" | "cancelled";
+  status?: 'confirmed' | 'tentative' | 'cancelled';
 };
 
 export type CreateCalendarEventInput = {

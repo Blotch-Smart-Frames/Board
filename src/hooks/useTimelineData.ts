@@ -33,9 +33,7 @@ export function useTimelineData(
     title: list.title,
   }));
 
-  const tasksWithDates = tasks.filter(
-    (task) => task.startDate && task.dueDate,
-  );
+  const tasksWithDates = tasks.filter((task) => task.startDate && task.dueDate);
   const hiddenCount = tasks.length - tasksWithDates.length;
 
   const items: TimelineItem[] = tasksWithDates.map((task) => ({

@@ -40,7 +40,7 @@ export const useUserBoardsQuery = () => {
       },
       (error) => {
         console.error('Error fetching boards:', error);
-      }
+      },
     );
 
     return () => unsubscribe();

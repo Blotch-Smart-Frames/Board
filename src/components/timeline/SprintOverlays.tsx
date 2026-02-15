@@ -28,7 +28,9 @@ export function SprintOverlays({
   const { range, valueToPixels } = useTimelineContext();
 
   // Sort sprints by order
-  const sortedSprints = [...sprints].sort((a, b) => compareOrder(a.order, b.order));
+  const sortedSprints = [...sprints].sort((a, b) =>
+    compareOrder(a.order, b.order),
+  );
 
   // Filter sprints that are visible in the current range
   const visibleSprints = sortedSprints.filter((sprint) => {
@@ -58,7 +60,9 @@ export function SprintOverlays({
         const width = valueToPixels(visibleEnd - visibleStart);
 
         // Get color based on original index in sorted array
-        const originalIndex = sortedSprints.findIndex((s) => s.id === sprint.id);
+        const originalIndex = sortedSprints.findIndex(
+          (s) => s.id === sprint.id,
+        );
         const bgColor = SPRINT_COLORS[originalIndex % SPRINT_COLORS.length];
 
         // Format dates for label

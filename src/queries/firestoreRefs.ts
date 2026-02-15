@@ -18,7 +18,7 @@ export const getBoardRef = (boardId: string): DocumentReference<Board> =>
 export const getBoardListsQuery = (boardId: string): Query<List> =>
   query(
     collection(db, 'boards', boardId, 'lists'),
-    orderBy('order')
+    orderBy('order'),
   ) as Query<List>;
 
 // Board tasks collection query
@@ -30,20 +30,20 @@ export const getUserBoardsQuery = (userId: string): Query<Board> =>
   query(
     collection(db, 'boards'),
     where('ownerId', '==', userId),
-    orderBy('createdAt', 'desc')
+    orderBy('createdAt', 'desc'),
   ) as Query<Board>;
 
 // Board labels collection query
 export const getBoardLabelsQuery = (boardId: string): Query<Label> =>
   query(
     collection(db, 'boards', boardId, 'labels'),
-    orderBy('order')
+    orderBy('order'),
   ) as Query<Label>;
 
 // Label document reference
 export const getLabelRef = (
   boardId: string,
-  labelId: string
+  labelId: string,
 ): DocumentReference<Label> =>
   doc(db, 'boards', boardId, 'labels', labelId) as DocumentReference<Label>;
 
@@ -51,12 +51,12 @@ export const getLabelRef = (
 export const getBoardSprintsQuery = (boardId: string): Query<Sprint> =>
   query(
     collection(db, 'boards', boardId, 'sprints'),
-    orderBy('order')
+    orderBy('order'),
   ) as Query<Sprint>;
 
 // Sprint document reference
 export const getSprintRef = (
   boardId: string,
-  sprintId: string
+  sprintId: string,
 ): DocumentReference<Sprint> =>
   doc(db, 'boards', boardId, 'sprints', sprintId) as DocumentReference<Sprint>;

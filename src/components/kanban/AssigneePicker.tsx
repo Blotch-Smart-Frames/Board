@@ -42,7 +42,7 @@ export function AssigneePicker({
           <Box
             key={collaborator.id}
             onClick={() => handleToggle(collaborator.id)}
-            className="flex items-center gap-2 cursor-pointer py-1 px-1 rounded"
+            className="flex cursor-pointer items-center gap-2 rounded px-1 py-1"
             sx={{
               opacity: selectedUserIds.includes(collaborator.id) ? 1 : 0.6,
               transition: 'opacity 0.2s',

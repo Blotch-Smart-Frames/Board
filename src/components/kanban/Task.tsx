@@ -41,7 +41,7 @@ export function Task({
   isDragging = false,
 }: TaskProps) {
   const assignedUsers = collaborators.filter((c) =>
-    task.assignedTo?.includes(c.id)
+    task.assignedTo?.includes(c.id),
   );
   const {
     attributes,
@@ -88,13 +88,11 @@ export function Task({
       {...listeners}
       className={`mb-2 cursor-grab active:cursor-grabbing ${
         isDragging || isSortableDragging
-          ? 'shadow-lg ring-2 ring-primary-500'
+          ? 'ring-primary-500 shadow-lg ring-2'
           : ''
       }`}
       sx={{
-        backgroundColor: task.color
-          ? `${task.color}15`
-          : 'background.paper',
+        backgroundColor: task.color ? `${task.color}15` : 'background.paper',
         '&:hover': {
           boxShadow: 3,
         },
@@ -110,7 +108,7 @@ export function Task({
             sx={{ padding: '2px' }}
           />
 
-          <Box className="flex-1 min-w-0">
+          <Box className="min-w-0 flex-1">
             <Typography
               variant="body2"
               component="h3"
@@ -129,14 +127,14 @@ export function Task({
               <Typography
                 variant="caption"
                 color="text.secondary"
-                className="line-clamp-2 mt-1"
+                className="mt-1 line-clamp-2"
               >
                 {task.description}
               </Typography>
             )}
 
             {task.labelIds && task.labelIds.length > 0 && labels.length > 0 && (
-              <Box className="flex flex-wrap gap-1 mt-2">
+              <Box className="mt-2 flex flex-wrap gap-1">
                 {task.labelIds
                   .map((labelId) => labels.find((l) => l.id === labelId))
                   .filter((label): label is Label => !!label)
@@ -146,7 +144,7 @@ export function Task({
               </Box>
             )}
 
-            <Box className="flex items-center gap-2 mt-2 flex-wrap">
+            <Box className="mt-2 flex flex-wrap items-center gap-2">
               {task.dueDate && (
                 <Chip
                   size="small"
@@ -165,7 +163,7 @@ export function Task({
                   <CalendarIcon
                     fontSize="small"
                     color="primary"
-                    className="!w-4 !h-4"
+                    className="!h-4 !w-4"
                   />
                 </Tooltip>
               )}

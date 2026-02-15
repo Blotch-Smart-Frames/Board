@@ -18,12 +18,12 @@ export const syncUserProfile = async (user: FirebaseUser): Promise<void> => {
     await setDoc(
       userRef,
       {
-        email: user.email,
+        email: user.email?.toLowerCase(),
         displayName: user.displayName || '',
         photoURL: user.photoURL || null,
         updatedAt: serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
     );
   } catch (error) {
     console.error('Failed to sync user profile:', error);
@@ -33,7 +33,7 @@ export const syncUserProfile = async (user: FirebaseUser): Promise<void> => {
 export const getUserByEmail = async (email: string): Promise<User | null> => {
   const usersQuery = query(
     collection(db, 'users'),
-    where('email', '==', email)
+    where('email', '==', email.toLowerCase()),
   );
   const snapshot = await getDocs(usersQuery);
 

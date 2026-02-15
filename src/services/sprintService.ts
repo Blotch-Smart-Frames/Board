@@ -13,7 +13,12 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import type { Sprint, CreateSprintInput, UpdateSprintInput, SprintConfig } from '../types/board';
+import type {
+  Sprint,
+  CreateSprintInput,
+  UpdateSprintInput,
+  SprintConfig,
+} from '../types/board';
 import { getOrderAtEnd } from '../utils/ordering';
 import { addDays } from 'date-fns';
 
@@ -21,7 +26,9 @@ export const createSprint = async (
   boardId: string,
   input: CreateSprintInput,
 ): Promise<Sprint> => {
-  const sprintsSnap = await getDocs(collection(db, 'boards', boardId, 'sprints'));
+  const sprintsSnap = await getDocs(
+    collection(db, 'boards', boardId, 'sprints'),
+  );
   const existingSprints = sprintsSnap.docs.map(
     (doc) => ({ id: doc.id, ...doc.data() }) as Sprint,
   );

@@ -14,11 +14,9 @@ export type Collaborator = {
 
 export const useCollaboratorsQuery = (
   board: Board | undefined,
-  currentUser: FirebaseUser | null
+  currentUser: FirebaseUser | null,
 ) => {
-  const allUserIds = board
-    ? [board.ownerId, ...board.collaborators]
-    : [];
+  const allUserIds = board ? [board.ownerId, ...board.collaborators] : [];
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: queryKeys.users.byIds(allUserIds),

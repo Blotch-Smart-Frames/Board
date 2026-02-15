@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
+import {
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+} from '@mui/material';
 import {
   Brightness7 as LightIcon,
   Brightness4 as DarkIcon,
@@ -21,15 +27,23 @@ export function ThemeToggle() {
 
   if (!mode) return null;
 
-  const currentOption = MODE_OPTIONS.find((opt) => opt.value === mode) ?? MODE_OPTIONS[2];
+  const currentOption =
+    MODE_OPTIONS.find((opt) => opt.value === mode) ?? MODE_OPTIONS[2];
   const Icon = currentOption.icon;
 
   return (
     <>
-      <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} aria-label="theme toggle">
+      <IconButton
+        onClick={(e) => setAnchorEl(e.currentTarget)}
+        aria-label="theme toggle"
+      >
         <Icon />
       </IconButton>
-      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+      >
         {MODE_OPTIONS.map(({ value, label, icon: OptionIcon }) => (
           <MenuItem
             key={value}

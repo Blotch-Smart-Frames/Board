@@ -31,7 +31,7 @@ export function TimelineHeader({
   const endDate = startOfDay(new Date(range.end));
   const dayCount = differenceInDays(endDate, startDate) + 1;
   const allDays = Array.from({ length: dayCount }, (_, i) =>
-    addDays(startDate, i)
+    addDays(startDate, i),
   );
 
   // Use virtualized dates only when we have valid dimensions

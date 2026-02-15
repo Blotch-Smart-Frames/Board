@@ -24,9 +24,7 @@ const createWrapper = () => {
   });
 
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 };
 
@@ -76,7 +74,7 @@ describe('useDragAndDrop', () => {
           onMoveTask: mockMoveTask,
           onReorderLists: mockReorderLists,
         }),
-      { wrapper: createWrapper() }
+      { wrapper: createWrapper() },
     );
 
     expect(result.current.activeId).toBeNull();
@@ -94,7 +92,7 @@ describe('useDragAndDrop', () => {
           onMoveTask: mockMoveTask,
           onReorderLists: mockReorderLists,
         }),
-      { wrapper: createWrapper() }
+      { wrapper: createWrapper() },
     );
 
     act(() => {
@@ -120,7 +118,7 @@ describe('useDragAndDrop', () => {
           onMoveTask: mockMoveTask,
           onReorderLists: mockReorderLists,
         }),
-      { wrapper: createWrapper() }
+      { wrapper: createWrapper() },
     );
 
     act(() => {
@@ -142,7 +140,7 @@ describe('useDragAndDrop', () => {
           onMoveTask: mockMoveTask,
           onReorderLists: mockReorderLists,
         }),
-      { wrapper: createWrapper() }
+      { wrapper: createWrapper() },
     );
 
     act(() => {
@@ -178,7 +176,7 @@ describe('useDragAndDrop', () => {
           onMoveTask: mockMoveTask,
           onReorderLists: mockReorderLists,
         }),
-      { wrapper: createWrapper() }
+      { wrapper: createWrapper() },
     );
 
     await act(async () => {

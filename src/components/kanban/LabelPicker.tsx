@@ -46,7 +46,11 @@ export function LabelPicker({
     }
   };
 
-  const handleCreateLabel = async (data: { name: string; color: string; emoji?: string }) => {
+  const handleCreateLabel = async (data: {
+    name: string;
+    color: string;
+    emoji?: string;
+  }) => {
     await createLabel(data);
   };
 
@@ -58,11 +62,13 @@ export function LabelPicker({
     );
   }
 
-  const sortedLabels = [...labels].sort((a, b) => compareOrder(a.order, b.order));
+  const sortedLabels = [...labels].sort((a, b) =>
+    compareOrder(a.order, b.order),
+  );
 
   return (
     <Box>
-      <Box className="flex items-center justify-between mb-2">
+      <Box className="mb-2 flex items-center justify-between">
         <Typography variant="body2" color="text.secondary">
           Labels
         </Typography>
@@ -76,12 +82,12 @@ export function LabelPicker({
         </Button>
       </Box>
 
-      <Box className="flex flex-wrap gap-2 mb-2">
+      <Box className="mb-2 flex flex-wrap gap-2">
         {sortedLabels.map((label) => (
           <Box
             key={label.id}
             onClick={() => handleToggleLabel(label.id)}
-            className="flex items-center gap-1 cursor-pointer"
+            className="flex cursor-pointer items-center gap-1"
             sx={{
               opacity: selectedLabelIds.includes(label.id) ? 1 : 0.6,
               transition: 'opacity 0.2s',

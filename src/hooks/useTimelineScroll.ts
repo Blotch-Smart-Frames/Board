@@ -130,7 +130,7 @@ export function useTimelineScroll({
         };
       }
     },
-    [handleScrollEvent, updateScrollState]
+    [handleScrollEvent, updateScrollState],
   );
 
   // Preserve scroll position when prepending dates (left expansion)

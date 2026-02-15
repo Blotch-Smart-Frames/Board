@@ -52,7 +52,8 @@ export const useCalendarSync = (boardId: string | null, tasks: Task[]) => {
       }));
       return eventId;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to enable sync';
+      const message =
+        error instanceof Error ? error.message : 'Failed to enable sync';
       setSyncState((prev) => ({ ...prev, isSyncing: false, error: message }));
       throw error;
     }
@@ -71,7 +72,8 @@ export const useCalendarSync = (boardId: string | null, tasks: Task[]) => {
         lastSyncAt: new Date(),
       }));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to disable sync';
+      const message =
+        error instanceof Error ? error.message : 'Failed to disable sync';
       setSyncState((prev) => ({ ...prev, isSyncing: false, error: message }));
       throw error;
     }
@@ -83,7 +85,11 @@ export const useCalendarSync = (boardId: string | null, tasks: Task[]) => {
     setSyncState((prev) => ({ ...prev, isSyncing: true, error: undefined }));
 
     try {
-      const result = await syncService.syncCalendarToTasks(boardId, tasks, user.uid);
+      const result = await syncService.syncCalendarToTasks(
+        boardId,
+        tasks,
+        user.uid,
+      );
       setSyncState((prev) => ({
         ...prev,
         isSyncing: false,

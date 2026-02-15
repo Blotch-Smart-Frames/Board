@@ -14,7 +14,7 @@ class CalendarService {
 
   private async request<T>(
     path: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     if (!this.accessToken) {
       throw new Error('Not authenticated with Google Calendar');
@@ -40,7 +40,7 @@ class CalendarService {
   async listEvents(
     timeMin?: Date,
     timeMax?: Date,
-    maxResults = 100
+    maxResults = 100,
   ): Promise<{ items: CalendarEvent[]; nextSyncToken?: string }> {
     const params = new URLSearchParams({
       maxResults: maxResults.toString(),
@@ -51,26 +51,33 @@ class CalendarService {
     if (timeMin) params.set('timeMin', timeMin.toISOString());
     if (timeMax) params.set('timeMax', timeMax.toISOString());
 
-    return this.request(`/calendars/${GOOGLE_CONFIG.calendarId}/events?${params}`);
+    return this.request(
+      `/calendars/${GOOGLE_CONFIG.calendarId}/events?${params}`,
+    );
   }
 
   async getEvent(eventId: string): Promise<CalendarEvent> {
-    return this.request(`/calendars/${GOOGLE_CONFIG.calendarId}/events/${eventId}`);
+    return this.request(
+      `/calendars/${GOOGLE_CONFIG.calendarId}/events/${eventId}`,
+    );
   }
 
   async createEvent(input: CreateCalendarEventInput): Promise<CalendarEvent> {
-    const endDateTime = input.endDateTime || new Date(input.startDateTime.getTime() + 3600000); // 1 hour default
+    const endDateTime =
+      input.endDateTime || new Date(input.startDateTime.getTime() + 3600000); // 1 hour default
 
     const event = {
       summary: input.summary,
       description: input.description,
       start: {
         dateTime: input.startDateTime.toISOString(),
-        timeZone: input.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timeZone:
+          input.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
       },
       end: {
         dateTime: endDateTime.toISOString(),
-        timeZone: input.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timeZone:
+          input.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
       },
     };
 
@@ -82,12 +89,13 @@ class CalendarService {
 
   async updateEvent(
     eventId: string,
-    input: UpdateCalendarEventInput
+    input: UpdateCalendarEventInput,
   ): Promise<CalendarEvent> {
     const updates: Record<string, unknown> = {};
 
     if (input.summary !== undefined) updates.summary = input.summary;
-    if (input.description !== undefined) updates.description = input.description;
+    if (input.description !== undefined)
+      updates.description = input.description;
     if (input.startDateTime) {
       updates.start = {
         dateTime: input.startDateTime.toISOString(),
@@ -101,10 +109,13 @@ class CalendarService {
       };
     }
 
-    return this.request(`/calendars/${GOOGLE_CONFIG.calendarId}/events/${eventId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(updates),
-    });
+    return this.request(
+      `/calendars/${GOOGLE_CONFIG.calendarId}/events/${eventId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      },
+    );
   }
 
   async deleteEvent(eventId: string): Promise<void> {
@@ -113,13 +124,15 @@ class CalendarService {
     }
 
     const response = await fetch(
-      getCalendarApiUrl(`/calendars/${GOOGLE_CONFIG.calendarId}/events/${eventId}`),
+      getCalendarApiUrl(
+        `/calendars/${GOOGLE_CONFIG.calendarId}/events/${eventId}`,
+      ),
       {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${this.accessToken}`,
         },
-      }
+      },
     );
 
     if (!response.ok && response.status !== 204) {
@@ -129,7 +142,7 @@ class CalendarService {
   }
 
   async syncEvents(
-    syncToken?: string
+    syncToken?: string,
   ): Promise<{ items: CalendarEvent[]; nextSyncToken?: string }> {
     const params = new URLSearchParams({
       maxResults: '100',
@@ -145,7 +158,9 @@ class CalendarService {
       params.set('timeMin', timeMin.toISOString());
     }
 
-    return this.request(`/calendars/${GOOGLE_CONFIG.calendarId}/events?${params}`);
+    return this.request(
+      `/calendars/${GOOGLE_CONFIG.calendarId}/events?${params}`,
+    );
   }
 }
 

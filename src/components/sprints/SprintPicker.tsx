@@ -47,11 +47,13 @@ export function SprintPicker({
     );
   }
 
-  const sortedSprints = [...sprints].sort((a, b) => compareOrder(a.order, b.order));
+  const sortedSprints = [...sprints].sort((a, b) =>
+    compareOrder(a.order, b.order),
+  );
 
   return (
     <Box>
-      <Box className="flex items-center justify-between mb-2">
+      <Box className="mb-2 flex items-center justify-between">
         <Typography variant="body2" color="text.secondary">
           Sprint
         </Typography>
@@ -76,7 +78,7 @@ export function SprintPicker({
           </MenuItem>
           {sortedSprints.map((sprint) => (
             <MenuItem key={sprint.id} value={sprint.id}>
-              <Box className="flex items-center justify-between w-full">
+              <Box className="flex w-full items-center justify-between">
                 <span>{sprint.name}</span>
                 <Typography
                   variant="caption"

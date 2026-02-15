@@ -77,7 +77,7 @@ export const App = () => {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthGuard>
-        <Box className="h-screen flex flex-col">
+        <Box className="flex h-screen flex-col">
           <AppBar
             title={selectedBoard?.title || 'Board by Blotch'}
             onMenuClick={() => setDrawerOpen(!drawerOpen)}
@@ -87,7 +87,7 @@ export const App = () => {
             onViewModeChange={selectedBoardId ? setViewMode : undefined}
           />
 
-          <Box className="flex-1 flex overflow-hidden">
+          <Box className="flex flex-1 overflow-hidden">
             {isMobile ? (
               <Drawer
                 variant="temporary"
@@ -126,10 +126,14 @@ export const App = () => {
               sx={{ bgcolor: 'background.default' }}
             >
               {selectedBoardId ? (
-                <Board boardId={selectedBoardId} viewMode={viewMode} collaborators={collaborators} />
+                <Board
+                  boardId={selectedBoardId}
+                  viewMode={viewMode}
+                  collaborators={collaborators}
+                />
               ) : (
                 <Box
-                  className="flex items-center justify-center h-full"
+                  className="flex h-full items-center justify-center"
                   sx={{ color: 'text.secondary' }}
                 >
                   Select a board or create a new one to get started

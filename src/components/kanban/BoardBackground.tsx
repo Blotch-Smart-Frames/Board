@@ -32,7 +32,14 @@ export function BoardBackground({ imageUrl, children }: BoardBackgroundProps) {
           }}
         />
       )}
-      <Box sx={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <Box
+        sx={{
+          position: 'relative',
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         {children}
       </Box>
     </Box>

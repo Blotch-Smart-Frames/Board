@@ -2,16 +2,17 @@
   "version": "0.2",
   "language": "en",
   "words": [
-    "kanban",
+    "dmiu",
+    "eslint",
     "firestore",
-    "zustand",
+    "kanban",
+    "Millis",
+    "prettierrc",
     "tanstack",
     "tsconfig",
     "vite",
     "vitest",
-    "eslint",
-    "prettierrc",
-    "dmiu"
+    "zustand"
   ],
   "ignorePaths": [
     "node_modules",

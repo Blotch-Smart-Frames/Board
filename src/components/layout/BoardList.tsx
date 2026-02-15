@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState } from 'react';
 import {
   Box,
   Paper,
@@ -18,16 +18,16 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
-} from "@mui/material";
+} from '@mui/material';
 import {
   Add as AddIcon,
   Dashboard as BoardIcon,
   MoreVert as MoreIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
-} from "@mui/icons-material";
-import { useForm } from "@tanstack/react-form";
-import type { Board } from "../../types/board";
+} from '@mui/icons-material';
+import { useForm } from '@tanstack/react-form';
+import type { Board } from '../../types/board';
 
 type BoardListProps = {
   boards: Board[];
@@ -53,7 +53,7 @@ export function BoardList({
   const [menuBoardId, setMenuBoardId] = useState<string | null>(null);
 
   const form = useForm({
-    defaultValues: { title: "" },
+    defaultValues: { title: '' },
     onSubmit: async ({ value }) => {
       const trimmed = value.title.trim();
       if (!trimmed) return;
@@ -62,7 +62,7 @@ export function BoardList({
         form.reset();
         setIsCreating(false);
       } catch (err) {
-        console.error("Failed to create board:", err);
+        console.error('Failed to create board:', err);
       }
     },
   });
@@ -94,8 +94,8 @@ export function BoardList({
   };
 
   return (
-    <Paper className="h-full flex flex-col" elevation={0}>
-      <Box className="p-4 border-b">
+    <Paper className="flex h-full flex-col" elevation={0}>
+      <Box className="border-b p-4">
         <Typography variant="subtitle1" className="font-semibold">
           My Boards
         </Typography>
@@ -132,7 +132,7 @@ export function BoardList({
                   primary={board.title}
                   primaryTypographyProps={{
                     noWrap: true,
-                    className: "font-medium",
+                    className: 'font-medium',
                   }}
                 />
               </ListItemButton>
@@ -151,7 +151,7 @@ export function BoardList({
         </List>
       )}
 
-      <Box className="p-4 border-t">
+      <Box className="border-t p-4">
         <Button
           startIcon={<AddIcon />}
           onClick={() => setIsCreating(true)}
@@ -176,7 +176,7 @@ export function BoardList({
           </MenuItem>
         )}
         {onDeleteBoard && (
-          <MenuItem onClick={handleDelete} sx={{ color: "error.main" }}>
+          <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
             <ListItemIcon>
               <DeleteIcon fontSize="small" color="error" />
             </ListItemIcon>
@@ -209,7 +209,7 @@ export function BoardList({
                       value={field.state.value}
                       onChange={(e) => field.handleChange(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Escape") {
+                        if (e.key === 'Escape') {
                           handleCloseDialog();
                         }
                       }}
@@ -245,7 +245,7 @@ export function BoardList({
                     variant="contained"
                     disabled={!title.trim() || !canSubmit || isSubmitting}
                   >
-                    {isSubmitting ? <CircularProgress size={20} /> : "Create"}
+                    {isSubmitting ? <CircularProgress size={20} /> : 'Create'}
                   </Button>
                 </>
               )}

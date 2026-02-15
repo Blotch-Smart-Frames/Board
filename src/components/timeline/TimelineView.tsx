@@ -16,7 +16,13 @@ import {
   useTimelineData,
   type TimelineItem as TimelineItemType,
 } from '../../hooks/useTimelineData';
-import type { Task, List, Label, Sprint, UpdateTaskInput } from '../../types/board';
+import type {
+  Task,
+  List,
+  Label,
+  Sprint,
+  UpdateTaskInput,
+} from '../../types/board';
 import { getOrderAtEnd } from '../../utils/ordering';
 
 type Span = { start: number; end: number };
@@ -439,7 +445,7 @@ export function TimelineView({
 
   if (rows.length === 0) {
     return (
-      <Box className="flex items-center justify-center h-full p-4">
+      <Box className="flex h-full items-center justify-center p-4">
         <Typography color="text.secondary">
           No lists in this board. Add a list to start using the timeline.
         </Typography>
@@ -448,7 +454,7 @@ export function TimelineView({
   }
 
   return (
-    <Box className="h-full flex flex-col overflow-hidden">
+    <Box className="flex h-full flex-col overflow-hidden">
       {hiddenCount > 0 && (
         <Alert severity="info" sx={{ mx: 2, mt: 2, mb: 0 }}>
           <Box className="flex items-center gap-2">
@@ -465,7 +471,7 @@ export function TimelineView({
       )}
 
       {items.length === 0 && hiddenCount === 0 && (
-        <Box className="flex items-center justify-center h-full p-4">
+        <Box className="flex h-full items-center justify-center p-4">
           <Typography color="text.secondary">
             No tasks in this board yet.
           </Typography>
@@ -473,7 +479,7 @@ export function TimelineView({
       )}
 
       {items.length === 0 && hiddenCount > 0 && (
-        <Box className="flex items-center justify-center h-full p-4">
+        <Box className="flex h-full items-center justify-center p-4">
           <Typography color="text.secondary">
             Set start and due dates on tasks to see them in the timeline.
           </Typography>

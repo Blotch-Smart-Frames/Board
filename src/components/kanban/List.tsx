@@ -97,8 +97,8 @@ export function List({
 
   return (
     <Paper
-      className={`flex flex-col w-72 shrink-0 ${
-        isOver ? 'ring-2 ring-primary-500' : ''
+      className={`flex w-72 shrink-0 flex-col ${
+        isOver ? 'ring-primary-500 ring-2' : ''
       }`}
       sx={{
         bgcolor: 'background.default',
@@ -115,7 +115,7 @@ export function List({
 
       <Box
         ref={setNodeRef}
-        className="flex-1 overflow-y-auto px-2 py-2 min-h-25"
+        className="min-h-25 flex-1 overflow-y-auto px-2 py-2"
         sx={{
           scrollbarWidth: 'none', // Firefox - no zero-width visible option
           scrollbarGutter: 'stable',
@@ -143,7 +143,7 @@ export function List({
         </SortableContext>
 
         {activeTasks.length === 0 && (
-          <Box className="text-center text-gray-400 py-4 text-sm">
+          <Box className="py-4 text-center text-sm text-gray-400">
             No tasks yet
           </Box>
         )}
@@ -175,7 +175,7 @@ export function List({
         )}
       </Box>
 
-      <Box className="p-2 border-t border-gray-200">
+      <Box className="border-t border-gray-200 p-2">
         {isAddingTask ? (
           <Box>
             <TextField
@@ -195,7 +195,7 @@ export function List({
                 },
               }}
             />
-            <Box className="flex gap-2 mt-2">
+            <Box className="mt-2 flex gap-2">
               <Button
                 variant="contained"
                 size="small"

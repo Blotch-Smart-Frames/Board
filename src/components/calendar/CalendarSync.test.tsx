@@ -1,10 +1,10 @@
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { CalendarSync } from "./CalendarSync";
-import type { CalendarSyncState } from "../../types/calendar";
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { CalendarSync } from './CalendarSync';
+import type { CalendarSyncState } from '../../types/calendar';
 
-describe("CalendarSync", () => {
+describe('CalendarSync', () => {
   const defaultSyncState: CalendarSyncState = {
     isSyncing: false,
     lastSyncAt: undefined,
@@ -21,50 +21,50 @@ describe("CalendarSync", () => {
     vi.clearAllMocks();
   });
 
-  describe("When not connected", () => {
-    it("shows disconnected status", () => {
+  describe('When not connected', () => {
+    it('shows disconnected status', () => {
       render(<CalendarSync {...defaultProps} isConnected={false} />);
 
       expect(screen.getByText(/calendar not connected/i)).toBeInTheDocument();
     });
 
-    it("does not show sync button when disconnected", () => {
+    it('does not show sync button when disconnected', () => {
       render(<CalendarSync {...defaultProps} isConnected={false} />);
 
       expect(
-        screen.queryByRole("button", { name: /sync/i })
+        screen.queryByRole('button', { name: /sync/i }),
       ).not.toBeInTheDocument();
     });
   });
 
-  describe("When connected", () => {
-    it("shows synced status", () => {
+  describe('When connected', () => {
+    it('shows synced status', () => {
       render(<CalendarSync {...defaultProps} />);
 
       expect(screen.getByText(/calendar synced/i)).toBeInTheDocument();
     });
 
-    it("shows sync button", () => {
+    it('shows sync button', () => {
       render(<CalendarSync {...defaultProps} />);
 
       expect(
-        screen.getByRole("button", { name: /sync now/i })
+        screen.getByRole('button', { name: /sync now/i }),
       ).toBeInTheDocument();
     });
 
-    it("calls onSync when button clicked", async () => {
+    it('calls onSync when button clicked', async () => {
       const user = userEvent.setup();
       const onSync = vi.fn();
       render(<CalendarSync {...defaultProps} onSync={onSync} />);
 
-      await user.click(screen.getByRole("button", { name: /sync now/i }));
+      await user.click(screen.getByRole('button', { name: /sync now/i }));
 
       expect(onSync).toHaveBeenCalled();
     });
   });
 
-  describe("Syncing state", () => {
-    it("shows syncing status", () => {
+  describe('Syncing state', () => {
+    it('shows syncing status', () => {
       const syncState: CalendarSyncState = {
         isSyncing: true,
         lastSyncAt: undefined,
@@ -73,10 +73,12 @@ describe("CalendarSync", () => {
 
       render(<CalendarSync {...defaultProps} syncState={syncState} />);
 
-      expect(screen.getByRole("button", { name: /syncing/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /syncing/i }),
+      ).toBeInTheDocument();
     });
 
-    it("disables sync button while syncing", () => {
+    it('disables sync button while syncing', () => {
       const syncState: CalendarSyncState = {
         isSyncing: true,
         lastSyncAt: undefined,
@@ -85,11 +87,11 @@ describe("CalendarSync", () => {
 
       render(<CalendarSync {...defaultProps} syncState={syncState} />);
 
-      expect(screen.getByRole("button", { name: /syncing/i })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /syncing/i })).toBeDisabled();
     });
   });
 
-  describe("Last sync time", () => {
+  describe('Last sync time', () => {
     it("shows 'Just now' for recent sync", () => {
       const syncState: CalendarSyncState = {
         isSyncing: false,
@@ -103,7 +105,7 @@ describe("CalendarSync", () => {
       expect(screen.getByText(/calendar synced/i)).toBeInTheDocument();
     });
 
-    it("shows minutes for older sync", () => {
+    it('shows minutes for older sync', () => {
       const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
       const syncState: CalendarSyncState = {
         isSyncing: false,
@@ -116,7 +118,7 @@ describe("CalendarSync", () => {
       expect(screen.getByText(/calendar synced/i)).toBeInTheDocument();
     });
 
-    it("shows hours for very old sync", () => {
+    it('shows hours for very old sync', () => {
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
       const syncState: CalendarSyncState = {
         isSyncing: false,
@@ -143,12 +145,12 @@ describe("CalendarSync", () => {
     });
   });
 
-  describe("Error state", () => {
-    it("displays error message", () => {
+  describe('Error state', () => {
+    it('displays error message', () => {
       const syncState: CalendarSyncState = {
         isSyncing: false,
         lastSyncAt: undefined,
-        error: "Sync failed",
+        error: 'Sync failed',
       };
 
       render(<CalendarSync {...defaultProps} syncState={syncState} />);
@@ -156,44 +158,44 @@ describe("CalendarSync", () => {
       expect(screen.getByText(/sync error/i)).toBeInTheDocument();
     });
 
-    it("shows error icon when there is an error", () => {
+    it('shows error icon when there is an error', () => {
       const syncState: CalendarSyncState = {
         isSyncing: false,
         lastSyncAt: undefined,
-        error: "Connection lost",
+        error: 'Connection lost',
       };
 
       render(<CalendarSync {...defaultProps} syncState={syncState} />);
 
-      expect(screen.getByTestId("ErrorIcon")).toBeInTheDocument();
+      expect(screen.getByTestId('ErrorIcon')).toBeInTheDocument();
     });
 
-    it("still shows sync button on error", () => {
+    it('still shows sync button on error', () => {
       const syncState: CalendarSyncState = {
         isSyncing: false,
         lastSyncAt: undefined,
-        error: "Sync failed",
+        error: 'Sync failed',
       };
 
       render(<CalendarSync {...defaultProps} syncState={syncState} />);
 
       expect(
-        screen.getByRole("button", { name: /sync now/i })
+        screen.getByRole('button', { name: /sync now/i }),
       ).toBeInTheDocument();
     });
   });
 
-  describe("Visual indicators", () => {
-    it("shows success icon when connected without error", () => {
+  describe('Visual indicators', () => {
+    it('shows success icon when connected without error', () => {
       render(<CalendarSync {...defaultProps} />);
 
-      expect(screen.getByTestId("CheckCircleIcon")).toBeInTheDocument();
+      expect(screen.getByTestId('CheckCircleIcon')).toBeInTheDocument();
     });
 
-    it("shows disabled icon when not connected", () => {
+    it('shows disabled icon when not connected', () => {
       render(<CalendarSync {...defaultProps} isConnected={false} />);
 
-      expect(screen.getByTestId("SyncDisabledIcon")).toBeInTheDocument();
+      expect(screen.getByTestId('SyncDisabledIcon')).toBeInTheDocument();
     });
   });
 });

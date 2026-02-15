@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -16,14 +16,14 @@ import {
   Alert,
   CircularProgress,
   Chip,
-} from "@mui/material";
+} from '@mui/material';
 import {
   PersonAdd as PersonAddIcon,
   Delete as DeleteIcon,
   ContentCopy as CopyIcon,
-} from "@mui/icons-material";
-import { useForm } from "@tanstack/react-form";
-import { UserAvatar } from "./UserAvatar";
+} from '@mui/icons-material';
+import { useForm } from '@tanstack/react-form';
+import { UserAvatar } from './UserAvatar';
 
 type Collaborator = {
   id: string;
@@ -54,7 +54,7 @@ export function ShareDialog({
   const [success, setSuccess] = useState<string | null>(null);
 
   const form = useForm({
-    defaultValues: { email: "" },
+    defaultValues: { email: '' },
     onSubmit: async ({ value }) => {
       setError(null);
       setSuccess(null);
@@ -64,7 +64,7 @@ export function ShareDialog({
         form.reset();
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to send invitation",
+          err instanceof Error ? err.message : 'Failed to send invitation',
         );
       }
     },
@@ -75,22 +75,20 @@ export function ShareDialog({
       await onRemove(userId);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to remove collaborator",
+        err instanceof Error ? err.message : 'Failed to remove collaborator',
       );
     }
   };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
-    setSuccess("Link copied to clipboard");
+    setSuccess('Link copied to clipboard');
     setTimeout(() => setSuccess(null), 3000);
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        <Typography variant="h6">Share "{boardTitle}"</Typography>
-      </DialogTitle>
+      <DialogTitle>Share "{boardTitle}"</DialogTitle>
 
       <DialogContent>
         {error && (
@@ -113,7 +111,7 @@ export function ShareDialog({
           </Alert>
         )}
 
-        <Box className="flex gap-2 mb-4">
+        <Box className="mb-4 flex gap-2">
           <form.Subscribe
             selector={(state) => ({
               canSubmit: state.canSubmit,
@@ -129,7 +127,7 @@ export function ShareDialog({
                       value={field.state.value}
                       onChange={(e) => field.handleChange(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
+                        if (e.key === 'Enter') {
                           e.preventDefault();
                           form.handleSubmit();
                         }

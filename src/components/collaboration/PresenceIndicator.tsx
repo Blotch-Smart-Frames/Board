@@ -1,5 +1,5 @@
-import { Box, AvatarGroup, Typography, Tooltip } from "@mui/material";
-import { UserAvatar } from "./UserAvatar";
+import { Box, AvatarGroup, Typography, Tooltip } from '@mui/material';
+import { UserAvatar } from './UserAvatar';
 
 type User = {
   id: string;
@@ -29,11 +29,11 @@ export function PresenceIndicator({
       <AvatarGroup
         max={maxVisible}
         sx={{
-          "& .MuiAvatar-root": {
+          '& .MuiAvatar-root': {
             width: 28,
             height: 28,
             fontSize: 12,
-            border: "2px solid white",
+            border: '2px solid white',
           },
         }}
       >
@@ -46,7 +46,7 @@ export function PresenceIndicator({
                 size="small"
                 showTooltip={false}
               />
-              <Box className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+              <Box className="absolute right-0 bottom-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500" />
             </Box>
           </Tooltip>
         ))}

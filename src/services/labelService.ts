@@ -42,7 +42,7 @@ export const createLabel = async (
 export const updateLabel = async (
   boardId: string,
   labelId: string,
-  updates: UpdateLabelInput
+  updates: UpdateLabelInput,
 ): Promise<void> => {
   await updateDoc(doc(db, 'boards', boardId, 'labels', labelId), {
     ...updates,
@@ -52,7 +52,7 @@ export const updateLabel = async (
 
 export const deleteLabel = async (
   boardId: string,
-  labelId: string
+  labelId: string,
 ): Promise<void> => {
   const batch = writeBatch(db);
 
@@ -60,15 +60,15 @@ export const deleteLabel = async (
   const tasksSnap = await getDocs(
     query(
       collection(db, 'boards', boardId, 'tasks'),
-      where('labelIds', 'array-contains', labelId)
-    )
+      where('labelIds', 'array-contains', labelId),
+    ),
   );
 
   // Remove the label from each task
   tasksSnap.forEach((taskDoc) => {
     const taskData = taskDoc.data();
     const updatedLabelIds = (taskData.labelIds as string[]).filter(
-      (id) => id !== labelId
+      (id) => id !== labelId,
     );
     batch.update(taskDoc.ref, {
       labelIds: updatedLabelIds,
@@ -84,12 +84,10 @@ export const deleteLabel = async (
 
 export const getBoardLabels = async (boardId: string): Promise<Label[]> => {
   const labelsSnap = await getDocs(
-    query(collection(db, 'boards', boardId, 'labels'), orderBy('order'))
+    query(collection(db, 'boards', boardId, 'labels'), orderBy('order')),
   );
 
-  return labelsSnap.docs.map(
-    (doc) => ({ id: doc.id, ...doc.data() }) as Label
-  );
+  return labelsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Label);
 };
 
 export const initializeDefaultLabels = async (

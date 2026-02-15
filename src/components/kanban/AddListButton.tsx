@@ -90,7 +90,7 @@ export function AddListButton({ onAdd }: AddListButtonProps) {
           />
         )}
       </form.Field>
-      <Box className="flex items-center gap-2 mt-2">
+      <Box className="mt-2 flex items-center gap-2">
         <form.Subscribe selector={(state) => state.values.title}>
           {(title) => (
             <Button

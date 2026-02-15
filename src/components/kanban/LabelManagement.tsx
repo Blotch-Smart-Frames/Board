@@ -75,7 +75,9 @@ export function LabelManagement({
     setEditingLabel(null);
   };
 
-  const sortedLabels = [...labels].sort((a, b) => compareOrder(a.order, b.order));
+  const sortedLabels = [...labels].sort((a, b) =>
+    compareOrder(a.order, b.order),
+  );
 
   return (
     <>

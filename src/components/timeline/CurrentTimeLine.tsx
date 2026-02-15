@@ -4,7 +4,7 @@ import { Box } from '@mui/material';
 
 export function CurrentTimeLine() {
   const { range, valueToPixels } = useTimelineContext();
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const interval = setInterval(() => {

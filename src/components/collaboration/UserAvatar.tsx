@@ -1,9 +1,9 @@
-import { Avatar, Tooltip } from "@mui/material";
+import { Avatar, Tooltip } from '@mui/material';
 
 type UserAvatarProps = {
   name: string;
   photoURL?: string | null;
-  size?: "small" | "medium" | "large";
+  size?: 'small' | 'medium' | 'large';
   showTooltip?: boolean;
 };
 
@@ -14,7 +14,7 @@ const sizeMap = {
 };
 
 const getInitials = (name: string): string => {
-  const parts = name.split(" ").filter(Boolean);
+  const parts = name.split(' ').filter(Boolean);
   if (parts.length >= 2) {
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   }
@@ -33,7 +33,7 @@ const stringToColor = (str: string): string => {
 export function UserAvatar({
   name,
   photoURL,
-  size = "medium",
+  size = 'medium',
   showTooltip = true,
 }: UserAvatarProps) {
   const avatarSize = sizeMap[size];

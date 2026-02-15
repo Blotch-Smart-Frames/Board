@@ -21,7 +21,12 @@ import { LabelPicker } from './LabelPicker';
 import { AssigneePicker } from './AssigneePicker';
 import { ColorPicker } from '../common/ColorPicker';
 import { SprintPicker } from '../sprints';
-import type { Task, CreateTaskInput, UpdateTaskInput, Board } from '../../types/board';
+import type {
+  Task,
+  CreateTaskInput,
+  UpdateTaskInput,
+  Board,
+} from '../../types/board';
 import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
 
 type TaskDialogProps = {
@@ -184,7 +189,7 @@ export function TaskDialog({
               <Divider />
 
               <Box>
-                <Box className="flex items-center justify-between mb-2">
+                <Box className="mb-2 flex items-center justify-between">
                   <Typography variant="subtitle2" color="text.secondary">
                     Card Color
                   </Typography>

@@ -7,18 +7,25 @@ import { useAuthQuery } from './useAuthQuery';
 const mockSignInWithGoogle = vi.fn();
 const mockSignOut = vi.fn();
 const mockOnAuthChange = vi.fn();
+const mockHandleRedirectResult = vi.fn();
 const mockSetAccessToken = vi.fn();
 
 vi.mock('../services/firebase', () => ({
   signInWithGoogle: (...args: unknown[]) => mockSignInWithGoogle(...args),
   signOut: (...args: unknown[]) => mockSignOut(...args),
   onAuthChange: (...args: unknown[]) => mockOnAuthChange(...args),
+  handleRedirectResult: (...args: unknown[]) =>
+    mockHandleRedirectResult(...args),
 }));
 
 vi.mock('../services/calendarService', () => ({
   calendarService: {
     setAccessToken: (...args: unknown[]) => mockSetAccessToken(...args),
   },
+}));
+
+vi.mock('../services/userService', () => ({
+  syncUserProfile: vi.fn().mockResolvedValue(undefined),
 }));
 
 const createWrapper = () => {
@@ -43,7 +50,13 @@ const mockUser = {
 describe('useAuthQuery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockOnAuthChange.mockReturnValue(vi.fn());
+    // Default: onAuthChange immediately calls callback with null (no user)
+    mockOnAuthChange.mockImplementation((callback) => {
+      // Simulate Firebase calling the callback with null initially
+      setTimeout(() => callback(null), 0);
+      return vi.fn(); // unsubscribe
+    });
+    mockHandleRedirectResult.mockResolvedValue(null);
   });
 
   it('initializes with no user and not authenticated', async () => {
@@ -83,6 +96,8 @@ describe('useAuthQuery', () => {
     let authCallback: ((user: unknown) => void) | null = null;
     mockOnAuthChange.mockImplementation((callback) => {
       authCallback = callback;
+      // Call immediately with null to simulate Firebase init
+      setTimeout(() => callback(null), 0);
       return vi.fn();
     });
 
@@ -94,8 +109,8 @@ describe('useAuthQuery', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    // Simulate Firebase auth emitting a user
-    act(() => {
+    // Simulate Firebase auth emitting a user (e.g., after sign in)
+    await act(async () => {
       authCallback!(mockUser);
     });
 
@@ -106,12 +121,15 @@ describe('useAuthQuery', () => {
     expect(result.current.isAuthenticated).toBe(true);
   });
 
-  it('logs in successfully via signInWithGoogle', async () => {
-    const accessToken = 'mock-access-token';
-    mockSignInWithGoogle.mockResolvedValue({ user: mockUser, accessToken });
+  it('calls signInWithGoogle on login', async () => {
+    mockSignInWithGoogle.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useAuthQuery(), {
       wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
     });
 
     await act(async () => {
@@ -119,30 +137,45 @@ describe('useAuthQuery', () => {
     });
 
     expect(mockSignInWithGoogle).toHaveBeenCalled();
-
-    await waitFor(() => {
-      expect(result.current.user).toEqual(mockUser);
-    });
-
-    expect(result.current.accessToken).toBe(accessToken);
-    expect(result.current.isAuthenticated).toBe(true);
-    expect(mockSetAccessToken).toHaveBeenCalledWith(accessToken);
   });
 
-  it('logs out successfully', async () => {
-    mockSignInWithGoogle.mockResolvedValue({
-      user: mockUser,
-      accessToken: 'token',
+  it('handles redirect result on mount', async () => {
+    const accessToken = 'mock-access-token';
+    mockHandleRedirectResult.mockResolvedValue({ user: mockUser, accessToken });
+
+    // Simulate Firebase detecting user after redirect
+    mockOnAuthChange.mockImplementation((callback) => {
+      setTimeout(() => callback(mockUser), 0);
+      return vi.fn();
     });
-    mockSignOut.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useAuthQuery(), {
       wrapper: createWrapper(),
     });
 
-    // Login first
-    await act(async () => {
-      await result.current.login();
+    // Wait for loading to complete
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    // Verify the redirect handler was called and access token set
+    expect(mockHandleRedirectResult).toHaveBeenCalled();
+    expect(mockSetAccessToken).toHaveBeenCalledWith(accessToken);
+    expect(result.current.user).toEqual(mockUser);
+    expect(result.current.isAuthenticated).toBe(true);
+  });
+
+  it('logs out successfully', async () => {
+    // Start with user logged in via auth state change
+    mockOnAuthChange.mockImplementation((callback) => {
+      // Start with user authenticated
+      setTimeout(() => callback(mockUser), 0);
+      return vi.fn();
+    });
+    mockSignOut.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useAuthQuery(), {
+      wrapper: createWrapper(),
     });
 
     await waitFor(() => {
@@ -159,14 +192,13 @@ describe('useAuthQuery', () => {
     });
 
     expect(mockSignOut).toHaveBeenCalled();
-    expect(result.current.accessToken).toBeNull();
     expect(result.current.isAuthenticated).toBe(false);
   });
 
   it('shows loading state during login', async () => {
-    let resolveLogin!: (value: unknown) => void;
+    let resolveLogin!: () => void;
     mockSignInWithGoogle.mockReturnValue(
-      new Promise((resolve) => {
+      new Promise<void>((resolve) => {
         resolveLogin = resolve;
       }),
     );
@@ -189,7 +221,7 @@ describe('useAuthQuery', () => {
     });
 
     await act(async () => {
-      resolveLogin({ user: mockUser, accessToken: 'token' });
+      resolveLogin();
       await loginPromise;
     });
 

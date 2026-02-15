@@ -102,11 +102,11 @@ export function ListHeader({
           )}
         </form.Field>
       ) : (
-        <Box className="flex items-center gap-2 flex-1 min-w-0">
+        <Box className="flex min-w-0 flex-1 items-center gap-2">
           <Typography
             variant="subtitle1"
             component="h2"
-            className="font-semibold truncate cursor-pointer"
+            className="cursor-pointer truncate font-semibold"
             color="text.primary"
             onClick={() => {
               form.setFieldValue('title', title);
@@ -117,7 +117,7 @@ export function ListHeader({
           </Typography>
           <Typography
             variant="caption"
-            className="px-2 py-0.5 rounded-full"
+            className="rounded-full px-2 py-0.5"
             sx={{ color: 'text.secondary', bgcolor: 'action.selected' }}
           >
             {taskCount}

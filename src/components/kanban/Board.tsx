@@ -164,7 +164,7 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
 
   if (isLoading) {
     return (
-      <Box className="flex items-center justify-center h-full">
+      <Box className="flex h-full items-center justify-center">
         <CircularProgress />
       </Box>
     );
@@ -172,7 +172,7 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
 
   if (error) {
     return (
-      <Box className="flex items-center justify-center h-full p-4">
+      <Box className="flex h-full items-center justify-center p-4">
         <Alert severity="error">{error}</Alert>
       </Box>
     );
@@ -180,7 +180,7 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
 
   if (!board) {
     return (
-      <Box className="flex items-center justify-center h-full">
+      <Box className="flex h-full items-center justify-center">
         <Typography color="text.secondary">Board not found</Typography>
       </Box>
     );
@@ -188,7 +188,7 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
 
   return (
     <BoardBackground imageUrl={board.backgroundImageUrl}>
-      <Box className="h-full flex flex-col">
+      <Box className="flex h-full flex-col">
         {viewMode === 'kanban' ? (
           <DndContext
             sensors={sensors}
@@ -198,7 +198,7 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
             onDragEnd={handleDragEnd}
           >
             <Box className="flex-1 overflow-x-auto overflow-y-hidden p-4">
-              <Box className="flex gap-4 h-full items-start">
+              <Box className="flex h-full items-start gap-4">
                 {listsWithTasks.map((list) => (
                   <List
                     key={list.id}
@@ -222,7 +222,12 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
 
             <DragOverlay>
               {activeId && activeTask ? (
-                <Task task={activeTask} labels={labels} collaborators={collaborators} isDragging />
+                <Task
+                  task={activeTask}
+                  labels={labels}
+                  collaborators={collaborators}
+                  isDragging
+                />
               ) : null}
             </DragOverlay>
           </DndContext>

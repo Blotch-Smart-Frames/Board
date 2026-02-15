@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -11,9 +11,9 @@ import {
   FormControlLabel,
   Alert,
   CircularProgress,
-} from "@mui/material";
-import { CalendarMonth as CalendarIcon } from "@mui/icons-material";
-import type { Task } from "../../types/board";
+} from '@mui/material';
+import { CalendarMonth as CalendarIcon } from '@mui/icons-material';
+import type { Task } from '../../types/board';
 
 type TaskCalendarDialogProps = {
   open: boolean;
@@ -48,7 +48,7 @@ export function TaskCalendarDialog({
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to update sync settings",
+        err instanceof Error ? err.message : 'Failed to update sync settings',
       );
     } finally {
       setIsLoading(false);
@@ -82,7 +82,7 @@ export function TaskCalendarDialog({
           </Alert>
         )}
 
-        <Box className="p-4 bg-gray-50 rounded-lg">
+        <Box className="rounded-lg bg-gray-50 p-4">
           <Typography variant="subtitle2" className="mb-2">
             {task.title}
           </Typography>
@@ -109,9 +109,9 @@ export function TaskCalendarDialog({
                     <span>Updating...</span>
                   </Box>
                 ) : task.calendarSyncEnabled ? (
-                  "Sync enabled"
+                  'Sync enabled'
                 ) : (
-                  "Enable sync"
+                  'Enable sync'
                 )
               }
             />
@@ -121,7 +121,7 @@ export function TaskCalendarDialog({
             <Typography
               variant="caption"
               color="text.secondary"
-              className="block mt-2"
+              className="mt-2 block"
             >
               Linked to calendar event
             </Typography>

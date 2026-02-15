@@ -41,7 +41,7 @@ export function useVisibleDates({
     const startIndex = Math.max(0, firstVisibleDayIndex - buffer);
     const endIndex = Math.min(
       totalDays - 1,
-      firstVisibleDayIndex + visibleDaysCount + buffer
+      firstVisibleDayIndex + visibleDaysCount + buffer,
     );
 
     const visibleDays: Date[] = [];

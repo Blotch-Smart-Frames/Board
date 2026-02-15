@@ -11,7 +11,12 @@ import {
   updateSprintConfig as updateSprintConfigService,
 } from '../services/sprintService';
 import { queryKeys } from '../queries/queryKeys';
-import type { Sprint, CreateSprintInput, UpdateSprintInput, SprintConfig } from '../types/board';
+import type {
+  Sprint,
+  CreateSprintInput,
+  UpdateSprintInput,
+  SprintConfig,
+} from '../types/board';
 
 export const useSprintsQuery = (boardId: string | null) => {
   const queryClient = useQueryClient();
@@ -37,11 +42,14 @@ export const useSprintsQuery = (boardId: string | null) => {
           ...doc.data(),
           id: doc.id,
         })) as Sprint[];
-        queryClient.setQueryData(queryKeys.boards.sprints(boardId), sprintsData);
+        queryClient.setQueryData(
+          queryKeys.boards.sprints(boardId),
+          sprintsData,
+        );
       },
       (error) => {
         console.error('Sprints subscription error:', error);
-      }
+      },
     );
 
     return () => {

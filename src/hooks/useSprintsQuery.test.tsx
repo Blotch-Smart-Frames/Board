@@ -218,9 +218,9 @@ describe('useSprintsQuery', () => {
         wrapper: createWrapper(),
       });
 
-      await expect(
-        result.current.canDeleteSprint('sprint-1'),
-      ).rejects.toThrow('No board selected');
+      await expect(result.current.canDeleteSprint('sprint-1')).rejects.toThrow(
+        'No board selected',
+      );
     });
   });
 
@@ -255,9 +255,9 @@ describe('useSprintsQuery', () => {
         wrapper: createWrapper(),
       });
 
-      await expect(
-        result.current.calculateNextSprintDates(),
-      ).rejects.toThrow('No board selected');
+      await expect(result.current.calculateNextSprintDates()).rejects.toThrow(
+        'No board selected',
+      );
     });
   });
 

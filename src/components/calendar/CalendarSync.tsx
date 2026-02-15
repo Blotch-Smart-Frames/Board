@@ -1,11 +1,11 @@
-import { Box, Button, Chip, CircularProgress, Tooltip } from "@mui/material";
+import { Box, Button, Chip, CircularProgress, Tooltip } from '@mui/material';
 import {
   Sync as SyncIcon,
   SyncDisabled as SyncDisabledIcon,
   CheckCircle as CheckIcon,
   Error as ErrorIcon,
-} from "@mui/icons-material";
-import type { CalendarSyncState } from "../../types/calendar";
+} from '@mui/icons-material';
+import type { CalendarSyncState } from '../../types/calendar';
 
 type CalendarSyncProps = {
   syncState: CalendarSyncState;
@@ -14,11 +14,11 @@ type CalendarSyncProps = {
 };
 
 const formatLastSync = (lastSyncAt: Date | undefined) => {
-  if (!lastSyncAt) return "Never synced";
+  if (!lastSyncAt) return 'Never synced';
   const diff = Date.now() - lastSyncAt.getTime();
   const minutes = Math.floor(diff / 60000);
 
-  if (minutes < 1) return "Just now";
+  if (minutes < 1) return 'Just now';
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
@@ -78,7 +78,7 @@ export function CalendarSync({
         onClick={onSync}
         disabled={isSyncing}
       >
-        {isSyncing ? "Syncing..." : "Sync now"}
+        {isSyncing ? 'Syncing...' : 'Sync now'}
       </Button>
     </Box>
   );

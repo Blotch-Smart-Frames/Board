@@ -54,11 +54,13 @@ export function SprintManagement({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletingSprintId, setDeletingSprintId] = useState<string | null>(null);
   const [durationDays, setDurationDays] = useState<string>(
-    board?.sprintConfig?.durationDays?.toString() ?? '14'
+    board?.sprintConfig?.durationDays?.toString() ?? '14',
   );
   const [isSavingConfig, setIsSavingConfig] = useState(false);
 
-  const sortedSprints = [...sprints].sort((a, b) => compareOrder(a.order, b.order));
+  const sortedSprints = [...sprints].sort((a, b) =>
+    compareOrder(a.order, b.order),
+  );
 
   const handleDeleteSprint = async (sprintId: string) => {
     setDeleteError(null);
@@ -69,7 +71,7 @@ export function SprintManagement({
 
       if (!canDelete) {
         setDeleteError(
-          `Cannot delete: ${taskCount} task${taskCount !== 1 ? 's are' : ' is'} assigned to this sprint. Remove tasks from the sprint first.`
+          `Cannot delete: ${taskCount} task${taskCount !== 1 ? 's are' : ' is'} assigned to this sprint. Remove tasks from the sprint first.`,
         );
         return;
       }
@@ -77,7 +79,7 @@ export function SprintManagement({
       await deleteSprint(sprintId);
     } catch (error) {
       setDeleteError(
-        error instanceof Error ? error.message : 'Failed to delete sprint'
+        error instanceof Error ? error.message : 'Failed to delete sprint',
       );
     } finally {
       setDeletingSprintId(null);
@@ -120,7 +122,11 @@ export function SprintManagement({
           <Box className="flex flex-col gap-4">
             {/* Sprint Configuration */}
             <Box>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                gutterBottom
+              >
                 Default Sprint Duration
               </Typography>
               <Box className="flex items-center gap-2">
@@ -139,7 +145,8 @@ export function SprintManagement({
                   onClick={handleSaveConfig}
                   disabled={
                     isSavingConfig ||
-                    durationDays === board?.sprintConfig?.durationDays?.toString()
+                    durationDays ===
+                      board?.sprintConfig?.durationDays?.toString()
                   }
                 >
                   {isSavingConfig ? 'Saving...' : 'Save'}
@@ -154,7 +161,7 @@ export function SprintManagement({
 
             {/* Sprint List */}
             <Box>
-              <Box className="flex items-center justify-between mb-2">
+              <Box className="mb-2 flex items-center justify-between">
                 <Typography variant="subtitle2" color="text.secondary">
                   Sprints
                 </Typography>
