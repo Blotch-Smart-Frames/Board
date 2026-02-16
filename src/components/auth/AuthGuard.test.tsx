@@ -69,7 +69,7 @@ describe('AuthGuard', () => {
 
     expect(screen.getByText(/organize your tasks/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/sign in to access your boards/i),
+      screen.getByText(/by signing in, you agree to our/i),
     ).toBeInTheDocument();
   });
 
@@ -124,7 +124,7 @@ describe('AuthGuard', () => {
     );
 
     expect(
-      screen.getByText(/sign in to access your boards/i),
+      screen.getByText(/by signing in, you agree to our/i),
     ).toBeInTheDocument();
   });
 
