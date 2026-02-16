@@ -22,6 +22,7 @@ vi.mock('../services/boardService', () => ({
 
 vi.mock('../queries/firestoreRefs', () => ({
   getUserBoardsQuery: vi.fn(),
+  getCollaboratorBoardsQuery: vi.fn(),
 }));
 
 let mockUser: { uid: string } | null = null;
@@ -67,14 +68,15 @@ describe('useUserBoardsQuery', () => {
     expect(result.current.boards).toEqual([]);
   });
 
-  it('sets up Firestore subscription when user is authenticated', () => {
+  it('sets up Firestore subscriptions when user is authenticated', () => {
     mockUser = { uid: 'user-123' };
 
     renderHook(() => useUserBoardsQuery(), {
       wrapper: createWrapper(),
     });
 
-    expect(mockOnSnapshot).toHaveBeenCalledTimes(1);
+    // One for owned boards, one for collaborator boards
+    expect(mockOnSnapshot).toHaveBeenCalledTimes(2);
   });
 
   it('does not subscribe when user is null', () => {
@@ -98,10 +100,13 @@ describe('useUserBoardsQuery', () => {
     expect(mockOnSnapshot).not.toHaveBeenCalled();
   });
 
-  it('unsubscribes from snapshot on unmount', () => {
+  it('unsubscribes from both snapshots on unmount', () => {
     mockUser = { uid: 'user-123' };
-    const unsubscribe = vi.fn();
-    mockOnSnapshot.mockReturnValue(unsubscribe);
+    const unsubOwned = vi.fn();
+    const unsubCollaborated = vi.fn();
+    mockOnSnapshot
+      .mockReturnValueOnce(unsubOwned)
+      .mockReturnValueOnce(unsubCollaborated);
 
     const { unmount } = renderHook(() => useUserBoardsQuery(), {
       wrapper: createWrapper(),
@@ -109,7 +114,8 @@ describe('useUserBoardsQuery', () => {
 
     unmount();
 
-    expect(unsubscribe).toHaveBeenCalled();
+    expect(unsubOwned).toHaveBeenCalled();
+    expect(unsubCollaborated).toHaveBeenCalled();
   });
 
   it('shows loading when auth is loading', () => {

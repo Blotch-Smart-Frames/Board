@@ -3,7 +3,7 @@ import {
   DndContext,
   DragOverlay,
   closestCorners,
-  KeyboardSensor,
+
   PointerSensor,
   useSensor,
   useSensors,
@@ -11,7 +11,7 @@ import {
 import {
   SortableContext,
   horizontalListSortingStrategy,
-  sortableKeyboardCoordinates,
+
 } from '@dnd-kit/sortable';
 import { Box, CircularProgress, Typography, Alert } from '@mui/material';
 import { List } from './List';
@@ -84,9 +84,6 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
       activationConstraint: {
         distance: 8,
       },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Box, CircularProgress, Typography, Paper } from '@mui/material';
+import { Box, CircularProgress, Typography, Paper, Link } from '@mui/material';
 import { useAuthQuery } from '../../hooks/useAuthQuery';
 import { GoogleAuthButton } from './GoogleAuthButton';
 
@@ -51,7 +51,15 @@ export function AuthGuard({ children }: AuthGuardProps) {
               color="text.secondary"
               className="mt-4 block"
             >
-              Sign in to access your boards and collaborate with your team.
+              By signing in, you agree to our{' '}
+              <Link href="/terms.html" target="_blank" rel="noopener">
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link href="/privacy.html" target="_blank" rel="noopener">
+                Privacy Policy
+              </Link>
+              .
             </Typography>
           </Box>
         </Paper>

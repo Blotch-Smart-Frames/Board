@@ -33,6 +33,14 @@ export const getUserBoardsQuery = (userId: string): Query<Board> =>
     orderBy('createdAt', 'desc'),
   ) as Query<Board>;
 
+// Boards where user is a collaborator
+export const getCollaboratorBoardsQuery = (userId: string): Query<Board> =>
+  query(
+    collection(db, 'boards'),
+    where('collaborators', 'array-contains', userId),
+    orderBy('createdAt', 'desc'),
+  ) as Query<Board>;
+
 // Board labels collection query
 export const getBoardLabelsQuery = (boardId: string): Query<Label> =>
   query(
