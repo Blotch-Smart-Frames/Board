@@ -14,6 +14,7 @@ import {
   updateTask as updateTaskService,
   deleteTask as deleteTaskService,
   moveTask as moveTaskService,
+  reorderLists as reorderListsService,
   deleteBoard as deleteBoardService,
   shareBoard as shareBoardService,
 } from '../services/boardService';
@@ -169,6 +170,11 @@ export const useBoardQuery = (boardId: string | null) => {
     return moveTaskService(boardId, taskId, newListId, newOrder);
   };
 
+  const reorderLists = async (listId: string, newOrder: string) => {
+    if (!boardId) throw new Error('No board selected');
+    return reorderListsService(boardId, listId, newOrder);
+  };
+
   // Board operations
   const deleteBoard = async () => {
     if (!boardId) throw new Error('No board selected');
@@ -196,6 +202,7 @@ export const useBoardQuery = (boardId: string | null) => {
     updateTask,
     deleteTask,
     moveTask,
+    reorderLists,
     deleteBoard,
     shareBoard,
   };

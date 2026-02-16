@@ -1,34 +1,23 @@
 import {
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  GoogleAuthProvider,
   type User,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 
-export const signInWithGoogle = async (): Promise<void> => {
-  await signInWithRedirect(auth, googleProvider);
-};
-
-export type RedirectAuthResult = {
+export type PopupAuthResult = {
   user: User;
   accessToken: string;
-} | null;
+};
 
-export const handleRedirectResult = async (): Promise<RedirectAuthResult> => {
-  const result = await getRedirectResult(auth);
-  if (!result) {
-    return null;
-  }
-
-  const token =
-    (result as unknown as { _tokenResponse?: { oauthAccessToken?: string } })
-      ?._tokenResponse?.oauthAccessToken || '';
-
+export const signInWithGoogle = async (): Promise<PopupAuthResult> => {
+  const result = await signInWithPopup(auth, googleProvider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
   return {
     user: result.user,
-    accessToken: token,
+    accessToken: credential?.accessToken ?? '',
   };
 };
 

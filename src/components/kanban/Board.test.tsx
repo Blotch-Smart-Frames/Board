@@ -81,6 +81,7 @@ vi.mock('@dnd-kit/core', () => ({
 vi.mock('@dnd-kit/sortable', () => ({
   SortableContext: ({ children }: { children: React.ReactNode }) => children,
   verticalListSortingStrategy: {},
+  horizontalListSortingStrategy: {},
   sortableKeyboardCoordinates: vi.fn(),
   useSortable: () => ({
     attributes: {},
@@ -89,6 +90,7 @@ vi.mock('@dnd-kit/sortable', () => ({
     transform: null,
     transition: null,
     isDragging: false,
+    isOver: false,
   }),
 }));
 
@@ -137,6 +139,7 @@ describe('Board', () => {
     mockUseDragAndDrop.mockReturnValue({
       activeId: null,
       getActiveTask: () => null,
+      getActiveList: () => null,
       handleDragStart: vi.fn(),
       handleDragOver: vi.fn(),
       handleDragEnd: vi.fn(),
@@ -161,6 +164,7 @@ describe('Board', () => {
       updateTask: vi.fn(),
       deleteTask: vi.fn(),
       moveTask: vi.fn(),
+      reorderLists: vi.fn(),
     });
 
     render(<Board boardId="board-1" viewMode="kanban" />);
@@ -182,6 +186,7 @@ describe('Board', () => {
       updateTask: vi.fn(),
       deleteTask: vi.fn(),
       moveTask: vi.fn(),
+      reorderLists: vi.fn(),
     });
 
     render(<Board boardId="board-1" viewMode="kanban" />);
@@ -204,6 +209,7 @@ describe('Board', () => {
       updateTask: vi.fn(),
       deleteTask: vi.fn(),
       moveTask: vi.fn(),
+      reorderLists: vi.fn(),
     });
 
     render(<Board boardId="board-1" viewMode="kanban" />);
@@ -232,6 +238,7 @@ describe('Board', () => {
       updateTask: vi.fn(),
       deleteTask: vi.fn(),
       moveTask: vi.fn(),
+      reorderLists: vi.fn(),
     });
 
     render(<Board boardId="board-1" viewMode="kanban" />);
@@ -258,6 +265,7 @@ describe('Board', () => {
       updateTask: vi.fn(),
       deleteTask: vi.fn(),
       moveTask: vi.fn(),
+      reorderLists: vi.fn(),
     });
 
     render(<Board boardId="board-1" viewMode="kanban" />);
@@ -288,6 +296,7 @@ describe('Board', () => {
       updateTask: vi.fn(),
       deleteTask: vi.fn(),
       moveTask: vi.fn(),
+      reorderLists: vi.fn(),
     });
 
     render(<Board boardId="board-1" viewMode="kanban" />);
@@ -317,6 +326,7 @@ describe('Board', () => {
       updateTask: vi.fn(),
       deleteTask: vi.fn(),
       moveTask: vi.fn(),
+      reorderLists: vi.fn(),
     });
 
     render(<Board boardId="board-1" viewMode="kanban" />);

@@ -8,9 +8,14 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
 import { Box, CircularProgress, Typography, Alert } from '@mui/material';
 import { List } from './List';
+import { ListPreview } from './ListPreview';
 import { Task } from './Task';
 import { AddListButton } from './AddListButton';
 import { TaskDialog } from './TaskDialog';
@@ -50,6 +55,7 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
     updateTask,
     deleteTask,
     moveTask,
+    reorderLists,
   } = useBoardQuery(boardId);
 
   const { labels } = useLabelsQuery(boardId);
@@ -87,6 +93,7 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
   const {
     activeId,
     getActiveTask,
+    getActiveList,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
@@ -95,6 +102,7 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
     lists,
     tasks,
     onMoveTask: moveTask,
+    onReorderLists: reorderLists,
   });
 
   const handleAddList = async (title: string) => {
@@ -161,6 +169,8 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
   };
 
   const activeTask = getActiveTask();
+  const activeList = getActiveList();
+  const listIds = sortedLists.map((l) => l.id);
 
   if (isLoading) {
     return (
@@ -198,26 +208,31 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
             onDragEnd={handleDragEnd}
           >
             <Box className="flex-1 overflow-x-auto overflow-y-hidden p-4">
-              <Box className="flex h-full items-start gap-4">
-                {listsWithTasks.map((list) => (
-                  <List
-                    key={list.id}
-                    list={list}
-                    tasks={list.tasks}
-                    labels={labels}
-                    collaborators={collaborators}
-                    onUpdateTitle={(title) =>
-                      handleUpdateListTitle(list.id, title)
-                    }
-                    onDelete={() => handleDeleteList(list.id)}
-                    onAddTask={(input) => handleAddTask(list.id, input)}
-                    onEditTask={handleEditTask}
-                    onUpdateTask={updateTask}
-                  />
-                ))}
+              <SortableContext
+                items={listIds}
+                strategy={horizontalListSortingStrategy}
+              >
+                <Box className="flex h-full items-start gap-4">
+                  {listsWithTasks.map((list) => (
+                    <List
+                      key={list.id}
+                      list={list}
+                      tasks={list.tasks}
+                      labels={labels}
+                      collaborators={collaborators}
+                      onUpdateTitle={(title) =>
+                        handleUpdateListTitle(list.id, title)
+                      }
+                      onDelete={() => handleDeleteList(list.id)}
+                      onAddTask={(input) => handleAddTask(list.id, input)}
+                      onEditTask={handleEditTask}
+                      onUpdateTask={updateTask}
+                    />
+                  ))}
 
-                <AddListButton onAdd={handleAddList} />
-              </Box>
+                  <AddListButton onAdd={handleAddList} />
+                </Box>
+              </SortableContext>
             </Box>
 
             <DragOverlay>
@@ -227,6 +242,14 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
                   labels={labels}
                   collaborators={collaborators}
                   isDragging
+                />
+              ) : activeId && activeList ? (
+                <ListPreview
+                  list={activeList}
+                  taskCount={
+                    listsWithTasks.find((l) => l.id === activeList.id)?.tasks
+                      .filter((t) => !t.completedAt).length ?? 0
+                  }
                 />
               ) : null}
             </DragOverlay>

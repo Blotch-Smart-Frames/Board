@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useDroppable } from '@dnd-kit/core';
 import {
   SortableContext,
+  useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   Paper,
   Box,
@@ -39,6 +40,7 @@ type ListProps = {
   onAddTask: (input: CreateTaskInput) => void;
   onEditTask: (task: TaskType) => void;
   onUpdateTask?: (taskId: string, updates: UpdateTaskInput) => void;
+  isDragging?: boolean;
 };
 
 export function List({
@@ -51,17 +53,31 @@ export function List({
   onAddTask,
   onEditTask,
   onUpdateTask,
+  isDragging = false,
 }: ListProps) {
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
 
-  const { setNodeRef, isOver } = useDroppable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+    isOver,
+  } = useSortable({
     id: list.id,
     data: {
       type: 'list',
       list,
     },
   });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   const activeTasks = tasks.filter((task) => !task.completedAt);
   const completedTasks = tasks.filter((task) => task.completedAt);
@@ -95,11 +111,17 @@ export function List({
     setIsAddingTask(false);
   };
 
+  const isCurrentlyDragging = isDragging || isSortableDragging;
+
   return (
     <Paper
-      className={`flex w-72 shrink-0 flex-col ${
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`flex w-72 shrink-0 cursor-grab flex-col active:cursor-grabbing ${
         isOver ? 'ring-primary-500 ring-2' : ''
-      }`}
+      } ${isCurrentlyDragging ? 'ring-primary-500 opacity-50 shadow-lg ring-2' : ''}`}
       sx={{
         bgcolor: 'background.default',
         borderRadius: 2,
@@ -114,7 +136,6 @@ export function List({
       />
 
       <Box
-        ref={setNodeRef}
         className="min-h-25 flex-1 overflow-y-auto px-2 py-2"
         sx={{
           scrollbarWidth: 'none', // Firefox - no zero-width visible option

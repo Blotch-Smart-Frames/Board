@@ -65,6 +65,7 @@ vi.mock('./hooks/useDragAndDrop', () => ({
   useDragAndDrop: () => ({
     activeId: null,
     getActiveTask: () => null,
+    getActiveList: () => null,
     handleDragStart: vi.fn(),
     handleDragOver: vi.fn(),
     handleDragEnd: vi.fn(),
@@ -118,6 +119,7 @@ vi.mock('@dnd-kit/core', () => ({
 vi.mock('@dnd-kit/sortable', () => ({
   SortableContext: ({ children }: { children: React.ReactNode }) => children,
   verticalListSortingStrategy: {},
+  horizontalListSortingStrategy: {},
   sortableKeyboardCoordinates: vi.fn(),
   useSortable: () => ({
     attributes: {},
@@ -126,6 +128,7 @@ vi.mock('@dnd-kit/sortable', () => ({
     transform: null,
     transition: null,
     isDragging: false,
+    isOver: false,
   }),
 }));
 

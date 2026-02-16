@@ -7,15 +7,12 @@ import { useAuthQuery } from './useAuthQuery';
 const mockSignInWithGoogle = vi.fn();
 const mockSignOut = vi.fn();
 const mockOnAuthChange = vi.fn();
-const mockHandleRedirectResult = vi.fn();
 const mockSetAccessToken = vi.fn();
 
 vi.mock('../services/firebase', () => ({
   signInWithGoogle: (...args: unknown[]) => mockSignInWithGoogle(...args),
   signOut: (...args: unknown[]) => mockSignOut(...args),
   onAuthChange: (...args: unknown[]) => mockOnAuthChange(...args),
-  handleRedirectResult: (...args: unknown[]) =>
-    mockHandleRedirectResult(...args),
 }));
 
 vi.mock('../services/calendarService', () => ({
@@ -56,7 +53,6 @@ describe('useAuthQuery', () => {
       setTimeout(() => callback(null), 0);
       return vi.fn(); // unsubscribe
     });
-    mockHandleRedirectResult.mockResolvedValue(null);
   });
 
   it('initializes with no user and not authenticated', async () => {
@@ -73,18 +69,31 @@ describe('useAuthQuery', () => {
     expect(result.current.isAuthenticated).toBe(false);
   });
 
-  it('subscribes to auth state changes on mount', () => {
-    renderHook(() => useAuthQuery(), { wrapper: createWrapper() });
+  it('subscribes to auth state changes on mount', async () => {
+    const { result } = renderHook(() => useAuthQuery(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
 
     expect(mockOnAuthChange).toHaveBeenCalledWith(expect.any(Function));
   });
 
-  it('unsubscribes from auth state on unmount', () => {
+  it('unsubscribes from auth state on unmount', async () => {
     const unsubscribe = vi.fn();
-    mockOnAuthChange.mockReturnValue(unsubscribe);
+    mockOnAuthChange.mockImplementation((callback) => {
+      setTimeout(() => callback(null), 0);
+      return unsubscribe;
+    });
 
-    const { unmount } = renderHook(() => useAuthQuery(), {
+    const { result, unmount } = renderHook(() => useAuthQuery(), {
       wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
     });
 
     unmount();
@@ -122,7 +131,8 @@ describe('useAuthQuery', () => {
   });
 
   it('calls signInWithGoogle on login', async () => {
-    mockSignInWithGoogle.mockResolvedValue(undefined);
+    const accessToken = 'mock-access-token';
+    mockSignInWithGoogle.mockResolvedValue({ user: mockUser, accessToken });
 
     const { result } = renderHook(() => useAuthQuery(), {
       wrapper: createWrapper(),
@@ -139,29 +149,30 @@ describe('useAuthQuery', () => {
     expect(mockSignInWithGoogle).toHaveBeenCalled();
   });
 
-  it('handles redirect result on mount', async () => {
+  it('sets access token and user data on successful login', async () => {
     const accessToken = 'mock-access-token';
-    mockHandleRedirectResult.mockResolvedValue({ user: mockUser, accessToken });
-
-    // Simulate Firebase detecting user after redirect
-    mockOnAuthChange.mockImplementation((callback) => {
-      setTimeout(() => callback(mockUser), 0);
-      return vi.fn();
-    });
+    mockSignInWithGoogle.mockResolvedValue({ user: mockUser, accessToken });
 
     const { result } = renderHook(() => useAuthQuery(), {
       wrapper: createWrapper(),
     });
 
-    // Wait for loading to complete
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    // Verify the redirect handler was called and access token set
-    expect(mockHandleRedirectResult).toHaveBeenCalled();
+    await act(async () => {
+      await result.current.login();
+    });
+
+    // Wait for state to update after onSuccess callback
+    await waitFor(() => {
+      expect(result.current.user).toEqual(mockUser);
+    });
+
+    // Verify the access token was set
     expect(mockSetAccessToken).toHaveBeenCalledWith(accessToken);
-    expect(result.current.user).toEqual(mockUser);
+    expect(result.current.accessToken).toBe(accessToken);
     expect(result.current.isAuthenticated).toBe(true);
   });
 
@@ -196,9 +207,9 @@ describe('useAuthQuery', () => {
   });
 
   it('shows loading state during login', async () => {
-    let resolveLogin!: () => void;
+    let resolveLogin!: (value: { user: typeof mockUser; accessToken: string }) => void;
     mockSignInWithGoogle.mockReturnValue(
-      new Promise<void>((resolve) => {
+      new Promise<{ user: typeof mockUser; accessToken: string }>((resolve) => {
         resolveLogin = resolve;
       }),
     );
@@ -221,7 +232,7 @@ describe('useAuthQuery', () => {
     });
 
     await act(async () => {
-      resolveLogin();
+      resolveLogin({ user: mockUser, accessToken: 'token' });
       await loginPromise;
     });
 
