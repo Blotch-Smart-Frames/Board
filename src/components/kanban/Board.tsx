@@ -282,7 +282,7 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
           onDelete={editingTask ? handleDeleteTask : undefined}
         />
 
-        <BackgroundImageUpload boardId={boardId} />
+        <BackgroundImageUpload boardId={boardId} hasBackground={!!board.backgroundImageUrl} />
       </Box>
     </BoardBackground>
   );

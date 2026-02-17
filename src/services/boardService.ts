@@ -13,6 +13,7 @@ import {
   serverTimestamp,
   writeBatch,
   type Unsubscribe,
+  type FieldValue,
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -56,38 +57,11 @@ export const getBoard = async (boardId: string): Promise<Board | null> => {
   return { id: boardDoc.id, ...boardDoc.data() } as Board;
 };
 
-export const getUserBoards = async (userId: string): Promise<Board[]> => {
-  const ownedQuery = query(
-    collection(db, 'boards'),
-    where('ownerId', '==', userId),
-    orderBy('createdAt', 'desc'),
-  );
-
-  const collaboratorQuery = query(
-    collection(db, 'boards'),
-    where('collaborators', 'array-contains', userId),
-    orderBy('createdAt', 'desc'),
-  );
-
-  const [ownedSnap, collaboratorSnap] = await Promise.all([
-    getDocs(ownedQuery),
-    getDocs(collaboratorQuery),
-  ]);
-
-  const boards: Board[] = [];
-  ownedSnap.forEach((doc) =>
-    boards.push({ id: doc.id, ...doc.data() } as Board),
-  );
-  collaboratorSnap.forEach((doc) =>
-    boards.push({ id: doc.id, ...doc.data() } as Board),
-  );
-
-  return boards;
-};
-
 export const updateBoard = async (
   boardId: string,
-  updates: Partial<Pick<Board, 'title' | 'backgroundImageUrl'>>,
+  updates: Partial<Pick<Board, 'title'>> & {
+    backgroundImageUrl?: string | FieldValue;
+  },
 ): Promise<void> => {
   await updateDoc(doc(db, 'boards', boardId), {
     ...updates,
@@ -351,25 +325,4 @@ export const subscribeToBoard = (
   );
 
   return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
-};
-
-export const subscribeToUserBoards = (
-  userId: string,
-  callback: (boards: Board[]) => void,
-  onError: (error: Error) => void,
-): Unsubscribe => {
-  return onSnapshot(
-    query(
-      collection(db, 'boards'),
-      where('ownerId', '==', userId),
-      orderBy('createdAt', 'desc'),
-    ),
-    (snapshot) => {
-      const boards = snapshot.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() }) as Board,
-      );
-      callback(boards);
-    },
-    onError,
-  );
 };

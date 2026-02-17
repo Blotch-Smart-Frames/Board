@@ -49,6 +49,7 @@ export function BoardList({
   onRenameBoard,
 }: BoardListProps) {
   const [isCreating, setIsCreating] = useState(false);
+  const [renamingBoardId, setRenamingBoardId] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuBoardId, setMenuBoardId] = useState<string | null>(null);
 
@@ -63,6 +64,21 @@ export function BoardList({
         setIsCreating(false);
       } catch (err) {
         console.error('Failed to create board:', err);
+      }
+    },
+  });
+
+  const renameForm = useForm({
+    defaultValues: { title: '' },
+    onSubmit: async ({ value }) => {
+      const trimmed = value.title.trim();
+      if (!trimmed || !renamingBoardId || !onRenameBoard) return;
+      try {
+        await onRenameBoard(renamingBoardId, trimmed);
+        renameForm.reset();
+        setRenamingBoardId(null);
+      } catch (err) {
+        console.error('Failed to rename board:', err);
       }
     },
   });
@@ -86,6 +102,20 @@ export function BoardList({
       await onDeleteBoard(menuBoardId);
     }
     handleMenuClose();
+  };
+
+  const handleRenameClick = () => {
+    if (menuBoardId) {
+      const board = boards.find((b) => b.id === menuBoardId);
+      renameForm.setFieldValue('title', board?.title ?? '');
+      setRenamingBoardId(menuBoardId);
+    }
+    handleMenuClose();
+  };
+
+  const handleCloseRenameDialog = () => {
+    renameForm.reset();
+    setRenamingBoardId(null);
   };
 
   const handleCloseDialog = () => {
@@ -168,7 +198,7 @@ export function BoardList({
         onClose={handleMenuClose}
       >
         {onRenameBoard && (
-          <MenuItem onClick={handleMenuClose}>
+          <MenuItem onClick={handleRenameClick}>
             <ListItemIcon>
               <EditIcon fontSize="small" />
             </ListItemIcon>
@@ -250,6 +280,75 @@ export function BoardList({
                 </>
               )}
             </form.Subscribe>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      <Dialog
+        open={renamingBoardId !== null}
+        onClose={handleCloseRenameDialog}
+        maxWidth="xs"
+        fullWidth
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            renameForm.handleSubmit();
+          }}
+        >
+          <DialogTitle>Rename board</DialogTitle>
+          <DialogContent>
+            <renameForm.Subscribe selector={(state) => state.isSubmitting}>
+              {(isSubmitting) => (
+                <renameForm.Field name="title">
+                  {(field) => (
+                    <TextField
+                      autoFocus
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          handleCloseRenameDialog();
+                        }
+                      }}
+                      placeholder="Enter board title"
+                      fullWidth
+                      margin="dense"
+                      disabled={isSubmitting}
+                    />
+                  )}
+                </renameForm.Field>
+              )}
+            </renameForm.Subscribe>
+          </DialogContent>
+          <DialogActions>
+            <renameForm.Subscribe
+              selector={(state) => ({
+                canSubmit: state.canSubmit,
+                isSubmitting: state.isSubmitting,
+                title: state.values.title,
+              })}
+            >
+              {({ canSubmit, isSubmitting, title }) => (
+                <>
+                  <Button
+                    onClick={handleCloseRenameDialog}
+                    disabled={isSubmitting}
+                    type="button"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    disabled={!title.trim() || !canSubmit || isSubmitting}
+                  >
+                    {isSubmitting ? <CircularProgress size={20} /> : 'Rename'}
+                  </Button>
+                </>
+              )}
+            </renameForm.Subscribe>
           </DialogActions>
         </form>
       </Dialog>

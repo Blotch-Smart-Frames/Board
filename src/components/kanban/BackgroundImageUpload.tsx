@@ -1,31 +1,62 @@
 import { useRef, useState } from 'react';
-import { Fab, CircularProgress } from '@mui/material';
+import {
+  Fab,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+} from '@mui/material';
 import WallpaperIcon from '@mui/icons-material/Wallpaper';
-import { uploadBoardBackground } from '../../services/storageService';
+import UploadIcon from '@mui/icons-material/Upload';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { deleteField } from 'firebase/firestore';
+import { uploadBoardBackground, deleteBoardBackground } from '../../services/storageService';
 import { updateBoard } from '../../services/boardService';
 
 type BackgroundImageUploadProps = {
   boardId: string;
+  hasBackground: boolean;
 };
 
-export function BackgroundImageUpload({ boardId }: BackgroundImageUploadProps) {
+export function BackgroundImageUpload({ boardId, hasBackground }: BackgroundImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  const handleClick = () => inputRef.current?.click();
+  const handleUploadClick = () => {
+    setDialogOpen(false);
+    inputRef.current?.click();
+  };
+
+  const handleRemove = async () => {
+    setDialogOpen(false);
+    setIsLoading(true);
+    try {
+      await deleteBoardBackground(boardId);
+      await updateBoard(boardId, { backgroundImageUrl: deleteField() });
+    } catch (err) {
+      console.error('Failed to remove background:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploading(true);
+    setIsLoading(true);
     try {
       const url = await uploadBoardBackground(boardId, file);
       await updateBoard(boardId, { backgroundImageUrl: url });
     } catch (err) {
       console.error('Failed to upload background:', err);
     } finally {
-      setIsUploading(false);
+      setIsLoading(false);
       if (inputRef.current) inputRef.current.value = '';
     }
   };
@@ -41,13 +72,30 @@ export function BackgroundImageUpload({ boardId }: BackgroundImageUploadProps) {
       />
       <Fab
         size="small"
-        onClick={handleClick}
-        disabled={isUploading}
+        onClick={() => setDialogOpen(true)}
+        disabled={isLoading}
         sx={{ position: 'fixed', bottom: 24, right: 24 }}
-        aria-label="Upload background image"
+        aria-label="Board background options"
       >
-        {isUploading ? <CircularProgress size={24} /> : <WallpaperIcon />}
+        {isLoading ? <CircularProgress size={24} /> : <WallpaperIcon />}
       </Fab>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
+        <DialogTitle>Board background</DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          <List>
+            <ListItemButton onClick={handleUploadClick}>
+              <ListItemIcon><UploadIcon /></ListItemIcon>
+              <ListItemText primary="Upload new image" />
+            </ListItemButton>
+            {hasBackground && (
+              <ListItemButton onClick={handleRemove}>
+                <ListItemIcon><DeleteIcon /></ListItemIcon>
+                <ListItemText primary="Remove background" />
+              </ListItemButton>
+            )}
+          </List>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

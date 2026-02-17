@@ -16,7 +16,11 @@ const mergeBoards = (owned: Board[], collaborated: Board[]): Board[] => {
   for (const b of collaborated) {
     if (!map.has(b.id)) map.set(b.id, b);
   }
-  return Array.from(map.values());
+  return Array.from(map.values()).sort((a, b) => {
+    const aTime = a.createdAt?.toMillis?.() ?? 0;
+    const bTime = b.createdAt?.toMillis?.() ?? 0;
+    return bTime - aTime;
+  });
 };
 
 export const useUserBoardsQuery = () => {

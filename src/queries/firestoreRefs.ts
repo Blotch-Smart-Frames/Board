@@ -38,7 +38,6 @@ export const getCollaboratorBoardsQuery = (userId: string): Query<Board> =>
   query(
     collection(db, 'boards'),
     where('collaborators', 'array-contains', userId),
-    orderBy('createdAt', 'desc'),
   ) as Query<Board>;
 
 // Board labels collection query
