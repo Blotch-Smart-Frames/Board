@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { useBoardQuery, useListsWithTasks } from './useBoardQuery';
+import { useBoardQuery } from './useBoardQuery';
 
 const mockOnSnapshot = vi.fn(() => vi.fn());
 
@@ -305,20 +305,5 @@ describe('useBoardQuery', () => {
 
       expect(mockShareBoard).toHaveBeenCalledWith('board-1', 'user-456');
     });
-  });
-});
-
-describe('useListsWithTasks', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockOnSnapshot.mockReturnValue(vi.fn());
-  });
-
-  it('returns empty array when boardId is null', () => {
-    const { result } = renderHook(() => useListsWithTasks(null), {
-      wrapper: createWrapper(),
-    });
-
-    expect(result.current).toEqual([]);
   });
 });

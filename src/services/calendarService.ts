@@ -37,31 +37,6 @@ class CalendarService {
     return response.json();
   }
 
-  async listEvents(
-    timeMin?: Date,
-    timeMax?: Date,
-    maxResults = 100,
-  ): Promise<{ items: CalendarEvent[]; nextSyncToken?: string }> {
-    const params = new URLSearchParams({
-      maxResults: maxResults.toString(),
-      singleEvents: 'true',
-      orderBy: 'startTime',
-    });
-
-    if (timeMin) params.set('timeMin', timeMin.toISOString());
-    if (timeMax) params.set('timeMax', timeMax.toISOString());
-
-    return this.request(
-      `/calendars/${GOOGLE_CONFIG.calendarId}/events?${params}`,
-    );
-  }
-
-  async getEvent(eventId: string): Promise<CalendarEvent> {
-    return this.request(
-      `/calendars/${GOOGLE_CONFIG.calendarId}/events/${eventId}`,
-    );
-  }
-
   async createEvent(input: CreateCalendarEventInput): Promise<CalendarEvent> {
     const endDateTime =
       input.endDateTime || new Date(input.startDateTime.getTime() + 3600000); // 1 hour default

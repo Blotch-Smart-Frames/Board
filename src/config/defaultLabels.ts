@@ -1,4 +1,4 @@
-export type DefaultLabel = {
+type DefaultLabel = {
   name: string;
   emoji: string;
   color: string;

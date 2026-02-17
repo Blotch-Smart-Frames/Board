@@ -8,11 +8,8 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
-  onSnapshot,
   serverTimestamp,
   writeBatch,
-  type Unsubscribe,
   type FieldValue,
   Timestamp,
 } from 'firebase/firestore';
@@ -269,60 +266,4 @@ export const moveTask = async (
     order: newOrder,
     updatedAt: serverTimestamp(),
   });
-};
-
-// Real-time subscriptions
-export const subscribeToBoard = (
-  boardId: string,
-  callbacks: {
-    onBoard: (board: Board) => void;
-    onLists: (lists: List[]) => void;
-    onTasks: (tasks: Task[]) => void;
-    onError: (error: Error) => void;
-  },
-): Unsubscribe => {
-  const unsubscribes: Unsubscribe[] = [];
-
-  // Subscribe to board
-  unsubscribes.push(
-    onSnapshot(
-      doc(db, 'boards', boardId),
-      (doc) => {
-        if (doc.exists()) {
-          callbacks.onBoard({ id: doc.id, ...doc.data() } as Board);
-        }
-      },
-      callbacks.onError,
-    ),
-  );
-
-  // Subscribe to lists
-  unsubscribes.push(
-    onSnapshot(
-      query(collection(db, 'boards', boardId, 'lists'), orderBy('order')),
-      (snapshot) => {
-        const lists = snapshot.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() }) as List,
-        );
-        callbacks.onLists(lists);
-      },
-      callbacks.onError,
-    ),
-  );
-
-  // Subscribe to tasks
-  unsubscribes.push(
-    onSnapshot(
-      collection(db, 'boards', boardId, 'tasks'),
-      (snapshot) => {
-        const tasks = snapshot.docs.map(
-          (doc) => ({ ...doc.data(), id: doc.id }) as Task,
-        );
-        callbacks.onTasks(tasks);
-      },
-      callbacks.onError,
-    ),
-  );
-
-  return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
 };

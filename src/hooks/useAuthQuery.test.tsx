@@ -207,7 +207,10 @@ describe('useAuthQuery', () => {
   });
 
   it('shows loading state during login', async () => {
-    let resolveLogin!: (value: { user: typeof mockUser; accessToken: string }) => void;
+    let resolveLogin!: (value: {
+      user: typeof mockUser;
+      accessToken: string;
+    }) => void;
     mockSignInWithGoogle.mockReturnValue(
       new Promise<{ user: typeof mockUser; accessToken: string }>((resolve) => {
         resolveLogin = resolve;

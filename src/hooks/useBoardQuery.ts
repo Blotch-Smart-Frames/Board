@@ -29,7 +29,6 @@ import type {
   UpdateTaskInput,
 } from '../types/board';
 import { useAuthQuery } from './useAuthQuery';
-import { compareOrder } from '../utils/ordering';
 
 export const useBoardQuery = (boardId: string | null) => {
   const { user } = useAuthQuery();
@@ -206,18 +205,4 @@ export const useBoardQuery = (boardId: string | null) => {
     deleteBoard,
     shareBoard,
   };
-};
-
-// Helper hook to get lists with their tasks (derived state)
-export const useListsWithTasks = (boardId: string | null) => {
-  const { lists, tasks } = useBoardQuery(boardId);
-
-  return [...lists]
-    .sort((a, b) => compareOrder(a.order, b.order))
-    .map((list) => ({
-      ...list,
-      tasks: tasks
-        .filter((task) => task.listId === list.id)
-        .sort((a, b) => compareOrder(a.order, b.order)),
-    }));
 };

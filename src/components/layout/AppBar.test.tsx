@@ -83,17 +83,6 @@ describe('AppBar', () => {
       expect(screen.getByText('john@example.com')).toBeInTheDocument();
     });
 
-    it('shows Profile menu item', async () => {
-      const user = userEvent.setup();
-      render(<AppBar />);
-
-      await user.click(screen.getByRole('img', { name: 'John Doe' }));
-
-      expect(
-        screen.getByRole('menuitem', { name: /profile/i }),
-      ).toBeInTheDocument();
-    });
-
     it('shows Sign out menu item', async () => {
       const user = userEvent.setup();
       render(<AppBar />);
@@ -122,18 +111,6 @@ describe('AppBar', () => {
 
       await user.click(screen.getByRole('img', { name: 'John Doe' }));
       await user.click(screen.getByRole('menuitem', { name: /sign out/i }));
-
-      await waitFor(() => {
-        expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-      });
-    });
-
-    it('closes menu on Profile click', async () => {
-      const user = userEvent.setup();
-      render(<AppBar />);
-
-      await user.click(screen.getByRole('img', { name: 'John Doe' }));
-      await user.click(screen.getByRole('menuitem', { name: /profile/i }));
 
       await waitFor(() => {
         expect(screen.queryByRole('menu')).not.toBeInTheDocument();

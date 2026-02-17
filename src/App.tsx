@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Box, Drawer, useMediaQuery } from '@mui/material';
+import { Box, Button, Drawer, Typography, useMediaQuery } from '@mui/material';
 import { theme } from './config/theme';
 import { AuthGuard } from './components/auth/AuthGuard';
 import { AppBar } from './components/layout/AppBar';
@@ -11,6 +11,7 @@ import { ShareDialog } from './components/collaboration/ShareDialog';
 import { useUserBoardsQuery } from './hooks/useUserBoardsQuery';
 import { useAuthQuery } from './hooks/useAuthQuery';
 import { useCollaboratorsQuery } from './hooks/useCollaboratorsQuery';
+import { useBoardIdFromUrl } from './hooks/useBoardIdFromUrl';
 import { deleteBoard, updateBoard, shareBoard } from './services/boardService';
 import { getUserByEmail } from './services/userService';
 
@@ -21,13 +22,14 @@ type ViewMode = 'kanban' | 'timeline';
 export const App = () => {
   const { user } = useAuthQuery();
   const { boards, isLoading, createBoard } = useUserBoardsQuery();
-  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
+  const [selectedBoardId, setSelectedBoardId] = useBoardIdFromUrl();
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const selectedBoard = boards.find((b) => b.id === selectedBoardId);
+  const boardNotFound = selectedBoardId && !isLoading && !selectedBoard;
 
   const handleCreateBoard = async (title: string) => {
     const board = await createBoard({ title });
@@ -125,7 +127,21 @@ export const App = () => {
               className="flex-1 overflow-hidden"
               sx={{ bgcolor: 'background.default' }}
             >
-              {selectedBoardId ? (
+              {boardNotFound ? (
+                <Box className="flex h-full flex-col items-center justify-center gap-2">
+                  <Typography variant="h5">Board not found</Typography>
+                  <Typography color="text.secondary">
+                    You don't have access to this board, or it doesn't exist.
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    onClick={() => setSelectedBoardId(null)}
+                    sx={{ mt: 1 }}
+                  >
+                    Go to boards
+                  </Button>
+                </Box>
+              ) : selectedBoardId ? (
                 <Board
                   boardId={selectedBoardId}
                   viewMode={viewMode}

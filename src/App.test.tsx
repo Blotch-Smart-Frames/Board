@@ -153,6 +153,7 @@ const createMockBoard = (overrides: Partial<Board> = {}): Board => ({
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    history.replaceState(null, '', '/');
   });
 
   describe('When not authenticated', () => {
@@ -406,6 +407,101 @@ describe('App', () => {
       await user.click(screen.getByRole('button', { name: /^create$/i }));
 
       expect(mockCreateBoard).toHaveBeenCalledWith({ title: 'New Board' });
+    });
+  });
+
+  describe('URL-based board navigation', () => {
+    const mockUser = {
+      displayName: 'John Doe',
+      email: 'john@example.com',
+      photoURL: 'https://example.com/photo.jpg',
+    };
+
+    beforeEach(() => {
+      mockUseAuthQuery.mockReturnValue({
+        user: mockUser,
+        isAuthenticated: true,
+        isLoading: false,
+        login: vi.fn(),
+        logout: vi.fn(),
+      });
+    });
+
+    it('auto-selects board when URL contains valid boardId', () => {
+      const boards = [createMockBoard({ id: 'board-1', title: 'Test Board' })];
+      mockUseUserBoardsQuery.mockReturnValue({
+        boards,
+        isLoading: false,
+        createBoard: vi.fn(),
+      });
+
+      history.replaceState(null, '', '/board/board-1');
+      render(<App />);
+
+      // Board component should be rendered (title in app bar)
+      expect(screen.queryByText(/select a board/i)).not.toBeInTheDocument();
+    });
+
+    it('shows error when URL boardId is not in user boards', () => {
+      mockUseUserBoardsQuery.mockReturnValue({
+        boards: [],
+        isLoading: false,
+        createBoard: vi.fn(),
+      });
+
+      history.replaceState(null, '', '/board/nonexistent');
+      render(<App />);
+
+      expect(screen.getByText('Board not found')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "You don't have access to this board, or it doesn't exist.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it('resets URL when "Go to boards" button is clicked', async () => {
+      const user = userEvent.setup();
+      mockUseUserBoardsQuery.mockReturnValue({
+        boards: [],
+        isLoading: false,
+        createBoard: vi.fn(),
+      });
+
+      history.replaceState(null, '', '/board/nonexistent');
+      render(<App />);
+
+      await user.click(screen.getByRole('button', { name: /go to boards/i }));
+
+      expect(window.location.pathname).toBe('/');
+      expect(
+        screen.getByText(/select a board or create a new one/i),
+      ).toBeInTheDocument();
+    });
+
+    it('preserves URL through auth flow', () => {
+      // Start not authenticated with a board URL
+      mockUseAuthQuery.mockReturnValue({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        login: vi.fn(),
+        logout: vi.fn(),
+      });
+      mockUseUserBoardsQuery.mockReturnValue({
+        boards: [],
+        isLoading: false,
+        createBoard: vi.fn(),
+      });
+
+      history.replaceState(null, '', '/board/board-1');
+      render(<App />);
+
+      // Login screen shows but URL is preserved
+      expect(
+        screen.getByRole('button', { name: /sign in with google/i }),
+      ).toBeInTheDocument();
+      expect(window.location.pathname).toBe('/board/board-1');
     });
   });
 });

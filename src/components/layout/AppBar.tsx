@@ -17,7 +17,6 @@ import {
 import {
   Menu as MenuIcon,
   Logout as LogoutIcon,
-  Person as PersonIcon,
   Share as ShareIcon,
   ViewKanban as KanbanIcon,
   ViewTimeline as TimelineIcon,
@@ -146,13 +145,6 @@ export function AppBar({
               </Box>
 
               <Divider />
-
-              <MenuItem onClick={handleMenuClose}>
-                <ListItemIcon>
-                  <PersonIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>Profile</ListItemText>
-              </MenuItem>
 
               <MenuItem onClick={handleLogout}>
                 <ListItemIcon>

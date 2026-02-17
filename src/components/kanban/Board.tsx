@@ -3,7 +3,6 @@ import {
   DndContext,
   DragOverlay,
   closestCorners,
-
   PointerSensor,
   useSensor,
   useSensors,
@@ -11,7 +10,6 @@ import {
 import {
   SortableContext,
   horizontalListSortingStrategy,
-
 } from '@dnd-kit/sortable';
 import { Box, CircularProgress, Typography, Alert } from '@mui/material';
 import { List } from './List';
@@ -244,8 +242,9 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
                 <ListPreview
                   list={activeList}
                   taskCount={
-                    listsWithTasks.find((l) => l.id === activeList.id)?.tasks
-                      .filter((t) => !t.completedAt).length ?? 0
+                    listsWithTasks
+                      .find((l) => l.id === activeList.id)
+                      ?.tasks.filter((t) => !t.completedAt).length ?? 0
                   }
                 />
               ) : null}
@@ -282,7 +281,10 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
           onDelete={editingTask ? handleDeleteTask : undefined}
         />
 
-        <BackgroundImageUpload boardId={boardId} hasBackground={!!board.backgroundImageUrl} />
+        <BackgroundImageUpload
+          boardId={boardId}
+          hasBackground={!!board.backgroundImageUrl}
+        />
       </Box>
     </BoardBackground>
   );

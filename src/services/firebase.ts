@@ -7,7 +7,7 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 
-export type PopupAuthResult = {
+type PopupAuthResult = {
   user: User;
   accessToken: string;
 };
@@ -29,14 +29,4 @@ export const onAuthChange = (
   callback: (user: User | null) => void,
 ): (() => void) => {
   return onAuthStateChanged(auth, callback);
-};
-
-export const getCurrentUser = (): User | null => {
-  return auth.currentUser;
-};
-
-export const getIdToken = async (): Promise<string | null> => {
-  const user = auth.currentUser;
-  if (!user) return null;
-  return user.getIdToken();
 };

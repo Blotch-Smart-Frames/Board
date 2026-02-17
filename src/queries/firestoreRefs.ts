@@ -47,23 +47,9 @@ export const getBoardLabelsQuery = (boardId: string): Query<Label> =>
     orderBy('order'),
   ) as Query<Label>;
 
-// Label document reference
-export const getLabelRef = (
-  boardId: string,
-  labelId: string,
-): DocumentReference<Label> =>
-  doc(db, 'boards', boardId, 'labels', labelId) as DocumentReference<Label>;
-
 // Board sprints collection query
 export const getBoardSprintsQuery = (boardId: string): Query<Sprint> =>
   query(
     collection(db, 'boards', boardId, 'sprints'),
     orderBy('order'),
   ) as Query<Sprint>;
-
-// Sprint document reference
-export const getSprintRef = (
-  boardId: string,
-  sprintId: string,
-): DocumentReference<Sprint> =>
-  doc(db, 'boards', boardId, 'sprints', sprintId) as DocumentReference<Sprint>;

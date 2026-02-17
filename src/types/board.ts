@@ -95,11 +95,6 @@ export type User = {
   calendarSyncToken?: string;
 };
 
-export type BoardWithData = Board & {
-  lists: List[];
-  tasks: Task[];
-};
-
 export type CreateTaskInput = {
   title: string;
   description?: string;

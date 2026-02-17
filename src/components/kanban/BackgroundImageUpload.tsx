@@ -14,7 +14,10 @@ import WallpaperIcon from '@mui/icons-material/Wallpaper';
 import UploadIcon from '@mui/icons-material/Upload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { deleteField } from 'firebase/firestore';
-import { uploadBoardBackground, deleteBoardBackground } from '../../services/storageService';
+import {
+  uploadBoardBackground,
+  deleteBoardBackground,
+} from '../../services/storageService';
 import { updateBoard } from '../../services/boardService';
 
 type BackgroundImageUploadProps = {
@@ -22,7 +25,10 @@ type BackgroundImageUploadProps = {
   hasBackground: boolean;
 };
 
-export function BackgroundImageUpload({ boardId, hasBackground }: BackgroundImageUploadProps) {
+export function BackgroundImageUpload({
+  boardId,
+  hasBackground,
+}: BackgroundImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -84,12 +90,16 @@ export function BackgroundImageUpload({ boardId, hasBackground }: BackgroundImag
         <DialogContent sx={{ p: 0 }}>
           <List>
             <ListItemButton onClick={handleUploadClick}>
-              <ListItemIcon><UploadIcon /></ListItemIcon>
+              <ListItemIcon>
+                <UploadIcon />
+              </ListItemIcon>
               <ListItemText primary="Upload new image" />
             </ListItemButton>
             {hasBackground && (
               <ListItemButton onClick={handleRemove}>
-                <ListItemIcon><DeleteIcon /></ListItemIcon>
+                <ListItemIcon>
+                  <DeleteIcon />
+                </ListItemIcon>
                 <ListItemText primary="Remove background" />
               </ListItemButton>
             )}

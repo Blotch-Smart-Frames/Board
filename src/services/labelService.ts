@@ -123,14 +123,3 @@ export const initializeDefaultLabels = async (
   // Return the created labels
   return getBoardLabels(boardId);
 };
-
-export const reorderLabels = async (
-  boardId: string,
-  labelId: string,
-  newOrder: string,
-): Promise<void> => {
-  await updateDoc(doc(db, 'boards', boardId, 'labels', labelId), {
-    order: newOrder,
-    updatedAt: serverTimestamp(),
-  });
-};
