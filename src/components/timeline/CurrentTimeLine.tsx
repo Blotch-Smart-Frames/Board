@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTimelineContext } from 'dnd-timeline';
 import { Box } from '@mui/material';
 
-export function CurrentTimeLine() {
+export const CurrentTimeLine = () => {
   const { range, valueToPixels } = useTimelineContext();
   const [now, setNow] = useState(() => Date.now());
 
@@ -42,4 +42,4 @@ export function CurrentTimeLine() {
       }}
     />
   );
-}
+};

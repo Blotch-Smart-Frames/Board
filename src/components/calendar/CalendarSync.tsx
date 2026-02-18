@@ -25,11 +25,11 @@ const formatLastSync = (lastSyncAt: Date | undefined) => {
   return lastSyncAt.toLocaleDateString();
 };
 
-export function CalendarSync({
+export const CalendarSync = ({
   syncState,
   isConnected,
   onSync,
-}: CalendarSyncProps) {
+}: CalendarSyncProps) => {
   const { isSyncing, lastSyncAt, error } = syncState;
 
   const lastSyncLabel = formatLastSync(lastSyncAt);
@@ -82,4 +82,4 @@ export function CalendarSync({
       </Button>
     </Box>
   );
-}
+};

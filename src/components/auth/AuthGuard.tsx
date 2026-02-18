@@ -7,7 +7,7 @@ type AuthGuardProps = {
   children: ReactNode;
 };
 
-export function AuthGuard({ children }: AuthGuardProps) {
+export const AuthGuard = ({ children }: AuthGuardProps) => {
   const { isAuthenticated, isLoading } = useAuthQuery();
 
   if (isLoading) {
@@ -68,4 +68,4 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   return <>{children}</>;
-}
+};

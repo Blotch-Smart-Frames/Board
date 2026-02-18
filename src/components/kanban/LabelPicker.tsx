@@ -19,11 +19,11 @@ type LabelPickerProps = {
   onChange: (labelIds: string[]) => void;
 };
 
-export function LabelPicker({
+export const LabelPicker = ({
   boardId,
   selectedLabelIds,
   onChange,
-}: LabelPickerProps) {
+}: LabelPickerProps) => {
   const { labels, isLoading, createLabel, initializeDefaultLabels } =
     useLabelsQuery(boardId);
   const [showEditor, setShowEditor] = useState(false);
@@ -128,4 +128,4 @@ export function LabelPicker({
       />
     </Box>
   );
-}
+};

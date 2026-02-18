@@ -30,12 +30,12 @@ const stringToColor = (str: string): string => {
   return `hsl(${hue}, 65%, 45%)`;
 };
 
-export function UserAvatar({
+export const UserAvatar = ({
   name,
   photoURL,
   size = 'medium',
   showTooltip = true,
-}: UserAvatarProps) {
+}: UserAvatarProps) => {
   const avatarSize = sizeMap[size];
 
   const avatar = (
@@ -58,4 +58,4 @@ export function UserAvatar({
   }
 
   return <Tooltip title={name}>{avatar}</Tooltip>;
-}
+};

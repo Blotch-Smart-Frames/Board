@@ -8,7 +8,7 @@ type ColorPickerProps = {
   onChange: (color: string) => void;
 };
 
-export function ColorPicker({ value, onChange }: ColorPickerProps) {
+export const ColorPicker = ({ value, onChange }: ColorPickerProps) => {
   return (
     <Box className="grid grid-cols-8 gap-1">
       {labelColors.map((color) => (
@@ -40,4 +40,4 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
       ))}
     </Box>
   );
-}
+};

@@ -3,7 +3,7 @@ import { Button, CircularProgress } from '@mui/material';
 import { Google as GoogleIcon } from '@mui/icons-material';
 import { useAuthQuery } from '../../hooks/useAuthQuery';
 
-export function GoogleAuthButton() {
+export const GoogleAuthButton = () => {
   const { login } = useAuthQuery();
   const [isLoading, setIsLoading] = useState(false);
   const handleClick = async () => {
@@ -36,4 +36,4 @@ export function GoogleAuthButton() {
       {isLoading ? 'Signing in...' : 'Sign in with Google'}
     </Button>
   );
-}
+};

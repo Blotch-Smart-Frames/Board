@@ -25,6 +25,7 @@ import {
   MoreVert as MoreIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
+  Share as ShareIcon,
 } from '@mui/icons-material';
 import { useForm } from '@tanstack/react-form';
 import type { Board } from '../../types/board';
@@ -37,9 +38,10 @@ type BoardListProps = {
   onCreateBoard: (title: string) => Promise<void>;
   onDeleteBoard?: (boardId: string) => Promise<void>;
   onRenameBoard?: (boardId: string, title: string) => Promise<void>;
+  onShareBoard?: (boardId: string) => void;
 };
 
-export function BoardList({
+export const BoardList = ({
   boards,
   selectedBoardId,
   isLoading,
@@ -47,7 +49,8 @@ export function BoardList({
   onCreateBoard,
   onDeleteBoard,
   onRenameBoard,
-}: BoardListProps) {
+  onShareBoard,
+}: BoardListProps) => {
   const [isCreating, setIsCreating] = useState(false);
   const [renamingBoardId, setRenamingBoardId] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
@@ -205,6 +208,19 @@ export function BoardList({
             <ListItemText>Rename</ListItemText>
           </MenuItem>
         )}
+        {onShareBoard && (
+          <MenuItem
+            onClick={() => {
+              if (menuBoardId) onShareBoard(menuBoardId);
+              handleMenuClose();
+            }}
+          >
+            <ListItemIcon>
+              <ShareIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Share</ListItemText>
+          </MenuItem>
+        )}
         {onDeleteBoard && (
           <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
             <ListItemIcon>
@@ -354,4 +370,4 @@ export function BoardList({
       </Dialog>
     </Paper>
   );
-}
+};

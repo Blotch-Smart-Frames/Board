@@ -39,7 +39,7 @@ type BoardProps = {
   collaborators?: Collaborator[];
 };
 
-export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
+export const Board = ({ boardId, viewMode, collaborators = [] }: BoardProps) => {
   const {
     board,
     lists,
@@ -288,4 +288,4 @@ export function Board({ boardId, viewMode, collaborators = [] }: BoardProps) {
       </Box>
     </BoardBackground>
   );
-}
+};

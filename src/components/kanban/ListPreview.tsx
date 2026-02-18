@@ -6,7 +6,7 @@ type ListPreviewProps = {
   taskCount: number;
 };
 
-export function ListPreview({ list, taskCount }: ListPreviewProps) {
+export const ListPreview = ({ list, taskCount }: ListPreviewProps) => {
   return (
     <Paper
       className="ring-primary-500 flex w-72 shrink-0 cursor-grabbing flex-col shadow-lg ring-2"
@@ -45,4 +45,4 @@ export function ListPreview({ list, taskCount }: ListPreviewProps) {
       </Box>
     </Paper>
   );
-}
+};

@@ -7,7 +7,7 @@ type TimelineRowProps = {
   children: React.ReactNode;
 };
 
-export function TimelineRow({ row, children }: TimelineRowProps) {
+export const TimelineRow = ({ row, children }: TimelineRowProps) => {
   const { setNodeRef, rowWrapperStyle, rowStyle } = useRow({
     id: row.id,
     data: { type: 'timeline-row', listId: row.id },
@@ -40,4 +40,4 @@ export function TimelineRow({ row, children }: TimelineRowProps) {
       </Box>
     </Box>
   );
-}
+};

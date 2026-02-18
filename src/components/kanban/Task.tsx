@@ -32,14 +32,14 @@ type TaskProps = {
   isDragging?: boolean;
 };
 
-export function Task({
+export const Task = ({
   task,
   labels = [],
   collaborators = [],
   onEdit,
   onUpdate,
   isDragging = false,
-}: TaskProps) {
+}: TaskProps) => {
   const assignedUsers = collaborators.filter((c) =>
     task.assignedTo?.includes(c.id),
   );
@@ -192,4 +192,4 @@ export function Task({
       </CardContent>
     </Card>
   );
-}
+};

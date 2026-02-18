@@ -43,7 +43,7 @@ type ListProps = {
   isDragging?: boolean;
 };
 
-export function List({
+export const List = ({
   list,
   tasks,
   labels = [],
@@ -54,7 +54,7 @@ export function List({
   onEditTask,
   onUpdateTask,
   isDragging = false,
-}: ListProps) {
+}: ListProps) => {
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
 
@@ -255,4 +255,4 @@ export function List({
       </Box>
     </Paper>
   );
-}
+};

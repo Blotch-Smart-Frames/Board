@@ -7,7 +7,6 @@ import {
   Menu,
   MenuItem,
   Box,
-  Button,
   Divider,
   ListItemIcon,
   ListItemText,
@@ -17,7 +16,6 @@ import {
 import {
   Menu as MenuIcon,
   Logout as LogoutIcon,
-  Share as ShareIcon,
   ViewKanban as KanbanIcon,
   ViewTimeline as TimelineIcon,
 } from '@mui/icons-material';
@@ -30,20 +28,16 @@ type ViewMode = 'kanban' | 'timeline';
 type AppBarProps = {
   title?: string;
   onMenuClick?: () => void;
-  onShare?: () => void;
-  showShare?: boolean;
   viewMode?: ViewMode;
   onViewModeChange?: (mode: ViewMode) => void;
 };
 
-export function AppBar({
+export const AppBar = ({
   title = 'Board by Blotch',
   onMenuClick,
-  onShare,
-  showShare = false,
   viewMode,
   onViewModeChange,
-}: AppBarProps) {
+}: AppBarProps) => {
   const { user, logout, isAuthenticated } = useAuthQuery();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -100,17 +94,6 @@ export function AppBar({
 
         <ThemeToggle />
 
-        {showShare && onShare && (
-          <Button
-            startIcon={<ShareIcon />}
-            onClick={onShare}
-            variant="outlined"
-            size="small"
-          >
-            Share
-          </Button>
-        )}
-
         {isAuthenticated && user ? (
           <Box>
             <IconButton onClick={handleMenuOpen} size="small">
@@ -158,4 +141,4 @@ export function AppBar({
       </Toolbar>
     </MuiAppBar>
   );
-}
+};

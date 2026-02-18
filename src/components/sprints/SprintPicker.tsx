@@ -29,12 +29,12 @@ const formatSprintDateRange = (sprint: Sprint) => {
   return `${start} - ${end}`;
 };
 
-export function SprintPicker({
+export const SprintPicker = ({
   boardId,
   board,
   selectedSprintId,
   onChange,
-}: SprintPickerProps) {
+}: SprintPickerProps) => {
   const { sprints, isLoading } = useSprintsQuery(boardId);
   const [showDialog, setShowDialog] = useState(false);
   const [showManagement, setShowManagement] = useState(false);
@@ -116,4 +116,4 @@ export function SprintPicker({
       />
     </Box>
   );
-}
+};

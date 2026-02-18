@@ -24,7 +24,7 @@ export const App = () => {
   const { boards, isLoading, createBoard } = useUserBoardsQuery();
   const [selectedBoardId, setSelectedBoardId] = useBoardIdFromUrl();
   const [drawerOpen, setDrawerOpen] = useState(true);
-  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [sharingBoardId, setSharingBoardId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -47,13 +47,15 @@ export const App = () => {
     await updateBoard(boardId, { title });
   };
 
+  const sharingBoard = boards.find((b) => b.id === sharingBoardId);
+
   const handleShareBoard = async (email: string) => {
-    if (!selectedBoardId) return;
+    if (!sharingBoardId) return;
     const targetUser = await getUserByEmail(email);
     if (!targetUser) {
       throw new Error(`No user found with email: ${email}`);
     }
-    await shareBoard(selectedBoardId, targetUser.id);
+    await shareBoard(sharingBoardId, targetUser.id);
   };
 
   const handleRemoveCollaborator = async (userId: string) => {
@@ -62,6 +64,10 @@ export const App = () => {
   };
 
   const { collaborators } = useCollaboratorsQuery(selectedBoard, user);
+  const { collaborators: sharingCollaborators } = useCollaboratorsQuery(
+    sharingBoard,
+    user,
+  );
 
   const drawerContent = (
     <BoardList
@@ -72,6 +78,7 @@ export const App = () => {
       onCreateBoard={handleCreateBoard}
       onDeleteBoard={handleDeleteBoard}
       onRenameBoard={handleRenameBoard}
+      onShareBoard={setSharingBoardId}
     />
   );
 
@@ -83,8 +90,6 @@ export const App = () => {
           <AppBar
             title={selectedBoard?.title || 'Board by Blotch'}
             onMenuClick={() => setDrawerOpen(!drawerOpen)}
-            onShare={() => setShareDialogOpen(true)}
-            showShare={!!selectedBoard}
             viewMode={selectedBoardId ? viewMode : undefined}
             onViewModeChange={selectedBoardId ? setViewMode : undefined}
           />
@@ -159,12 +164,12 @@ export const App = () => {
           </Box>
         </Box>
 
-        {selectedBoard && (
+        {sharingBoard && (
           <ShareDialog
-            open={shareDialogOpen}
-            boardTitle={selectedBoard.title}
-            collaborators={collaborators}
-            onClose={() => setShareDialogOpen(false)}
+            open={!!sharingBoardId}
+            boardTitle={sharingBoard.title}
+            collaborators={sharingCollaborators}
+            onClose={() => setSharingBoardId(null)}
             onInvite={handleShareBoard}
             onRemove={handleRemoveCollaborator}
           />

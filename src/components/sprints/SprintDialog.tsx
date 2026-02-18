@@ -40,7 +40,7 @@ type SprintFormContentProps = {
   onClose: () => void;
 };
 
-function SprintFormContent({
+const SprintFormContent = ({
   boardId,
   isEditing,
   sprint,
@@ -48,7 +48,7 @@ function SprintFormContent({
   defaultStartDate,
   defaultEndDate,
   onClose,
-}: SprintFormContentProps) {
+}: SprintFormContentProps) => {
   const { createSprint, updateSprint } = useSprintsQuery(boardId);
 
   const form = useForm({
@@ -233,14 +233,14 @@ function SprintFormContent({
       </DialogActions>
     </form>
   );
-}
+};
 
-export function SprintDialog({
+export const SprintDialog = ({
   boardId,
   open,
   sprint,
   onClose,
-}: SprintDialogProps) {
+}: SprintDialogProps) => {
   const isEditing = !!sprint;
   const { calculateNextSprintDates } = useSprintsQuery(boardId);
 
@@ -296,4 +296,4 @@ export function SprintDialog({
       </Dialog>
     </LocalizationProvider>
   );
-}
+};

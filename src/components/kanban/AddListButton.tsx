@@ -7,7 +7,7 @@ type AddListButtonProps = {
   onAdd: (title: string) => void;
 };
 
-export function AddListButton({ onAdd }: AddListButtonProps) {
+export const AddListButton = ({ onAdd }: AddListButtonProps) => {
   const [isAdding, setIsAdding] = useState(false);
 
   const form = useForm({
@@ -115,4 +115,4 @@ export function AddListButton({ onAdd }: AddListButtonProps) {
       </Box>
     </Paper>
   );
-}
+};

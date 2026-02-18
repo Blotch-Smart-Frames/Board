@@ -25,10 +25,10 @@ type BackgroundImageUploadProps = {
   hasBackground: boolean;
 };
 
-export function BackgroundImageUpload({
+export const BackgroundImageUpload = ({
   boardId,
   hasBackground,
-}: BackgroundImageUploadProps) {
+}: BackgroundImageUploadProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -108,4 +108,4 @@ export function BackgroundImageUpload({
       </Dialog>
     </>
   );
-}
+};

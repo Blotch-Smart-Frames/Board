@@ -9,12 +9,12 @@ type LabelChipProps = {
   onDelete?: () => void;
 };
 
-export function LabelChip({
+export const LabelChip = ({
   label,
   size = 'small',
   onClick,
   onDelete,
-}: LabelChipProps) {
+}: LabelChipProps) => {
   const textColor = getContrastColor(label.color);
 
   return (
@@ -43,4 +43,4 @@ export function LabelChip({
       }}
     />
   );
-}
+};

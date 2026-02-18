@@ -30,11 +30,11 @@ type LabelManagementProps = {
   onClose: () => void;
 };
 
-export function LabelManagement({
+export const LabelManagement = ({
   boardId,
   open,
   onClose,
-}: LabelManagementProps) {
+}: LabelManagementProps) => {
   const { labels, createLabel, updateLabel, deleteLabel } =
     useLabelsQuery(boardId);
   const [editingLabel, setEditingLabel] = useState<Label | null>(null);
@@ -155,4 +155,4 @@ export function LabelManagement({
       />
     </>
   );
-}
+};

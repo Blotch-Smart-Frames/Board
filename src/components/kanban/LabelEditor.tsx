@@ -24,12 +24,12 @@ type LabelEditorProps = {
   onSave: (data: CreateLabelInput) => Promise<void>;
 };
 
-export function LabelEditor({
+export const LabelEditor = ({
   open,
   label,
   onClose,
   onSave,
-}: LabelEditorProps) {
+}: LabelEditorProps) => {
   const isEditing = !!label;
 
   const form = useForm({
@@ -182,4 +182,4 @@ export function LabelEditor({
       </form>
     </Dialog>
   );
-}
+};

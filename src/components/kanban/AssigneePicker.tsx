@@ -8,11 +8,11 @@ type AssigneePickerProps = {
   onChange: (userIds: string[]) => void;
 };
 
-export function AssigneePicker({
+export const AssigneePicker = ({
   collaborators,
   selectedUserIds,
   onChange,
-}: AssigneePickerProps) {
+}: AssigneePickerProps) => {
   const handleToggle = (userId: string) => {
     if (selectedUserIds.includes(userId)) {
       onChange(selectedUserIds.filter((id) => id !== userId));
@@ -69,4 +69,4 @@ export function AssigneePicker({
       </Box>
     </Box>
   );
-}
+};

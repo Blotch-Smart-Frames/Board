@@ -6,7 +6,7 @@ type BoardBackgroundProps = {
   children: ReactNode;
 };
 
-export function BoardBackground({ imageUrl, children }: BoardBackgroundProps) {
+export const BoardBackground = ({ imageUrl, children }: BoardBackgroundProps) => {
   return (
     <Box
       sx={{
@@ -44,4 +44,4 @@ export function BoardBackground({ imageUrl, children }: BoardBackgroundProps) {
       </Box>
     </Box>
   );
-}
+};

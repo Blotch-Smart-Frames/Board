@@ -21,12 +21,12 @@ type ListHeaderProps = {
   onDelete: () => void;
 };
 
-export function ListHeader({
+export const ListHeader = ({
   title,
   taskCount,
   onUpdateTitle,
   onDelete,
-}: ListHeaderProps) {
+}: ListHeaderProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -145,4 +145,4 @@ export function ListHeader({
       </Menu>
     </Box>
   );
-}
+};

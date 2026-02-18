@@ -6,7 +6,7 @@ type TaskAssigneesProps = {
   assignedUsers: Collaborator[];
 };
 
-export function TaskAssignees({ assignedUsers }: TaskAssigneesProps) {
+export const TaskAssignees = ({ assignedUsers }: TaskAssigneesProps) => {
   if (assignedUsers.length === 0) {
     return null;
   }
@@ -26,4 +26,4 @@ export function TaskAssignees({ assignedUsers }: TaskAssigneesProps) {
       ))}
     </AvatarGroup>
   );
-}
+};

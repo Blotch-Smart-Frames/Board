@@ -40,7 +40,7 @@ type TaskDialogProps = {
   onDelete?: () => void;
 };
 
-export function TaskDialog({
+export const TaskDialog = ({
   open,
   boardId,
   board,
@@ -49,7 +49,7 @@ export function TaskDialog({
   onClose,
   onSave,
   onDelete,
-}: TaskDialogProps) {
+}: TaskDialogProps) => {
   const isEditing = !!task;
 
   const form = useForm({
@@ -96,6 +96,12 @@ export function TaskDialog({
             e.preventDefault();
             e.stopPropagation();
             form.handleSubmit();
+          }}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            maxHeight: '80vh',
           }}
         >
           <DialogTitle className="flex items-center justify-between">
@@ -359,4 +365,4 @@ export function TaskDialog({
       </Dialog>
     </LocalizationProvider>
   );
-}
+};

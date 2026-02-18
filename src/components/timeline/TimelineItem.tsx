@@ -12,7 +12,7 @@ type TimelineItemProps = {
 
 const DRAG_THRESHOLD = 5;
 
-export function TimelineItem({ item, labels, onClick }: TimelineItemProps) {
+export const TimelineItem = ({ item, labels, onClick }: TimelineItemProps) => {
   const theme = useTheme();
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null);
 
@@ -92,4 +92,4 @@ export function TimelineItem({ item, labels, onClick }: TimelineItemProps) {
       </Box>
     </Box>
   );
-}
+};

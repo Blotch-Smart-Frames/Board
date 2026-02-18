@@ -42,14 +42,14 @@ type ShareDialogProps = {
   onRemove: (userId: string) => Promise<void>;
 };
 
-export function ShareDialog({
+export const ShareDialog = ({
   open,
   boardTitle,
   collaborators,
   onClose,
   onInvite,
   onRemove,
-}: ShareDialogProps) {
+}: ShareDialogProps) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -216,4 +216,4 @@ export function ShareDialog({
       </DialogActions>
     </Dialog>
   );
-}
+};

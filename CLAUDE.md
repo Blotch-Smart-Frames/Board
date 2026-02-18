@@ -9,6 +9,7 @@ React 19, TypeScript, Vite, React Query, MUI, Firebase, React Testing Library
 1. **No useEffect** — React Query for data, handlers for effects, derived state for transforms
 2. **Small components** — <50 lines, single responsibility, split early
 3. **Tests** — RTL, query by role/text, `userEvent` for interactions, no implementation details
+4. **Arrow function components** — `export const Foo = () => {}`, enforced by ESLint
 
 ## Quick Ref
 

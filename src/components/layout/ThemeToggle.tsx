@@ -21,7 +21,7 @@ const MODE_OPTIONS: { value: Mode; label: string; icon: typeof LightIcon }[] = [
   { value: 'system', label: 'System', icon: SystemIcon },
 ];
 
-export function ThemeToggle() {
+export const ThemeToggle = () => {
   const { mode, setMode } = useColorScheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -62,4 +62,4 @@ export function ThemeToggle() {
       </Menu>
     </>
   );
-}
+};

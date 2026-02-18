@@ -19,12 +19,12 @@ const SPRINT_COLORS = [
   '#F3E5F5', // light purple
 ];
 
-export function SprintOverlays({
+export const SprintOverlays = ({
   sprints,
   rowCount,
   rowHeight,
   headerHeight,
-}: SprintOverlaysProps) {
+}: SprintOverlaysProps) => {
   const { range, valueToPixels } = useTimelineContext();
 
   // Sort sprints by order
@@ -125,4 +125,4 @@ export function SprintOverlays({
       })}
     </>
   );
-}
+};

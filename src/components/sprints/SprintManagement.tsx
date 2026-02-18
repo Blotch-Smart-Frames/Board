@@ -35,12 +35,12 @@ type SprintManagementProps = {
   onClose: () => void;
 };
 
-export function SprintManagement({
+export const SprintManagement = ({
   boardId,
   board,
   open,
   onClose,
-}: SprintManagementProps) {
+}: SprintManagementProps) => {
   const {
     sprints,
     isLoading,
@@ -261,4 +261,4 @@ export function SprintManagement({
       )}
     </>
   );
-}
+};

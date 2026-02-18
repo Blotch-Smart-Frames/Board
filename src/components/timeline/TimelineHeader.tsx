@@ -19,10 +19,10 @@ type TimelineHeaderProps = {
   dayWidthPixels: number;
 };
 
-export function TimelineHeader({
+export const TimelineHeader = ({
   scrollState,
   dayWidthPixels,
-}: TimelineHeaderProps) {
+}: TimelineHeaderProps) => {
   const { range, valueToPixels } = useTimelineContext();
   const today = startOfDay(new Date());
 
@@ -92,4 +92,4 @@ export function TimelineHeader({
       })}
     </Box>
   );
-}
+};
