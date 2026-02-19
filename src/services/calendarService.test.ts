@@ -10,7 +10,7 @@ vi.mock('../config/google', () => ({
 }));
 
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+globalThis.fetch = mockFetch;
 
 describe('calendarService', () => {
   let calendarService: typeof import('./calendarService').calendarService;
@@ -61,8 +61,7 @@ describe('calendarService', () => {
       calendarService.setAccessToken('test-token');
       mockFetch.mockResolvedValue({
         ok: false,
-        json: () =>
-          Promise.resolve({ error: { message: 'Quota exceeded' } }),
+        json: () => Promise.resolve({ error: { message: 'Quota exceeded' } }),
       });
 
       await expect(
@@ -109,9 +108,9 @@ describe('calendarService', () => {
     });
 
     it('throws when not authenticated', async () => {
-      await expect(
-        calendarService.deleteEvent('event-1'),
-      ).rejects.toThrow('Not authenticated with Google Calendar');
+      await expect(calendarService.deleteEvent('event-1')).rejects.toThrow(
+        'Not authenticated with Google Calendar',
+      );
     });
 
     it('throws on non-204 error', async () => {
@@ -119,13 +118,12 @@ describe('calendarService', () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
-        json: () =>
-          Promise.resolve({ error: { message: 'Server error' } }),
+        json: () => Promise.resolve({ error: { message: 'Server error' } }),
       });
 
-      await expect(
-        calendarService.deleteEvent('event-1'),
-      ).rejects.toThrow('Server error');
+      await expect(calendarService.deleteEvent('event-1')).rejects.toThrow(
+        'Server error',
+      );
     });
   });
 
@@ -151,8 +149,7 @@ describe('calendarService', () => {
       calendarService.setAccessToken('test-token');
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () =>
-          Promise.resolve({ items: [], nextSyncToken: 'token-2' }),
+        json: () => Promise.resolve({ items: [], nextSyncToken: 'token-2' }),
       });
 
       await calendarService.syncEvents('token-1');

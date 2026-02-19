@@ -58,9 +58,24 @@ describe('useCollaboratorsQuery', () => {
 
   it('returns collaborators with user data', async () => {
     mockGetUsersByIds.mockResolvedValue([
-      { id: 'owner-1', email: 'owner@test.com', displayName: 'Owner', photoURL: null },
-      { id: 'user-2', email: 'user2@test.com', displayName: 'User 2', photoURL: null },
-      { id: 'user-3', email: 'user3@test.com', displayName: 'User 3', photoURL: null },
+      {
+        id: 'owner-1',
+        email: 'owner@test.com',
+        displayName: 'Owner',
+        photoURL: null,
+      },
+      {
+        id: 'user-2',
+        email: 'user2@test.com',
+        displayName: 'User 2',
+        photoURL: null,
+      },
+      {
+        id: 'user-3',
+        email: 'user3@test.com',
+        displayName: 'User 3',
+        photoURL: null,
+      },
     ]);
 
     const board = createMockBoard();
@@ -106,10 +121,9 @@ describe('useCollaboratorsQuery', () => {
       collaborators: ['unknown-user'],
     });
 
-    const { result } = renderHook(
-      () => useCollaboratorsQuery(board, null),
-      { wrapper: createWrapper() },
-    );
+    const { result } = renderHook(() => useCollaboratorsQuery(board, null), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.collaborators).toHaveLength(2);

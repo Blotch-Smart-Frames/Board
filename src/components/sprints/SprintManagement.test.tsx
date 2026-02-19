@@ -7,17 +7,29 @@ import type { Sprint, Board } from '../../types/board';
 
 // Mock date picker modules used by SprintDialog (imported transitively)
 vi.mock('@mui/x-date-pickers/DatePicker', () => ({
-  DatePicker: ({ label, value, onChange }: any) => (
+  DatePicker: ({
+    label,
+    value,
+    onChange,
+  }: {
+    label: string;
+    value: Date | null;
+    onChange: (date: Date | null) => void;
+  }) => (
     <input
       aria-label={label}
       value={value?.toISOString?.() ?? ''}
-      onChange={(e) => onChange(e.target.value ? new Date(e.target.value) : null)}
+      onChange={(e) =>
+        onChange(e.target.value ? new Date(e.target.value) : null)
+      }
     />
   ),
 }));
 
 vi.mock('@mui/x-date-pickers/LocalizationProvider', () => ({
-  LocalizationProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  LocalizationProvider: ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 
 vi.mock('@mui/x-date-pickers/AdapterDateFns', () => ({
@@ -85,11 +97,7 @@ describe('SprintManagement', () => {
 
   it('renders nothing when closed', () => {
     render(
-      <SprintManagement
-        boardId="board-1"
-        open={false}
-        onClose={vi.fn()}
-      />,
+      <SprintManagement boardId="board-1" open={false} onClose={vi.fn()} />,
       { wrapper: createWrapper() },
     );
 

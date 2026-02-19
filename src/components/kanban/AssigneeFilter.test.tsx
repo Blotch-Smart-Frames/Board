@@ -52,9 +52,7 @@ describe('AssigneeFilter', () => {
   it('clicking a collaborator chip calls onFilterChange with their ID', async () => {
     const user = userEvent.setup();
     const onFilterChange = vi.fn();
-    const collaborators = [
-      createCollaborator({ id: 'u1', name: 'Alice' }),
-    ];
+    const collaborators = [createCollaborator({ id: 'u1', name: 'Alice' })];
 
     render(
       <AssigneeFilter

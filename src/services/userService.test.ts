@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { User as FirebaseUser } from 'firebase/auth';
 
 vi.mock('../config/firebase', () => ({
   db: {},
@@ -34,7 +35,7 @@ describe('userService', () => {
         email: 'test@example.com',
         displayName: 'Test User',
         photoURL: 'https://example.com/photo.jpg',
-      } as any);
+      } as unknown as FirebaseUser);
 
       expect(mockSetDoc).toHaveBeenCalledWith(
         undefined,
@@ -56,7 +57,7 @@ describe('userService', () => {
         email: null,
         displayName: null,
         photoURL: null,
-      } as any);
+      } as unknown as FirebaseUser);
 
       expect(mockSetDoc).toHaveBeenCalledWith(
         undefined,
@@ -70,11 +71,18 @@ describe('userService', () => {
 
     it('does not throw on error', async () => {
       mockSetDoc.mockRejectedValue(new Error('Firestore error'));
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       const { syncUserProfile } = await import('./userService');
       await expect(
-        syncUserProfile({ uid: 'u1', email: null, displayName: null, photoURL: null } as any),
+        syncUserProfile({
+          uid: 'u1',
+          email: null,
+          displayName: null,
+          photoURL: null,
+        } as unknown as FirebaseUser),
       ).resolves.toBeUndefined();
 
       consoleSpy.mockRestore();

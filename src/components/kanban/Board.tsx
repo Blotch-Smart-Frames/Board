@@ -66,7 +66,9 @@ export const Board = ({
 
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [addingToListId, setAddingToListId] = useState<string | null>(null);
-  const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(null);
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(
+    null,
+  );
 
   const filteredTasks = selectedAssigneeId
     ? tasks.filter((t) => t.assignedTo?.includes(selectedAssigneeId))

@@ -21,8 +21,16 @@ describe('TaskAssignees', () => {
 
   it('renders avatars for assigned users', () => {
     const users = [
-      createUser({ id: 'u1', name: 'Alice', photoURL: 'https://example.com/alice.jpg' }),
-      createUser({ id: 'u2', name: 'Bob', photoURL: 'https://example.com/bob.jpg' }),
+      createUser({
+        id: 'u1',
+        name: 'Alice',
+        photoURL: 'https://example.com/alice.jpg',
+      }),
+      createUser({
+        id: 'u2',
+        name: 'Bob',
+        photoURL: 'https://example.com/bob.jpg',
+      }),
     ];
 
     render(<TaskAssignees assignedUsers={users} />);

@@ -7,17 +7,29 @@ import type { Sprint } from '../../types/board';
 
 // Mock date picker modules used transitively by SprintDialog / SprintManagement
 vi.mock('@mui/x-date-pickers/DatePicker', () => ({
-  DatePicker: ({ label, value, onChange }: any) => (
+  DatePicker: ({
+    label,
+    value,
+    onChange,
+  }: {
+    label: string;
+    value: Date | null;
+    onChange: (date: Date | null) => void;
+  }) => (
     <input
       aria-label={label}
       value={value?.toISOString?.() ?? ''}
-      onChange={(e) => onChange(e.target.value ? new Date(e.target.value) : null)}
+      onChange={(e) =>
+        onChange(e.target.value ? new Date(e.target.value) : null)
+      }
     />
   ),
 }));
 
 vi.mock('@mui/x-date-pickers/LocalizationProvider', () => ({
-  LocalizationProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  LocalizationProvider: ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 
 vi.mock('@mui/x-date-pickers/AdapterDateFns', () => ({
@@ -114,9 +126,7 @@ describe('SprintPicker', () => {
       { wrapper: createWrapper() },
     );
 
-    expect(
-      screen.getByRole('button', { name: /manage/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /manage/i })).toBeInTheDocument();
   });
 
   it('renders Create sprint button', () => {

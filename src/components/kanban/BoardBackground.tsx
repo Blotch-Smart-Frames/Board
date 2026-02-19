@@ -6,7 +6,10 @@ type BoardBackgroundProps = {
   children: ReactNode;
 };
 
-export const BoardBackground = ({ imageUrl, children }: BoardBackgroundProps) => {
+export const BoardBackground = ({
+  imageUrl,
+  children,
+}: BoardBackgroundProps) => {
   return (
     <Box
       sx={{

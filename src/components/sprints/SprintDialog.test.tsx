@@ -7,18 +7,32 @@ import type { Sprint } from '../../types/board';
 
 // Mock the date picker to avoid ESM resolution issues
 vi.mock('@mui/x-date-pickers/DatePicker', () => ({
-  DatePicker: ({ label, value, onChange, slotProps }: any) => (
+  DatePicker: ({
+    label,
+    value,
+    onChange,
+    slotProps,
+  }: {
+    label: string;
+    value: Date | null;
+    onChange: (date: Date | null) => void;
+    slotProps?: { textField?: Record<string, unknown> };
+  }) => (
     <input
       aria-label={label}
       value={value?.toISOString?.() ?? ''}
-      onChange={(e) => onChange(e.target.value ? new Date(e.target.value) : null)}
+      onChange={(e) =>
+        onChange(e.target.value ? new Date(e.target.value) : null)
+      }
       {...(slotProps?.textField ?? {})}
     />
   ),
 }));
 
 vi.mock('@mui/x-date-pickers/LocalizationProvider', () => ({
-  LocalizationProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  LocalizationProvider: ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 
 vi.mock('@mui/x-date-pickers/AdapterDateFns', () => ({
@@ -64,10 +78,9 @@ describe('SprintDialog', () => {
   });
 
   it('renders nothing when closed', () => {
-    render(
-      <SprintDialog boardId="board-1" open={false} onClose={vi.fn()} />,
-      { wrapper: createWrapper() },
-    );
+    render(<SprintDialog boardId="board-1" open={false} onClose={vi.fn()} />, {
+      wrapper: createWrapper(),
+    });
 
     expect(screen.queryByText('Create Sprint')).not.toBeInTheDocument();
   });
@@ -135,8 +148,6 @@ describe('SprintDialog', () => {
       { wrapper: createWrapper() },
     );
 
-    expect(
-      screen.getByRole('button', { name: 'Save' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
   });
 });

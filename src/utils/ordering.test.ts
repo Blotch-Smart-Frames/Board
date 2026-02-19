@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { compareOrder, getOrderBetween, getOrderAtEnd, getOrderAtIndex } from './ordering';
+import {
+  compareOrder,
+  getOrderBetween,
+  getOrderAtEnd,
+  getOrderAtIndex,
+} from './ordering';
 
 describe('compareOrder', () => {
   it('returns 0 when both are undefined', () => {
@@ -61,31 +66,20 @@ describe('getOrderAtEnd', () => {
   });
 
   it('returns a key after the last item', () => {
-    const items = [
-      { order: 'a0' },
-      { order: 'a1' },
-    ];
+    const items = [{ order: 'a0' }, { order: 'a1' }];
     const key = getOrderAtEnd(items);
     expect(key > 'a1').toBe(true);
   });
 
   it('ignores items without valid order', () => {
-    const items = [
-      { order: 'a0' },
-      { order: undefined },
-      { order: '' },
-    ];
+    const items = [{ order: 'a0' }, { order: undefined }, { order: '' }];
     const key = getOrderAtEnd(items as { order?: string }[]);
     expect(key > 'a0').toBe(true);
   });
 });
 
 describe('getOrderAtIndex', () => {
-  const items = [
-    { order: 'a0' },
-    { order: 'a1' },
-    { order: 'a2' },
-  ];
+  const items = [{ order: 'a0' }, { order: 'a1' }, { order: 'a2' }];
 
   it('returns a key before all items for index 0', () => {
     const key = getOrderAtIndex(items, 0);

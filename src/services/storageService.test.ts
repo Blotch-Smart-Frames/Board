@@ -56,9 +56,9 @@ describe('storageService', () => {
       });
 
       const { uploadBoardBackground } = await import('./storageService');
-      await expect(
-        uploadBoardBackground('board-1', file),
-      ).rejects.toThrow('Invalid file type');
+      await expect(uploadBoardBackground('board-1', file)).rejects.toThrow(
+        'Invalid file type',
+      );
     });
 
     it('rejects file exceeding 5MB', async () => {
@@ -68,9 +68,9 @@ describe('storageService', () => {
       });
 
       const { uploadBoardBackground } = await import('./storageService');
-      await expect(
-        uploadBoardBackground('board-1', file),
-      ).rejects.toThrow('File size exceeds 5MB limit');
+      await expect(uploadBoardBackground('board-1', file)).rejects.toThrow(
+        'File size exceeds 5MB limit',
+      );
     });
   });
 
@@ -90,9 +90,7 @@ describe('storageService', () => {
       mockDeleteObject.mockRejectedValue(new Error('not found'));
 
       const { deleteBoardBackground } = await import('./storageService');
-      await expect(
-        deleteBoardBackground('board-1'),
-      ).resolves.toBeUndefined();
+      await expect(deleteBoardBackground('board-1')).resolves.toBeUndefined();
     });
   });
 });

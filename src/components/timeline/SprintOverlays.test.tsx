@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SprintOverlays } from './SprintOverlays';
+import type { Timestamp } from 'firebase/firestore';
 import type { Sprint } from '../../types/board';
 
 const mockValueToPixels = vi.fn((v: number) => v / 1000);
@@ -121,8 +122,12 @@ describe('SprintOverlays', () => {
         id: 's2',
         name: 'Sprint 2',
         order: 'a1',
-        startDate: { toDate: () => new Date('2024-01-15') } as any,
-        endDate: { toDate: () => new Date('2024-01-28') } as any,
+        startDate: {
+          toDate: () => new Date('2024-01-15'),
+        } as unknown as Timestamp,
+        endDate: {
+          toDate: () => new Date('2024-01-28'),
+        } as unknown as Timestamp,
       }),
     ];
 

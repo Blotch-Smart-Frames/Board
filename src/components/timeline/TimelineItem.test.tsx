@@ -77,9 +77,7 @@ describe('TimelineItem', () => {
       } as Label,
     ];
 
-    const { container } = render(
-      <TimelineItem item={item} labels={labels} />,
-    );
+    const { container } = render(<TimelineItem item={item} labels={labels} />);
 
     // Should use label color for background
     expect(container.firstChild).toBeInTheDocument();

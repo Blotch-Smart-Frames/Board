@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TimelineView } from './TimelineView';
+import type { Timestamp } from 'firebase/firestore';
 import type { Task, List, Label, Sprint } from '../../types/board';
 
 vi.mock('dnd-timeline', () => ({
@@ -72,16 +73,9 @@ describe('TimelineView', () => {
   });
 
   it('shows empty state when lists exist but no tasks', () => {
-    render(
-      <TimelineView
-        {...defaultProps}
-        lists={[createMockList()]}
-      />,
-    );
+    render(<TimelineView {...defaultProps} lists={[createMockList()]} />);
 
-    expect(
-      screen.getByText('No tasks in this board yet.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('No tasks in this board yet.')).toBeInTheDocument();
   });
 
   it('shows hidden count alert when tasks lack dates', () => {
@@ -101,10 +95,7 @@ describe('TimelineView', () => {
   });
 
   it('shows message to set dates when all tasks hidden', () => {
-    const tasks = [
-      createMockTask({ id: 't1' }),
-      createMockTask({ id: 't2' }),
-    ];
+    const tasks = [createMockTask({ id: 't1' }), createMockTask({ id: 't2' })];
 
     render(
       <TimelineView
@@ -125,8 +116,10 @@ describe('TimelineView', () => {
     const tasks = [
       createMockTask({
         id: 't1',
-        startDate: { toMillis: () => Date.now() } as any,
-        dueDate: { toMillis: () => Date.now() + 86400000 } as any,
+        startDate: { toMillis: () => Date.now() } as unknown as Timestamp,
+        dueDate: {
+          toMillis: () => Date.now() + 86400000,
+        } as unknown as Timestamp,
       }),
     ];
 

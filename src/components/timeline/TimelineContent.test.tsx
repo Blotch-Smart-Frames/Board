@@ -93,7 +93,11 @@ describe('TimelineContent', () => {
       createMockItem({
         id: 'item-2',
         rowId: 'list-2',
-        task: createMockTask({ id: 'task-2', title: 'Second Task', listId: 'list-2' }),
+        task: createMockTask({
+          id: 'task-2',
+          title: 'Second Task',
+          listId: 'list-2',
+        }),
       }),
     ];
 
@@ -102,9 +106,7 @@ describe('TimelineContent', () => {
       { id: 'list-2', title: 'In Progress' },
     ];
 
-    render(
-      <TimelineContent {...defaultProps} rows={rows} items={items} />,
-    );
+    render(<TimelineContent {...defaultProps} rows={rows} items={items} />);
 
     expect(screen.getByText('First Task')).toBeInTheDocument();
     expect(screen.getByText('Second Task')).toBeInTheDocument();
@@ -123,7 +125,11 @@ describe('TimelineContent', () => {
     const items = [createMockItem({ id: 'item-1', rowId: 'list-1', task })];
 
     render(
-      <TimelineContent {...defaultProps} items={items} onEditTask={onEditTask} />,
+      <TimelineContent
+        {...defaultProps}
+        items={items}
+        onEditTask={onEditTask}
+      />,
     );
 
     await user.click(screen.getByText('Clickable Task'));
@@ -176,7 +182,11 @@ describe('TimelineContent', () => {
     ];
 
     render(
-      <TimelineContent {...defaultProps} items={items} remountKeys={remountKeys} />,
+      <TimelineContent
+        {...defaultProps}
+        items={items}
+        remountKeys={remountKeys}
+      />,
     );
 
     expect(screen.getByText('Remounted Task')).toBeInTheDocument();

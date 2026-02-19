@@ -79,9 +79,7 @@ describe('AssigneePicker', () => {
   it('calls onChange to add user when clicking unchecked', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    const collaborators = [
-      createCollaborator({ id: 'u1', name: 'Alice' }),
-    ];
+    const collaborators = [createCollaborator({ id: 'u1', name: 'Alice' })];
 
     render(
       <AssigneePicker
@@ -99,9 +97,7 @@ describe('AssigneePicker', () => {
   it('calls onChange to remove user when clicking checked', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    const collaborators = [
-      createCollaborator({ id: 'u1', name: 'Alice' }),
-    ];
+    const collaborators = [createCollaborator({ id: 'u1', name: 'Alice' })];
 
     render(
       <AssigneePicker

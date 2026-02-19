@@ -13,7 +13,12 @@ const createMockList = (overrides: Partial<List> = {}): List =>
 
 describe('ListPreview', () => {
   it('renders list title', () => {
-    render(<ListPreview list={createMockList({ title: 'In Progress' })} taskCount={3} />);
+    render(
+      <ListPreview
+        list={createMockList({ title: 'In Progress' })}
+        taskCount={3}
+      />,
+    );
 
     expect(
       screen.getByRole('heading', { name: 'In Progress' }),

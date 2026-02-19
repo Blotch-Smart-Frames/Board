@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Timestamp } from 'firebase/firestore';
 import type { Task } from '../types/board';
 
 vi.mock('../config/firebase', () => ({
@@ -79,7 +80,9 @@ describe('syncService', () => {
 
       const task = createMockTask({
         calendarSyncEnabled: true,
-        dueDate: { toDate: () => new Date('2024-01-15') } as any,
+        dueDate: {
+          toDate: () => new Date('2024-01-15'),
+        } as unknown as Timestamp,
       });
 
       const result = await syncService.syncTaskToCalendar('board-1', task);
@@ -99,7 +102,9 @@ describe('syncService', () => {
       const task = createMockTask({
         calendarSyncEnabled: true,
         calendarEventId: 'event-1',
-        dueDate: { toDate: () => new Date('2024-01-15') } as any,
+        dueDate: {
+          toDate: () => new Date('2024-01-15'),
+        } as unknown as Timestamp,
       });
 
       const result = await syncService.syncTaskToCalendar('board-1', task);
@@ -145,7 +150,9 @@ describe('syncService', () => {
       mockCreateEvent.mockResolvedValue({ id: 'event-1' });
 
       const task = createMockTask({
-        dueDate: { toDate: () => new Date('2024-01-15') } as any,
+        dueDate: {
+          toDate: () => new Date('2024-01-15'),
+        } as unknown as Timestamp,
       });
 
       const result = await syncService.enableCalendarSync('board-1', task);

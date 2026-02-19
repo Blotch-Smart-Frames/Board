@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CurrentTimeLine } from './CurrentTimeLine';
 
 const mockValueToPixels = vi.fn();

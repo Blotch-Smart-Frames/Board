@@ -164,8 +164,7 @@ describe('sprintService', () => {
       const result = await calculateNextSprintDates('board-1');
 
       // Default 14 days
-      const diffMs =
-        result.endDate.getTime() - result.startDate.getTime();
+      const diffMs = result.endDate.getTime() - result.startDate.getTime();
       const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
       expect(diffDays).toBe(14); // 14 days duration, end time is 23:59:59
     });

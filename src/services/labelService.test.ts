@@ -110,9 +110,7 @@ describe('labelService', () => {
   describe('initializeDefaultLabels', () => {
     it('returns existing labels when they exist', async () => {
       mockGetDocs.mockResolvedValue({
-        docs: [
-          { id: 'l1', data: () => ({ name: 'Existing', color: '#000' }) },
-        ],
+        docs: [{ id: 'l1', data: () => ({ name: 'Existing', color: '#000' }) }],
       });
 
       const { initializeDefaultLabels } = await import('./labelService');
@@ -128,13 +126,9 @@ describe('labelService', () => {
 
       // First call: getBoardLabels returns empty (no existing labels)
       // Second call: getBoardLabels returns created labels
-      mockGetDocs
-        .mockResolvedValueOnce({ docs: [] })
-        .mockResolvedValueOnce({
-          docs: [
-            { id: 'l1', data: () => ({ name: 'Hot', color: '#EF4444' }) },
-          ],
-        });
+      mockGetDocs.mockResolvedValueOnce({ docs: [] }).mockResolvedValueOnce({
+        docs: [{ id: 'l1', data: () => ({ name: 'Hot', color: '#EF4444' }) }],
+      });
 
       const { initializeDefaultLabels } = await import('./labelService');
       const result = await initializeDefaultLabels('board-1');

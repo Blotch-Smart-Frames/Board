@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { useTimelineData } from './useTimelineData';
+import type { Timestamp } from 'firebase/firestore';
 import type { Task, List } from '../types/board';
 
 // useTimelineData is a pure function (no hooks), so we can test it directly
@@ -49,9 +50,21 @@ describe('useTimelineData', () => {
     const dueDate = { toMillis: () => 2000 };
 
     const tasks = [
-      createMockTask({ id: 't1', startDate: startDate as any, dueDate: dueDate as any }),
-      createMockTask({ id: 't2', startDate: undefined, dueDate: dueDate as any }),
-      createMockTask({ id: 't3', startDate: startDate as any, dueDate: undefined }),
+      createMockTask({
+        id: 't1',
+        startDate: startDate as unknown as Timestamp,
+        dueDate: dueDate as unknown as Timestamp,
+      }),
+      createMockTask({
+        id: 't2',
+        startDate: undefined,
+        dueDate: dueDate as unknown as Timestamp,
+      }),
+      createMockTask({
+        id: 't3',
+        startDate: startDate as unknown as Timestamp,
+        dueDate: undefined,
+      }),
       createMockTask({ id: 't4', startDate: undefined, dueDate: undefined }),
     ];
 
@@ -67,8 +80,8 @@ describe('useTimelineData', () => {
     const tasks = [
       createMockTask({
         id: 't1',
-        startDate: { toMillis: () => 1000 } as any,
-        dueDate: { toMillis: () => 5000 } as any,
+        startDate: { toMillis: () => 1000 } as unknown as Timestamp,
+        dueDate: { toMillis: () => 5000 } as unknown as Timestamp,
       }),
     ];
 
@@ -83,8 +96,8 @@ describe('useTimelineData', () => {
       createMockTask({
         id: 't1',
         listId: 'list-2',
-        startDate: { toMillis: () => 1000 } as any,
-        dueDate: { toMillis: () => 5000 } as any,
+        startDate: { toMillis: () => 1000 } as unknown as Timestamp,
+        dueDate: { toMillis: () => 5000 } as unknown as Timestamp,
       }),
     ];
 

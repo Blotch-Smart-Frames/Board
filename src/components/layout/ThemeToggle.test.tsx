@@ -63,6 +63,8 @@ describe('ThemeToggle', () => {
     await user.click(screen.getByText('Light'));
 
     // Menu should close (items should not be visible as menuitem role)
-    expect(screen.queryByRole('menuitem', { name: 'Light' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('menuitem', { name: 'Light' }),
+    ).not.toBeInTheDocument();
   });
 });

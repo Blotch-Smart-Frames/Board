@@ -24,10 +24,13 @@ export default defineConfig([
     plugins: { react },
     rules: {
       '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
-      'react/function-component-definition': ['error', {
-        namedComponents: 'arrow-function',
-        unnamedComponents: 'arrow-function',
-      }],
+      'react/function-component-definition': [
+        'error',
+        {
+          namedComponents: 'arrow-function',
+          unnamedComponents: 'arrow-function',
+        },
+      ],
     },
   },
 ]);
