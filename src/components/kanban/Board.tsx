@@ -32,6 +32,7 @@ import type {
   UpdateTaskInput,
 } from '../../types/board';
 import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
+import { AssigneeFilter } from './AssigneeFilter';
 
 type BoardProps = {
   boardId: string;
@@ -39,7 +40,11 @@ type BoardProps = {
   collaborators?: Collaborator[];
 };
 
-export const Board = ({ boardId, viewMode, collaborators = [] }: BoardProps) => {
+export const Board = ({
+  boardId,
+  viewMode,
+  collaborators = [],
+}: BoardProps) => {
   const {
     board,
     lists,
@@ -59,17 +64,22 @@ export const Board = ({ boardId, viewMode, collaborators = [] }: BoardProps) => 
   const { labels } = useLabelsQuery(boardId);
   const { sprints } = useSprintsQuery(boardId);
 
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [addingToListId, setAddingToListId] = useState<string | null>(null);
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(null);
+
+  const filteredTasks = selectedAssigneeId
+    ? tasks.filter((t) => t.assignedTo?.includes(selectedAssigneeId))
+    : tasks;
+
   const sortedLists = [...lists].sort((a, b) => compareOrder(a.order, b.order));
   const listsWithTasks = sortedLists.map((list) => ({
     ...list,
-    tasks: tasks
+    tasks: filteredTasks
       .filter((task) => task.listId === list.id)
       .sort((a, b) => compareOrder(a.order, b.order)),
   }));
   const { syncTaskToCalendar } = useCalendarSync(boardId, tasks);
-
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [addingToListId, setAddingToListId] = useState<string | null>(null);
 
   const editingTask = editingTaskId
     ? (tasks.find((t) => t.id === editingTaskId) ?? null)
@@ -194,6 +204,11 @@ export const Board = ({ boardId, viewMode, collaborators = [] }: BoardProps) => 
   return (
     <BoardBackground imageUrl={board.backgroundImageUrl}>
       <Box className="flex h-full flex-col">
+        <AssigneeFilter
+          collaborators={collaborators}
+          selectedAssigneeId={selectedAssigneeId}
+          onFilterChange={setSelectedAssigneeId}
+        />
         {viewMode === 'kanban' ? (
           <DndContext
             sensors={sensors}
@@ -252,7 +267,7 @@ export const Board = ({ boardId, viewMode, collaborators = [] }: BoardProps) => 
           </DndContext>
         ) : (
           <TimelineView
-            tasks={tasks}
+            tasks={filteredTasks}
             lists={lists}
             labels={labels}
             sprints={sprints}
