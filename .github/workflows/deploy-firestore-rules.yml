@@ -1,0 +1,24 @@
+name: Deploy Firestore Rules
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - firestore.rules
+
+jobs:
+  deploy-rules:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy Firestore rules
+        uses: w9jds/firebase-action@v13.22.1
+        with:
+          args: deploy --only firestore:rules
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
