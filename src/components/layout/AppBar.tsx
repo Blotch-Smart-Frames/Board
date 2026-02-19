@@ -18,6 +18,7 @@ import {
   Logout as LogoutIcon,
   ViewKanban as KanbanIcon,
   ViewTimeline as TimelineIcon,
+  Share as ShareIcon,
 } from '@mui/icons-material';
 import { useAuthQuery } from '../../hooks/useAuthQuery';
 import { UserAvatar } from '../collaboration/UserAvatar';
@@ -28,6 +29,8 @@ type ViewMode = 'kanban' | 'timeline';
 type AppBarProps = {
   title?: string;
   onMenuClick?: () => void;
+  showShare?: boolean;
+  onShare?: () => void;
   viewMode?: ViewMode;
   onViewModeChange?: (mode: ViewMode) => void;
 };
@@ -35,6 +38,8 @@ type AppBarProps = {
 export const AppBar = ({
   title = 'Board by Blotch',
   onMenuClick,
+  showShare,
+  onShare,
   viewMode,
   onViewModeChange,
 }: AppBarProps) => {
@@ -90,6 +95,12 @@ export const AppBar = ({
               Timeline
             </ToggleButton>
           </ToggleButtonGroup>
+        )}
+
+        {showShare && onShare && (
+          <IconButton onClick={onShare} aria-label="Share">
+            <ShareIcon />
+          </IconButton>
         )}
 
         <ThemeToggle />

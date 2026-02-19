@@ -90,6 +90,8 @@ export const App = () => {
           <AppBar
             title={selectedBoard?.title || 'Board by Blotch'}
             onMenuClick={() => setDrawerOpen(!drawerOpen)}
+            showShare={!!selectedBoardId}
+            onShare={() => setSharingBoardId(selectedBoardId)}
             viewMode={selectedBoardId ? viewMode : undefined}
             onViewModeChange={selectedBoardId ? setViewMode : undefined}
           />
