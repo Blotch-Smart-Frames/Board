@@ -33,6 +33,7 @@ import type {
 } from '../../types/board';
 import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
 import { AssigneeFilter } from './AssigneeFilter';
+import { LabelFilter } from './LabelFilter';
 
 type BoardProps = {
   boardId: string;
@@ -69,10 +70,17 @@ export const Board = ({
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(
     null,
   );
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
 
-  const filteredTasks = selectedAssigneeId
-    ? tasks.filter((t) => t.assignedTo?.includes(selectedAssigneeId))
-    : tasks;
+  const filteredTasks = tasks
+    .filter(
+      (t) => !selectedAssigneeId || t.assignedTo?.includes(selectedAssigneeId),
+    )
+    .filter(
+      (t) =>
+        selectedLabelIds.length === 0 ||
+        t.labelIds?.some((id) => selectedLabelIds.includes(id)),
+    );
 
   const sortedLists = [...lists].sort((a, b) => compareOrder(a.order, b.order));
   const listsWithTasks = sortedLists.map((list) => ({
@@ -206,11 +214,20 @@ export const Board = ({
   return (
     <BoardBackground imageUrl={board.backgroundImageUrl}>
       <Box className="flex h-full flex-col">
-        <AssigneeFilter
-          collaborators={collaborators}
-          selectedAssigneeId={selectedAssigneeId}
-          onFilterChange={setSelectedAssigneeId}
-        />
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1 }}
+        >
+          <LabelFilter
+            labels={labels}
+            selectedLabelIds={selectedLabelIds}
+            onFilterChange={setSelectedLabelIds}
+          />
+          <AssigneeFilter
+            collaborators={collaborators}
+            selectedAssigneeId={selectedAssigneeId}
+            onFilterChange={setSelectedAssigneeId}
+          />
+        </Box>
         {viewMode === 'kanban' ? (
           <DndContext
             sensors={sensors}

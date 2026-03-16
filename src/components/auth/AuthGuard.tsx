@@ -28,13 +28,14 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
           <Typography
             variant="h4"
             component="h1"
-            className="mb-2 font-bold text-gray-800"
+            className="mb-2 font-bold"
+            color="text.primary"
           >
             Board{' '}
             <Typography
               variant="caption"
               component="sub"
-              className="text-gray-500"
+              color="text.secondary"
             >
               by Blotch
             </Typography>

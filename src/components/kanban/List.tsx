@@ -145,7 +145,7 @@ export const List = ({
             background: 'transparent',
           },
           '&::-webkit-scrollbar-thumb': {
-            backgroundColor: '#c1c1c1',
+            backgroundColor: 'text.disabled',
             borderRadius: '3px',
           },
         }}
@@ -164,9 +164,13 @@ export const List = ({
         </SortableContext>
 
         {activeTasks.length === 0 && (
-          <Box className="py-4 text-center text-sm text-gray-400">
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            className="py-4 text-center"
+          >
             No tasks yet
-          </Box>
+          </Typography>
         )}
 
         {completedTasks.length > 0 && (
@@ -196,7 +200,7 @@ export const List = ({
         )}
       </Box>
 
-      <Box className="border-t border-gray-200 p-2">
+      <Box className="border-t p-2" sx={{ borderColor: 'divider' }}>
         {isAddingTask ? (
           <Box>
             <TextField

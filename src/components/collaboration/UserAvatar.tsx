@@ -47,6 +47,7 @@ export const UserAvatar = ({
         height: avatarSize,
         fontSize: avatarSize * 0.4,
         backgroundColor: photoURL ? undefined : stringToColor(name),
+        color: photoURL ? undefined : '#fff',
       }}
     >
       {!photoURL && getInitials(name)}

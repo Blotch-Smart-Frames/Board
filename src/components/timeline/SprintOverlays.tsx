@@ -1,4 +1,5 @@
-import { Box, Typography, alpha } from '@mui/material';
+import { Box, Typography, alpha, useTheme } from '@mui/material';
+import { blue, orange, green, purple } from '@mui/material/colors';
 import { useTimelineContext } from 'dnd-timeline';
 import { format } from 'date-fns';
 import type { Sprint } from '../../types/board';
@@ -11,13 +12,8 @@ type SprintOverlaysProps = {
   headerHeight: number;
 };
 
-// Alternating colors for sprints
-const SPRINT_COLORS = [
-  '#E3F2FD', // light blue
-  '#FFF3E0', // light orange
-  '#E8F5E9', // light green
-  '#F3E5F5', // light purple
-];
+// Base colors for sprint overlays
+const SPRINT_BASE_COLORS = [blue[500], orange[500], green[500], purple[500]];
 
 export const SprintOverlays = ({
   sprints,
@@ -26,6 +22,8 @@ export const SprintOverlays = ({
   headerHeight,
 }: SprintOverlaysProps) => {
   const { range, valueToPixels } = useTimelineContext();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
 
   // Sort sprints by order
   const sortedSprints = [...sprints].sort((a, b) =>
@@ -63,7 +61,8 @@ export const SprintOverlays = ({
         const originalIndex = sortedSprints.findIndex(
           (s) => s.id === sprint.id,
         );
-        const bgColor = SPRINT_COLORS[originalIndex % SPRINT_COLORS.length];
+        const bgColor =
+          SPRINT_BASE_COLORS[originalIndex % SPRINT_BASE_COLORS.length];
 
         // Format dates for label
         const startLabel = format(sprint.startDate.toDate(), 'MMM d');
@@ -78,10 +77,10 @@ export const SprintOverlays = ({
               top: 0,
               width,
               height: totalHeight,
-              backgroundColor: alpha(bgColor, 0.4),
+              backgroundColor: alpha(bgColor, isDark ? 0.15 : 0.2),
               borderLeft: '2px solid',
               borderRight: '2px solid',
-              borderColor: alpha(bgColor, 0.8),
+              borderColor: alpha(bgColor, isDark ? 0.4 : 0.5),
               zIndex: 0,
               pointerEvents: 'none',
               display: 'flex',
@@ -93,11 +92,11 @@ export const SprintOverlays = ({
               sx={{
                 position: 'sticky',
                 top: 0,
-                backgroundColor: alpha(bgColor, 0.9),
+                backgroundColor: alpha(bgColor, isDark ? 0.25 : 0.4),
                 px: 1,
                 py: 0.5,
                 borderBottom: '1px solid',
-                borderColor: alpha(bgColor, 0.8),
+                borderColor: alpha(bgColor, isDark ? 0.4 : 0.5),
                 zIndex: 1,
               }}
             >

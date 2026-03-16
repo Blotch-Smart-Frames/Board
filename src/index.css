@@ -38,10 +38,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: light-dark(#c1c1c1, #555);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: light-dark(#a8a8a8, #777);
 }

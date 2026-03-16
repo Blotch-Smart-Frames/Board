@@ -6,7 +6,8 @@ type LabelChipProps = {
   label: Label;
   size?: ChipProps['size'];
   onClick?: () => void;
-  onDelete?: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onDelete?: (event: any) => void;
 };
 
 export const LabelChip = ({

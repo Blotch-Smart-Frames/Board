@@ -24,14 +24,26 @@ export const GoogleAuthButton = () => {
       onClick={handleClick}
       disabled={isLoading}
       startIcon={isLoading ? <CircularProgress size={20} /> : <GoogleIcon />}
-      sx={{
-        backgroundColor: '#fff',
-        color: '#757575',
-        border: '1px solid #dadce0',
-        '&:hover': {
-          backgroundColor: '#f8f9fa',
+      sx={[
+        {
+          backgroundColor: '#fff',
+          color: '#757575',
+          border: '1px solid #dadce0',
+          '&:hover': {
+            backgroundColor: '#f8f9fa',
+          },
         },
-      }}
+        (theme) =>
+          theme.applyStyles('dark', {
+            backgroundColor: 'background.paper',
+            color: 'text.primary',
+            border: '1px solid',
+            borderColor: 'divider',
+            '&:hover': {
+              backgroundColor: 'action.hover',
+            },
+          }),
+      ]}
     >
       {isLoading ? 'Signing in...' : 'Sign in with Google'}
     </Button>
