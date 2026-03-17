@@ -198,6 +198,107 @@ describe('Task', () => {
     });
   });
 
+  describe('Attachment indicator', () => {
+    it('shows attachment count when attachments exist', () => {
+      const task = createMockTask({
+        attachments: [
+          {
+            id: 'att-1',
+            fileName: 'photo.jpg',
+            fileSize: 1024,
+            fileType: 'image/jpeg',
+            storagePath: 'path/photo.jpg',
+            downloadUrl: 'https://example.com/photo.jpg',
+            uploadedAt: Date.now(),
+          },
+          {
+            id: 'att-2',
+            fileName: 'video.mp4',
+            fileSize: 2048,
+            fileType: 'video/mp4',
+            storagePath: 'path/video.mp4',
+            downloadUrl: 'https://example.com/video.mp4',
+            uploadedAt: Date.now(),
+          },
+        ],
+      });
+      render(<Task task={task} />);
+
+      expect(screen.getByText('2')).toBeInTheDocument();
+      expect(screen.getByTestId('AttachFileIcon')).toBeInTheDocument();
+    });
+
+    it('does not show attachment indicator when no attachments', () => {
+      const task = createMockTask({ attachments: undefined });
+      render(<Task task={task} />);
+
+      expect(screen.queryByTestId('AttachFileIcon')).not.toBeInTheDocument();
+    });
+
+    it('does not show attachment indicator for empty attachments array', () => {
+      const task = createMockTask({ attachments: [] });
+      render(<Task task={task} />);
+
+      expect(screen.queryByTestId('AttachFileIcon')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('View functionality', () => {
+    it('calls onView when card is clicked', async () => {
+      const user = userEvent.setup();
+      const task = createMockTask();
+      const onView = vi.fn();
+      render(<Task task={task} onView={onView} />);
+
+      const heading = screen.getByRole('heading', { name: task.title });
+      await user.click(heading);
+      expect(onView).toHaveBeenCalledWith(task);
+    });
+
+    it('does not call onView when edit button is clicked', async () => {
+      const user = userEvent.setup();
+      const task = createMockTask();
+      const onView = vi.fn();
+      const onEdit = vi.fn();
+      render(<Task task={task} onView={onView} onEdit={onEdit} />);
+
+      const editButton = screen.getByTestId('EditIcon').closest('button');
+      if (editButton) {
+        await user.click(editButton);
+      }
+      expect(onView).not.toHaveBeenCalled();
+      expect(onEdit).toHaveBeenCalledWith(task);
+    });
+
+    it('does not call onView when checkbox is clicked', async () => {
+      const user = userEvent.setup();
+      const task = createMockTask();
+      const onView = vi.fn();
+      const onUpdate = vi.fn();
+      render(<Task task={task} onView={onView} onUpdate={onUpdate} />);
+
+      const checkbox = screen.getByRole('checkbox');
+      await user.click(checkbox);
+      expect(onView).not.toHaveBeenCalled();
+    });
+
+    it('shows pointer cursor when onView is provided', () => {
+      const task = createMockTask();
+      const { container } = render(<Task task={task} onView={vi.fn()} />);
+
+      const card = container.querySelector('.MuiCard-root');
+      expect(card).toHaveClass('cursor-pointer');
+    });
+
+    it('shows grab cursor when onView is not provided', () => {
+      const task = createMockTask();
+      const { container } = render(<Task task={task} />);
+
+      const card = container.querySelector('.MuiCard-root');
+      expect(card).toHaveClass('cursor-grab');
+    });
+  });
+
   describe('Long content handling', () => {
     it('handles long task titles', () => {
       const longTitle = 'A'.repeat(100);

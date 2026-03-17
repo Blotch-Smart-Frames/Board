@@ -11,6 +11,7 @@ import {
   Checkbox,
 } from '@mui/material';
 import {
+  AttachFile as AttachFileIcon,
   CalendarMonth as CalendarIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
@@ -28,6 +29,7 @@ type TaskProps = {
   labels?: Label[];
   collaborators?: Collaborator[];
   onEdit?: (task: TaskType) => void;
+  onView?: (task: TaskType) => void;
   onUpdate?: (taskId: string, updates: UpdateTaskInput) => void;
   isDragging?: boolean;
 };
@@ -37,6 +39,7 @@ export const Task = ({
   labels = [],
   collaborators = [],
   onEdit,
+  onView,
   onUpdate,
   isDragging = false,
 }: TaskProps) => {
@@ -80,13 +83,21 @@ export const Task = ({
     onUpdate(task.id, { completedAt: newCompletedAt });
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (!onView) return;
+    if ((e.target as HTMLElement).closest('button, input[type="checkbox"]'))
+      return;
+    onView(task);
+  };
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className={`mb-2 cursor-grab active:cursor-grabbing ${
+      onClick={handleCardClick}
+      className={`mb-2 ${onView ? 'cursor-pointer' : 'cursor-grab'} active:cursor-grabbing ${
         isDragging || isSortableDragging
           ? 'ring-primary-500 shadow-lg ring-2'
           : ''
@@ -157,6 +168,16 @@ export const Task = ({
               )}
 
               <TaskAssignees assignedUsers={assignedUsers} />
+
+              {task.attachments && task.attachments.length > 0 && (
+                <Chip
+                  size="small"
+                  icon={<AttachFileIcon fontSize="small" />}
+                  label={task.attachments.length}
+                  variant="outlined"
+                  className="h-6!"
+                />
+              )}
 
               {task.calendarSyncEnabled && (
                 <Tooltip title="Synced with Google Calendar">

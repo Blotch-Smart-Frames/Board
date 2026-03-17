@@ -16,16 +16,19 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { Close as CloseIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { useState } from 'react';
 import { useForm } from '@tanstack/react-form';
 import { LabelPicker } from './LabelPicker';
 import { AssigneePicker } from './AssigneePicker';
 import { ColorPicker } from '../common/ColorPicker';
 import { SprintPicker } from '../sprints';
+import { AttachmentSection } from '../attachments/AttachmentSection';
 import type {
   Task,
   CreateTaskInput,
   UpdateTaskInput,
   Board,
+  Attachment,
 } from '../../types/board';
 import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
 
@@ -51,6 +54,9 @@ export const TaskDialog = ({
   onDelete,
 }: TaskDialogProps) => {
   const isEditing = !!task;
+  const [attachments, setAttachments] = useState<Attachment[]>(
+    task?.attachments ?? [],
+  );
 
   const form = useForm({
     defaultValues: {
@@ -75,6 +81,7 @@ export const TaskDialog = ({
         assignedTo: value.assignedTo,
         color: value.color || (isEditing ? null : undefined),
         sprintId: value.sprintId || (isEditing ? null : undefined),
+        attachments,
       };
       onSave(data);
       onClose();
@@ -322,6 +329,18 @@ export const TaskDialog = ({
                   </form.Field>
                 )}
               </form.Subscribe>
+
+              {isEditing && task && (
+                <>
+                  <Divider />
+                  <AttachmentSection
+                    boardId={boardId}
+                    taskId={task.id}
+                    attachments={attachments}
+                    onChange={setAttachments}
+                  />
+                </>
+              )}
             </Box>
           </DialogContent>
 

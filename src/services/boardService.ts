@@ -22,8 +22,11 @@ import type {
   CreateListInput,
   CreateTaskInput,
   UpdateTaskInput,
+  CreateCommentInput,
+  UpdateCommentInput,
 } from '../types/board';
 import { initializeDefaultLabels } from './labelService';
+import { deleteTaskAttachment } from './storageService';
 import { getOrderAtEnd } from '../utils/ordering';
 
 // Board operations
@@ -195,6 +198,7 @@ export const addTask = async (
     createdBy: userId,
     assignedTo: input.assignedTo || [],
     labelIds: input.labelIds || [],
+    attachments: input.attachments || [],
     sprintId: input.sprintId || null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -252,6 +256,17 @@ export const deleteTask = async (
   boardId: string,
   taskId: string,
 ): Promise<void> => {
+  const taskDoc = await getDoc(doc(db, 'boards', boardId, 'tasks', taskId));
+  if (taskDoc.exists()) {
+    const task = taskDoc.data();
+    if (task.attachments?.length) {
+      await Promise.all(
+        task.attachments.map((a: { storagePath: string }) =>
+          deleteTaskAttachment(a.storagePath).catch(() => {}),
+        ),
+      );
+    }
+  }
   await deleteDoc(doc(db, 'boards', boardId, 'tasks', taskId));
 };
 
@@ -266,4 +281,44 @@ export const moveTask = async (
     order: newOrder,
     updatedAt: serverTimestamp(),
   });
+};
+
+// Comment operations
+export const addComment = async (
+  boardId: string,
+  taskId: string,
+  input: CreateCommentInput,
+  userId: string,
+): Promise<void> => {
+  await addDoc(collection(db, 'boards', boardId, 'tasks', taskId, 'comments'), {
+    text: input.text,
+    authorId: userId,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+};
+
+export const updateComment = async (
+  boardId: string,
+  taskId: string,
+  commentId: string,
+  updates: UpdateCommentInput,
+): Promise<void> => {
+  await updateDoc(
+    doc(db, 'boards', boardId, 'tasks', taskId, 'comments', commentId),
+    {
+      text: updates.text,
+      updatedAt: serverTimestamp(),
+    },
+  );
+};
+
+export const deleteComment = async (
+  boardId: string,
+  taskId: string,
+  commentId: string,
+): Promise<void> => {
+  await deleteDoc(
+    doc(db, 'boards', boardId, 'tasks', taskId, 'comments', commentId),
+  );
 };

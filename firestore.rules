@@ -47,6 +47,15 @@ service cloud.firestore {
       // Tasks subcollection
       match /tasks/{taskId} {
         allow read, write: if isAuthenticated() && isBoardMember(boardId);
+
+        // Comments subcollection
+        match /comments/{commentId} {
+          allow read: if isAuthenticated() && isBoardMember(boardId);
+          allow create: if isAuthenticated() && isBoardMember(boardId)
+                        && request.resource.data.authorId == request.auth.uid;
+          allow update, delete: if isAuthenticated() && isBoardMember(boardId)
+                                && resource.data.authorId == request.auth.uid;
+        }
       }
 
       // Labels subcollection

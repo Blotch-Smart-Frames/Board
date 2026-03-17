@@ -39,6 +39,7 @@ type ListProps = {
   onDelete: () => void;
   onAddTask: (input: CreateTaskInput) => void;
   onEditTask: (task: TaskType) => void;
+  onViewTask?: (task: TaskType) => void;
   onUpdateTask?: (taskId: string, updates: UpdateTaskInput) => void;
   isDragging?: boolean;
 };
@@ -52,6 +53,7 @@ export const List = ({
   onDelete,
   onAddTask,
   onEditTask,
+  onViewTask,
   onUpdateTask,
   isDragging = false,
 }: ListProps) => {
@@ -158,6 +160,7 @@ export const List = ({
               labels={labels}
               collaborators={collaborators}
               onEdit={onEditTask}
+              onView={onViewTask}
               onUpdate={onUpdateTask}
             />
           ))}
@@ -192,6 +195,7 @@ export const List = ({
                   labels={labels}
                   collaborators={collaborators}
                   onEdit={onEditTask}
+                  onView={onViewTask}
                   onUpdate={onUpdateTask}
                 />
               ))}

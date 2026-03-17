@@ -49,6 +49,16 @@ export type UpdateLabelInput = {
   emoji?: string;
 };
 
+export type Attachment = {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  storagePath: string;
+  downloadUrl: string;
+  uploadedAt: number;
+};
+
 export type Board = {
   id: string;
   title: string;
@@ -82,6 +92,7 @@ export type Task = {
   labelIds?: string[];
   color?: string;
   sprintId?: string;
+  attachments?: Attachment[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
   completedAt?: Timestamp;
@@ -105,6 +116,7 @@ export type CreateTaskInput = {
   labelIds?: string[];
   color?: string;
   sprintId?: string;
+  attachments?: Attachment[];
 };
 
 export type UpdateTaskInput = {
@@ -118,6 +130,7 @@ export type UpdateTaskInput = {
   color?: string | null;
   sprintId?: string | null;
   completedAt?: Date | null;
+  attachments?: Attachment[];
 };
 
 export type CreateListInput = {
@@ -126,6 +139,22 @@ export type CreateListInput = {
 
 export type UpdateListInput = {
   title?: string;
+};
+
+export type Comment = {
+  id: string;
+  text: string;
+  authorId: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
+
+export type CreateCommentInput = {
+  text: string;
+};
+
+export type UpdateCommentInput = {
+  text: string;
 };
 
 export type CreateBoardInput = {

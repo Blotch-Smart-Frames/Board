@@ -8,6 +8,8 @@ export const queryKeys = {
     tasks: (boardId: string) => ['boards', boardId, 'tasks'] as const,
     labels: (boardId: string) => ['boards', boardId, 'labels'] as const,
     sprints: (boardId: string) => ['boards', boardId, 'sprints'] as const,
+    comments: (boardId: string, taskId: string) =>
+      ['boards', boardId, 'tasks', taskId, 'comments'] as const,
   },
   users: {
     all: ['users'] as const,

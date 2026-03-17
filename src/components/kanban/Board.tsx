@@ -17,6 +17,7 @@ import { ListPreview } from './ListPreview';
 import { Task } from './Task';
 import { AddListButton } from './AddListButton';
 import { TaskDialog } from './TaskDialog';
+import { TaskDetailDialog } from './TaskDetailDialog';
 import { BoardBackground } from './BoardBackground';
 import { BackgroundImageUpload } from './BackgroundImageUpload';
 import { TimelineView } from '../timeline';
@@ -67,6 +68,7 @@ export const Board = ({
 
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [addingToListId, setAddingToListId] = useState<string | null>(null);
+  const [viewingTaskId, setViewingTaskId] = useState<string | null>(null);
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(
     null,
   );
@@ -95,7 +97,12 @@ export const Board = ({
     ? (tasks.find((t) => t.id === editingTaskId) ?? null)
     : null;
 
+  const viewingTask = viewingTaskId
+    ? (tasks.find((t) => t.id === viewingTaskId) ?? null)
+    : null;
+
   const handleEditTask = (task: TaskType) => setEditingTaskId(task.id);
+  const handleViewTask = (task: TaskType) => setViewingTaskId(task.id);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -255,6 +262,7 @@ export const Board = ({
                       onDelete={() => handleDeleteList(list.id)}
                       onAddTask={(input) => handleAddTask(list.id, input)}
                       onEditTask={handleEditTask}
+                      onViewTask={handleViewTask}
                       onUpdateTask={updateTask}
                     />
                   ))}
@@ -295,6 +303,21 @@ export const Board = ({
             moveTask={moveTask}
           />
         )}
+
+        <TaskDetailDialog
+          open={!!viewingTask}
+          boardId={boardId}
+          task={viewingTask}
+          labels={labels}
+          collaborators={collaborators}
+          onClose={() => setViewingTaskId(null)}
+          onEdit={() => {
+            if (viewingTask) {
+              setViewingTaskId(null);
+              setEditingTaskId(viewingTask.id);
+            }
+          }}
+        />
 
         <TaskDialog
           key={

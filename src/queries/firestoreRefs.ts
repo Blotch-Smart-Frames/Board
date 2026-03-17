@@ -8,7 +8,7 @@ import {
   type Query,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import type { Board, List, Task, Label, Sprint } from '../types/board';
+import type { Board, List, Task, Label, Sprint, Comment } from '../types/board';
 
 // Board document reference
 export const getBoardRef = (boardId: string): DocumentReference<Board> =>
@@ -53,3 +53,13 @@ export const getBoardSprintsQuery = (boardId: string): Query<Sprint> =>
     collection(db, 'boards', boardId, 'sprints'),
     orderBy('order'),
   ) as Query<Sprint>;
+
+// Task comments collection query
+export const getTaskCommentsQuery = (
+  boardId: string,
+  taskId: string,
+): Query<Comment> =>
+  query(
+    collection(db, 'boards', boardId, 'tasks', taskId, 'comments'),
+    orderBy('createdAt'),
+  ) as Query<Comment>;
