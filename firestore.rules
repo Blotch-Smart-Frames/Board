@@ -56,6 +56,12 @@ service cloud.firestore {
           allow update, delete: if isAuthenticated() && isBoardMember(boardId)
                                 && resource.data.authorId == request.auth.uid;
         }
+
+        // History subcollection (immutable)
+        match /history/{historyId} {
+          allow read: if isAuthenticated() && isBoardMember(boardId);
+          allow create: if isAuthenticated() && isBoardMember(boardId);
+        }
       }
 
       // Labels subcollection

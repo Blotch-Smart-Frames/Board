@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { TaskDetailDialog } from './TaskDetailDialog';
-import type { Task, Label } from '../../types/board';
+import type { Task, Label, List } from '../../types/board';
 import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
 import { Timestamp } from 'firebase/firestore';
 
@@ -20,6 +20,13 @@ vi.mock('../../hooks/useAuthQuery', () => ({
   useAuthQuery: () => ({
     user: { uid: 'user-1' },
     isAuthenticated: true,
+  }),
+}));
+
+vi.mock('../../hooks/useHistoryQuery', () => ({
+  useHistoryQuery: () => ({
+    history: [],
+    isLoading: false,
   }),
 }));
 
@@ -55,6 +62,27 @@ const mockCollaborators: Collaborator[] = [
   },
 ];
 
+const mockLists: List[] = [
+  {
+    id: 'list-1',
+    title: 'To Do',
+    order: 'a0',
+    createdAt: Timestamp.now(),
+  },
+  {
+    id: 'list-2',
+    title: 'In Progress',
+    order: 'a1',
+    createdAt: Timestamp.now(),
+  },
+  {
+    id: 'list-3',
+    title: 'Done',
+    order: 'a2',
+    createdAt: Timestamp.now(),
+  },
+];
+
 describe('TaskDetailDialog', () => {
   it('renders task title', () => {
     const task = createMockTask({ title: 'My Task' });
@@ -65,6 +93,7 @@ describe('TaskDetailDialog', () => {
         task={task}
         onClose={vi.fn()}
         onEdit={vi.fn()}
+        onAttachmentsChange={vi.fn()}
       />,
     );
 
@@ -80,6 +109,7 @@ describe('TaskDetailDialog', () => {
         task={task}
         onClose={vi.fn()}
         onEdit={vi.fn()}
+        onAttachmentsChange={vi.fn()}
       />,
     );
 
@@ -96,6 +126,7 @@ describe('TaskDetailDialog', () => {
         labels={mockLabels}
         onClose={vi.fn()}
         onEdit={vi.fn()}
+        onAttachmentsChange={vi.fn()}
       />,
     );
 
@@ -112,6 +143,7 @@ describe('TaskDetailDialog', () => {
         collaborators={mockCollaborators}
         onClose={vi.fn()}
         onEdit={vi.fn()}
+        onAttachmentsChange={vi.fn()}
       />,
     );
 
@@ -128,6 +160,7 @@ describe('TaskDetailDialog', () => {
         task={task}
         onClose={vi.fn()}
         onEdit={vi.fn()}
+        onAttachmentsChange={vi.fn()}
       />,
     );
 
@@ -143,6 +176,7 @@ describe('TaskDetailDialog', () => {
         task={task}
         onClose={vi.fn()}
         onEdit={vi.fn()}
+        onAttachmentsChange={vi.fn()}
       />,
     );
 
@@ -161,6 +195,7 @@ describe('TaskDetailDialog', () => {
         task={task}
         onClose={onClose}
         onEdit={vi.fn()}
+        onAttachmentsChange={vi.fn()}
       />,
     );
 
@@ -179,6 +214,7 @@ describe('TaskDetailDialog', () => {
         task={task}
         onClose={vi.fn()}
         onEdit={onEdit}
+        onAttachmentsChange={vi.fn()}
       />,
     );
 
@@ -194,9 +230,128 @@ describe('TaskDetailDialog', () => {
         task={null}
         onClose={vi.fn()}
         onEdit={vi.fn()}
+        onAttachmentsChange={vi.fn()}
       />,
     );
 
     expect(container.querySelector('.MuiDialog-root')).not.toBeInTheDocument();
+  });
+
+  it('displays the current list name in the dropdown', () => {
+    const task = createMockTask({ listId: 'list-1' });
+    render(
+      <TaskDetailDialog
+        open
+        boardId="board-1"
+        task={task}
+        lists={mockLists}
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+        onMoveTask={vi.fn()}
+        onAttachmentsChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('To Do')).toBeInTheDocument();
+  });
+
+  it('calls onMoveTask with the new list ID when changed', async () => {
+    const user = userEvent.setup();
+    const onMoveTask = vi.fn();
+    const task = createMockTask({ listId: 'list-1' });
+    render(
+      <TaskDetailDialog
+        open
+        boardId="board-1"
+        task={task}
+        lists={mockLists}
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+        onMoveTask={onMoveTask}
+        onAttachmentsChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('combobox', { name: 'List' }));
+    await user.click(screen.getByRole('option', { name: 'In Progress' }));
+    expect(onMoveTask).toHaveBeenCalledWith('list-2');
+  });
+
+  describe('Tabs', () => {
+    it('renders Details and History tabs', () => {
+      const task = createMockTask();
+      render(
+        <TaskDetailDialog
+          open
+          boardId="board-1"
+          task={task}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          onAttachmentsChange={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByRole('tab', { name: 'Details' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'History' })).toBeInTheDocument();
+    });
+
+    it('shows Details tab content by default', () => {
+      const task = createMockTask({ description: 'A description' });
+      render(
+        <TaskDetailDialog
+          open
+          boardId="board-1"
+          task={task}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          onAttachmentsChange={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText('A description')).toBeInTheDocument();
+      expect(screen.getByText('Comments')).toBeInTheDocument();
+    });
+
+    it('switches to History tab when clicked', async () => {
+      const user = userEvent.setup();
+      const task = createMockTask({ description: 'A description' });
+      render(
+        <TaskDetailDialog
+          open
+          boardId="board-1"
+          task={task}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          onAttachmentsChange={vi.fn()}
+        />,
+      );
+
+      await user.click(screen.getByRole('tab', { name: 'History' }));
+
+      expect(screen.queryByText('A description')).not.toBeInTheDocument();
+      expect(screen.queryByText('Comments')).not.toBeInTheDocument();
+      expect(screen.getByText('No activity yet')).toBeInTheDocument();
+    });
+
+    it('switches back to Details tab', async () => {
+      const user = userEvent.setup();
+      const task = createMockTask({ description: 'A description' });
+      render(
+        <TaskDetailDialog
+          open
+          boardId="board-1"
+          task={task}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          onAttachmentsChange={vi.fn()}
+        />,
+      );
+
+      await user.click(screen.getByRole('tab', { name: 'History' }));
+      await user.click(screen.getByRole('tab', { name: 'Details' }));
+
+      expect(screen.getByText('A description')).toBeInTheDocument();
+      expect(screen.getByText('Comments')).toBeInTheDocument();
+    });
   });
 });

@@ -10,6 +10,8 @@ export const queryKeys = {
     sprints: (boardId: string) => ['boards', boardId, 'sprints'] as const,
     comments: (boardId: string, taskId: string) =>
       ['boards', boardId, 'tasks', taskId, 'comments'] as const,
+    history: (boardId: string, taskId: string) =>
+      ['boards', boardId, 'tasks', taskId, 'history'] as const,
   },
   users: {
     all: ['users'] as const,

@@ -23,14 +23,19 @@ import { BackgroundImageUpload } from './BackgroundImageUpload';
 import { TimelineView } from '../timeline';
 import { useDragAndDrop } from '../../hooks/useDragAndDrop';
 import { useBoardQuery } from '../../hooks/useBoardQuery';
-import { compareOrder } from '../../utils/ordering';
+import { compareOrder, getOrderAtEnd } from '../../utils/ordering';
 import { useLabelsQuery } from '../../hooks/useLabelsQuery';
 import { useSprintsQuery } from '../../hooks/useSprintsQuery';
 import { useCalendarSync } from '../../hooks/useCalendarSync';
+import { useAuthQuery } from '../../hooks/useAuthQuery';
+import { addTaskHistory } from '../../services/boardService';
+import { diffTaskChanges } from '../../utils/taskHistoryDiff';
 import type {
   Task as TaskType,
+  Attachment,
   CreateTaskInput,
   UpdateTaskInput,
+  HistoryEntry,
 } from '../../types/board';
 import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
 import { AssigneeFilter } from './AssigneeFilter';
@@ -65,6 +70,7 @@ export const Board = ({
 
   const { labels } = useLabelsQuery(boardId);
   const { sprints } = useSprintsQuery(boardId);
+  const { user } = useAuthQuery();
 
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [addingToListId, setAddingToListId] = useState<string | null>(null);
@@ -112,6 +118,29 @@ export const Board = ({
     }),
   );
 
+  const handleDragMoveTask = async (
+    taskId: string,
+    newListId: string,
+    newOrder: string,
+  ) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (task && user && task.listId !== newListId) {
+      const fromList = sortedLists.find((l) => l.id === task.listId);
+      const toList = sortedLists.find((l) => l.id === newListId);
+      addTaskHistory(boardId, taskId, [
+        {
+          action: 'moved',
+          userId: user.uid,
+          metadata: {
+            fromListName: fromList?.title ?? '',
+            toListName: toList?.title ?? '',
+          },
+        },
+      ]).catch(() => {});
+    }
+    return moveTask(taskId, newListId, newOrder);
+  };
+
   const {
     activeId,
     getActiveTask,
@@ -123,7 +152,7 @@ export const Board = ({
     boardId,
     lists,
     tasks,
-    onMoveTask: moveTask,
+    onMoveTask: handleDragMoveTask,
     onReorderLists: reorderLists,
   });
 
@@ -165,10 +194,23 @@ export const Board = ({
   const handleSaveTask = async (data: CreateTaskInput | UpdateTaskInput) => {
     try {
       if (editingTask) {
-        await updateTask(editingTask.id, data as UpdateTaskInput);
+        const updates = data as UpdateTaskInput;
+        await updateTask(editingTask.id, updates);
         const updatedTask = { ...editingTask, ...data };
         if (updatedTask.calendarSyncEnabled && updatedTask.dueDate) {
           await syncTaskToCalendar(updatedTask as TaskType);
+        }
+        if (user) {
+          const entries = diffTaskChanges(editingTask, updates, {
+            userId: user.uid,
+            labels,
+            collaborators,
+            lists: sortedLists,
+            sprints,
+          });
+          if (entries.length > 0) {
+            addTaskHistory(boardId, editingTask.id, entries).catch(() => {});
+          }
         }
       } else if (addingToListId) {
         const task = await addTask(addingToListId, data as CreateTaskInput);
@@ -178,6 +220,23 @@ export const Board = ({
       }
     } catch (err) {
       console.error('Failed to save task:', err);
+    }
+  };
+
+  const handleUpdateTask = async (taskId: string, updates: UpdateTaskInput) => {
+    const task = tasks.find((t) => t.id === taskId);
+    await updateTask(taskId, updates);
+    if (task && user && updates.completedAt !== undefined) {
+      const wasCompleted = !!task.completedAt;
+      const isNowCompleted = !!updates.completedAt;
+      if (wasCompleted !== isNowCompleted) {
+        addTaskHistory(boardId, taskId, [
+          {
+            action: isNowCompleted ? 'completed' : 'reopened',
+            userId: user.uid,
+          },
+        ]).catch(() => {});
+      }
     }
   };
 
@@ -263,7 +322,7 @@ export const Board = ({
                       onAddTask={(input) => handleAddTask(list.id, input)}
                       onEditTask={handleEditTask}
                       onViewTask={handleViewTask}
-                      onUpdateTask={updateTask}
+                      onUpdateTask={handleUpdateTask}
                     />
                   ))}
 
@@ -309,12 +368,72 @@ export const Board = ({
           boardId={boardId}
           task={viewingTask}
           labels={labels}
+          lists={sortedLists}
           collaborators={collaborators}
           onClose={() => setViewingTaskId(null)}
           onEdit={() => {
             if (viewingTask) {
               setViewingTaskId(null);
               setEditingTaskId(viewingTask.id);
+            }
+          }}
+          onAttachmentsChange={(attachments: Attachment[]) => {
+            if (viewingTask) {
+              updateTask(viewingTask.id, { attachments });
+              if (user) {
+                const oldAttachments = viewingTask.attachments ?? [];
+                const oldIds = new Set(oldAttachments.map((a) => a.id));
+                const newIds = new Set(attachments.map((a) => a.id));
+                const entries: Omit<HistoryEntry, 'id' | 'createdAt'>[] = [];
+                for (const a of attachments) {
+                  if (!oldIds.has(a.id)) {
+                    entries.push({
+                      action: 'attachment_added',
+                      userId: user.uid,
+                      metadata: { fileName: a.fileName },
+                    });
+                  }
+                }
+                for (const a of oldAttachments) {
+                  if (!newIds.has(a.id)) {
+                    entries.push({
+                      action: 'attachment_removed',
+                      userId: user.uid,
+                      metadata: { fileName: a.fileName },
+                    });
+                  }
+                }
+                if (entries.length > 0) {
+                  addTaskHistory(boardId, viewingTask.id, entries).catch(
+                    () => {},
+                  );
+                }
+              }
+            }
+          }}
+          onMoveTask={(newListId) => {
+            if (viewingTask && newListId !== viewingTask.listId) {
+              const targetListTasks = tasks.filter(
+                (t) => t.listId === newListId,
+              );
+              const newOrder = getOrderAtEnd(targetListTasks);
+              moveTask(viewingTask.id, newListId, newOrder);
+              if (user) {
+                const fromList = sortedLists.find(
+                  (l) => l.id === viewingTask.listId,
+                );
+                const toList = sortedLists.find((l) => l.id === newListId);
+                addTaskHistory(boardId, viewingTask.id, [
+                  {
+                    action: 'moved',
+                    userId: user.uid,
+                    metadata: {
+                      fromListName: fromList?.title ?? '',
+                      toListName: toList?.title ?? '',
+                    },
+                  },
+                ]).catch(() => {});
+              }
             }
           }}
         />

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -7,7 +8,13 @@ import {
   Box,
   Chip,
   Divider,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  Tab,
+  Tabs,
   Typography,
 } from '@mui/material';
 import {
@@ -16,9 +23,10 @@ import {
 } from '@mui/icons-material';
 import { LabelChip } from '../common/LabelChip';
 import { TaskAssignees } from './TaskAssignees';
-import { AttachmentPreview } from '../attachments/AttachmentPreview';
+import { AttachmentSection } from '../attachments/AttachmentSection';
 import { CommentsSection } from './CommentsSection';
-import type { Task, Label } from '../../types/board';
+import { HistorySection } from './HistorySection';
+import type { Task, Label, List, Attachment } from '../../types/board';
 import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
 
 type TaskDetailDialogProps = {
@@ -26,9 +34,12 @@ type TaskDetailDialogProps = {
   boardId: string;
   task: Task | null;
   labels?: Label[];
+  lists?: List[];
   collaborators?: Collaborator[];
   onClose: () => void;
   onEdit: () => void;
+  onAttachmentsChange: (attachments: Attachment[]) => void;
+  onMoveTask?: (newListId: string) => void;
 };
 
 const formatDate = (timestamp: Task['dueDate']) => {
@@ -46,10 +57,15 @@ export const TaskDetailDialog = ({
   boardId,
   task,
   labels = [],
+  lists = [],
   collaborators = [],
   onClose,
   onEdit,
+  onAttachmentsChange,
+  onMoveTask,
 }: TaskDetailDialogProps) => {
+  const [tabIndex, setTabIndex] = useState(0);
+
   if (!task) return null;
 
   const assignedUsers = collaborators.filter((c) =>
@@ -75,112 +91,136 @@ export const TaskDetailDialog = ({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent dividers>
-        <Box className="flex flex-col gap-3">
-          {task.description && (
-            <Box>
-              <Typography
-                variant="subtitle2"
-                color="text.secondary"
-                gutterBottom
-              >
-                Description
-              </Typography>
-              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                {task.description}
-              </Typography>
-            </Box>
-          )}
+      <Tabs
+        value={tabIndex}
+        onChange={(_, v) => setTabIndex(v)}
+        sx={{ px: 3, borderBottom: 1, borderColor: 'divider' }}
+      >
+        <Tab label="Details" />
+        <Tab label="History" />
+      </Tabs>
 
-          {taskLabels.length > 0 && (
-            <Box>
-              <Typography
-                variant="subtitle2"
-                color="text.secondary"
-                gutterBottom
-              >
-                Labels
-              </Typography>
-              <Box className="flex flex-wrap gap-1">
-                {taskLabels.map((label) => (
-                  <LabelChip key={label.id} label={label} />
-                ))}
+      <DialogContent dividers={false} sx={{ pt: 2 }}>
+        {tabIndex === 0 && (
+          <Box className="flex flex-col gap-3">
+            {lists.length > 0 && onMoveTask && (
+              <FormControl size="small" fullWidth>
+                <InputLabel id="move-to-list-label">List</InputLabel>
+                <Select
+                  labelId="move-to-list-label"
+                  label="List"
+                  value={task.listId}
+                  onChange={(e) => onMoveTask(e.target.value)}
+                >
+                  {lists.map((list) => (
+                    <MenuItem key={list.id} value={list.id}>
+                      {list.title}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+
+            {task.description && (
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Description
+                </Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {task.description}
+                </Typography>
               </Box>
-            </Box>
-          )}
+            )}
 
-          {assignedUsers.length > 0 && (
-            <Box>
-              <Typography
-                variant="subtitle2"
-                color="text.secondary"
-                gutterBottom
-              >
-                Assignees
-              </Typography>
-              <TaskAssignees assignedUsers={assignedUsers} />
-            </Box>
-          )}
-
-          {(task.startDate || task.dueDate) && (
-            <Box>
-              <Typography
-                variant="subtitle2"
-                color="text.secondary"
-                gutterBottom
-              >
-                Dates
-              </Typography>
-              <Box className="flex flex-wrap gap-2">
-                {task.startDate && (
-                  <Chip
-                    size="small"
-                    icon={<CalendarIcon fontSize="small" />}
-                    label={`Start: ${formatDate(task.startDate)}`}
-                    variant="outlined"
-                  />
-                )}
-                {task.dueDate && (
-                  <Chip
-                    size="small"
-                    icon={<CalendarIcon fontSize="small" />}
-                    label={`Due: ${formatDate(task.dueDate)}`}
-                    variant="outlined"
-                    color={task.calendarSyncEnabled ? 'primary' : 'default'}
-                  />
-                )}
+            {taskLabels.length > 0 && (
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Labels
+                </Typography>
+                <Box className="flex flex-wrap gap-1">
+                  {taskLabels.map((label) => (
+                    <LabelChip key={label.id} label={label} />
+                  ))}
+                </Box>
               </Box>
-            </Box>
-          )}
+            )}
 
-          {task.attachments && task.attachments.length > 0 && (
-            <Box>
-              <Typography
-                variant="subtitle2"
-                color="text.secondary"
-                gutterBottom
-              >
-                Attachments
-              </Typography>
-              <Box className="flex flex-col gap-1">
-                {task.attachments.map((attachment) => (
-                  <AttachmentPreview
-                    key={attachment.id}
-                    attachment={attachment}
-                  />
-                ))}
+            {assignedUsers.length > 0 && (
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Assignees
+                </Typography>
+                <TaskAssignees assignedUsers={assignedUsers} />
               </Box>
-            </Box>
-          )}
+            )}
 
-          <Divider />
+            {(task.startDate || task.dueDate) && (
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Dates
+                </Typography>
+                <Box className="flex flex-wrap gap-2">
+                  {task.startDate && (
+                    <Chip
+                      size="small"
+                      icon={<CalendarIcon fontSize="small" />}
+                      label={`Start: ${formatDate(task.startDate)}`}
+                      variant="outlined"
+                    />
+                  )}
+                  {task.dueDate && (
+                    <Chip
+                      size="small"
+                      icon={<CalendarIcon fontSize="small" />}
+                      label={`Due: ${formatDate(task.dueDate)}`}
+                      variant="outlined"
+                      color={task.calendarSyncEnabled ? 'primary' : 'default'}
+                    />
+                  )}
+                </Box>
+              </Box>
+            )}
 
-          <CommentsSection
+            <AttachmentSection
+              boardId={boardId}
+              taskId={task.id}
+              attachments={task.attachments ?? []}
+              onChange={onAttachmentsChange}
+            />
+
+            <Divider />
+
+            <CommentsSection
+              boardId={boardId}
+              taskId={task.id}
+              collaborators={collaborators}
+            />
+          </Box>
+        )}
+
+        {tabIndex === 1 && (
+          <HistorySection
             boardId={boardId}
             taskId={task.id}
             collaborators={collaborators}
           />
-        </Box>
+        )}
       </DialogContent>
 
       <DialogActions>

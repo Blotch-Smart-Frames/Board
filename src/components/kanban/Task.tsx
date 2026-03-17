@@ -13,6 +13,7 @@ import {
 import {
   AttachFile as AttachFileIcon,
   CalendarMonth as CalendarIcon,
+  ChatBubbleOutline as ChatBubbleOutlineIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
 import { LabelChip } from '../common/LabelChip';
@@ -174,6 +175,16 @@ export const Task = ({
                   size="small"
                   icon={<AttachFileIcon fontSize="small" />}
                   label={task.attachments.length}
+                  variant="outlined"
+                  className="h-6!"
+                />
+              )}
+
+              {!!task.commentCount && task.commentCount > 0 && (
+                <Chip
+                  size="small"
+                  icon={<ChatBubbleOutlineIcon fontSize="small" />}
+                  label={task.commentCount}
                   variant="outlined"
                   className="h-6!"
                 />

@@ -59,6 +59,17 @@ vi.mock('../../hooks/useSprintsQuery', () => ({
   }),
 }));
 
+vi.mock('../../hooks/useAuthQuery', () => ({
+  useAuthQuery: () => ({
+    user: { uid: 'user-1' },
+    isAuthenticated: true,
+  }),
+}));
+
+vi.mock('../../services/boardService', () => ({
+  addTaskHistory: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../hooks/useDragAndDrop', () => ({
   useDragAndDrop: () => mockUseDragAndDrop(),
 }));

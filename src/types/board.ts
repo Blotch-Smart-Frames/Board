@@ -93,6 +93,7 @@ export type Task = {
   color?: string;
   sprintId?: string;
   attachments?: Attachment[];
+  commentCount?: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   completedAt?: Timestamp;
@@ -155,6 +156,36 @@ export type CreateCommentInput = {
 
 export type UpdateCommentInput = {
   text: string;
+};
+
+export type HistoryAction =
+  | 'label_added'
+  | 'label_removed'
+  | 'assignee_added'
+  | 'assignee_removed'
+  | 'attachment_added'
+  | 'attachment_removed'
+  | 'moved'
+  | 'completed'
+  | 'reopened'
+  | 'field_changed';
+
+export type HistoryEntry = {
+  id: string;
+  action: HistoryAction;
+  field?: string;
+  userId: string;
+  metadata?: {
+    labelName?: string;
+    labelColor?: string;
+    userName?: string;
+    fromListName?: string;
+    toListName?: string;
+    fileName?: string;
+    oldValue?: string;
+    newValue?: string;
+  };
+  createdAt: Timestamp;
 };
 
 export type CreateBoardInput = {

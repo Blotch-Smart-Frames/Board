@@ -299,6 +299,34 @@ describe('Task', () => {
     });
   });
 
+  describe('Comment count indicator', () => {
+    it('shows comment count when commentCount > 0', () => {
+      const task = createMockTask({ commentCount: 3 });
+      render(<Task task={task} />);
+
+      expect(screen.getByText('3')).toBeInTheDocument();
+      expect(screen.getByTestId('ChatBubbleOutlineIcon')).toBeInTheDocument();
+    });
+
+    it('does not show comment indicator when commentCount is 0', () => {
+      const task = createMockTask({ commentCount: 0 });
+      render(<Task task={task} />);
+
+      expect(
+        screen.queryByTestId('ChatBubbleOutlineIcon'),
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not show comment indicator when commentCount is undefined', () => {
+      const task = createMockTask({ commentCount: undefined });
+      render(<Task task={task} />);
+
+      expect(
+        screen.queryByTestId('ChatBubbleOutlineIcon'),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('Long content handling', () => {
     it('handles long task titles', () => {
       const longTitle = 'A'.repeat(100);

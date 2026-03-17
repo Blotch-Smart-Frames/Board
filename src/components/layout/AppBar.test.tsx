@@ -1,7 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { useMediaQuery } from '@mui/material';
 import { AppBar } from './AppBar';
+
+vi.mock('@mui/material', async () => {
+  const actual = await vi.importActual('@mui/material');
+  return {
+    ...actual,
+    useMediaQuery: vi.fn().mockReturnValue(false),
+  };
+});
 
 const mockLogout = vi.fn();
 const mockUseAuthQuery = vi.fn();
@@ -233,6 +242,74 @@ describe('AppBar', () => {
       const avatar = container.querySelector('.MuiAvatar-root');
       expect(avatar).toBeInTheDocument();
       expect(avatar).toHaveTextContent('US'); // User -> US
+    });
+  });
+
+  describe('Mobile view', () => {
+    beforeEach(() => {
+      mockUseAuthQuery.mockReturnValue({
+        user: null,
+        isAuthenticated: false,
+        logout: mockLogout,
+      });
+      vi.mocked(useMediaQuery).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      vi.mocked(useMediaQuery).mockReturnValue(false);
+    });
+
+    it('renders toggle buttons without text labels on mobile', () => {
+      const onViewModeChange = vi.fn();
+      render(<AppBar viewMode="kanban" onViewModeChange={onViewModeChange} />);
+
+      const kanbanButton = screen.getByRole('button', {
+        name: /kanban view/i,
+      });
+      const timelineButton = screen.getByRole('button', {
+        name: /timeline view/i,
+      });
+
+      expect(kanbanButton).not.toHaveTextContent('Kanban');
+      expect(timelineButton).not.toHaveTextContent('Timeline');
+    });
+
+    it('renders tooltips on toggle buttons', () => {
+      const onViewModeChange = vi.fn();
+      render(<AppBar viewMode="kanban" onViewModeChange={onViewModeChange} />);
+
+      expect(
+        screen.getByRole('button', { name: /kanban view/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /timeline view/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('Desktop view', () => {
+    beforeEach(() => {
+      mockUseAuthQuery.mockReturnValue({
+        user: null,
+        isAuthenticated: false,
+        logout: mockLogout,
+      });
+      vi.mocked(useMediaQuery).mockReturnValue(false);
+    });
+
+    it('renders toggle buttons with text labels on desktop', () => {
+      const onViewModeChange = vi.fn();
+      render(<AppBar viewMode="kanban" onViewModeChange={onViewModeChange} />);
+
+      const kanbanButton = screen.getByRole('button', {
+        name: /kanban view/i,
+      });
+      const timelineButton = screen.getByRole('button', {
+        name: /timeline view/i,
+      });
+
+      expect(kanbanButton).toHaveTextContent('Kanban');
+      expect(timelineButton).toHaveTextContent('Timeline');
     });
   });
 });

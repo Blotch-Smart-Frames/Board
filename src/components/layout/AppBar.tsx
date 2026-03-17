@@ -12,7 +12,10 @@ import {
   ListItemText,
   ToggleButtonGroup,
   ToggleButton,
+  Tooltip,
+  useMediaQuery,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
   Menu as MenuIcon,
   Logout as LogoutIcon,
@@ -44,6 +47,8 @@ export const AppBar = ({
   onViewModeChange,
 }: AppBarProps) => {
   const { user, logout, isAuthenticated } = useAuthQuery();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -61,7 +66,7 @@ export const AppBar = ({
 
   return (
     <MuiAppBar position="static" color="default" elevation={1}>
-      <Toolbar className="gap-2">
+      <Toolbar className="gap-2" sx={{ px: isMobile ? 1 : 2 }}>
         {onMenuClick && (
           <IconButton edge="start" onClick={onMenuClick} aria-label="menu">
             <MenuIcon />
@@ -73,6 +78,7 @@ export const AppBar = ({
           component="div"
           className="grow font-semibold"
           color="primary"
+          noWrap
         >
           {title}
         </Typography>
@@ -86,14 +92,18 @@ export const AppBar = ({
             }}
             size="small"
           >
-            <ToggleButton value="kanban" aria-label="Kanban view">
-              <KanbanIcon sx={{ mr: 0.5 }} />
-              Kanban
-            </ToggleButton>
-            <ToggleButton value="timeline" aria-label="Timeline view">
-              <TimelineIcon sx={{ mr: 0.5 }} />
-              Timeline
-            </ToggleButton>
+            <Tooltip title="Kanban">
+              <ToggleButton value="kanban" aria-label="Kanban view">
+                <KanbanIcon sx={isMobile ? undefined : { mr: 0.5 }} />
+                {!isMobile && 'Kanban'}
+              </ToggleButton>
+            </Tooltip>
+            <Tooltip title="Timeline">
+              <ToggleButton value="timeline" aria-label="Timeline view">
+                <TimelineIcon sx={isMobile ? undefined : { mr: 0.5 }} />
+                {!isMobile && 'Timeline'}
+              </ToggleButton>
+            </Tooltip>
           </ToggleButtonGroup>
         )}
 

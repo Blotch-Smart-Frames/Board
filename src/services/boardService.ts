@@ -10,6 +10,7 @@ import {
   where,
   serverTimestamp,
   writeBatch,
+  increment,
   type FieldValue,
   Timestamp,
 } from 'firebase/firestore';
@@ -24,6 +25,7 @@ import type {
   UpdateTaskInput,
   CreateCommentInput,
   UpdateCommentInput,
+  HistoryEntry,
 } from '../types/board';
 import { initializeDefaultLabels } from './labelService';
 import { deleteTaskAttachment } from './storageService';
@@ -290,12 +292,20 @@ export const addComment = async (
   input: CreateCommentInput,
   userId: string,
 ): Promise<void> => {
-  await addDoc(collection(db, 'boards', boardId, 'tasks', taskId, 'comments'), {
+  const batch = writeBatch(db);
+  const commentRef = doc(
+    collection(db, 'boards', boardId, 'tasks', taskId, 'comments'),
+  );
+  batch.set(commentRef, {
     text: input.text,
     authorId: userId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+  batch.update(doc(db, 'boards', boardId, 'tasks', taskId), {
+    commentCount: increment(1),
+  });
+  await batch.commit();
 };
 
 export const updateComment = async (
@@ -313,12 +323,37 @@ export const updateComment = async (
   );
 };
 
+// History operations
+export const addTaskHistory = async (
+  boardId: string,
+  taskId: string,
+  entries: Omit<HistoryEntry, 'id' | 'createdAt'>[],
+): Promise<void> => {
+  if (entries.length === 0) return;
+  const batch = writeBatch(db);
+  for (const entry of entries) {
+    const historyRef = doc(
+      collection(db, 'boards', boardId, 'tasks', taskId, 'history'),
+    );
+    batch.set(historyRef, {
+      ...entry,
+      createdAt: serverTimestamp(),
+    });
+  }
+  await batch.commit();
+};
+
 export const deleteComment = async (
   boardId: string,
   taskId: string,
   commentId: string,
 ): Promise<void> => {
-  await deleteDoc(
+  const batch = writeBatch(db);
+  batch.delete(
     doc(db, 'boards', boardId, 'tasks', taskId, 'comments', commentId),
   );
+  batch.update(doc(db, 'boards', boardId, 'tasks', taskId), {
+    commentCount: increment(-1),
+  });
+  await batch.commit();
 };
