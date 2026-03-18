@@ -10,14 +10,25 @@ vi.mock('firebase/firestore', async () => {
   const actual = await vi.importActual('firebase/firestore');
   return {
     ...actual,
+    doc: vi.fn(),
     onSnapshot: (...args: unknown[]) => mockOnSnapshot(...(args as [])),
   };
 });
 
 const mockCreateBoard = vi.fn();
 
+vi.mock('../config/firebase', () => ({
+  db: {},
+}));
+
 vi.mock('../services/boardService', () => ({
   createBoard: (...args: unknown[]) => mockCreateBoard(...args),
+}));
+
+const mockSetBoardOrder = vi.fn();
+
+vi.mock('../services/boardOrderService', () => ({
+  setBoardOrder: (...args: unknown[]) => mockSetBoardOrder(...args),
 }));
 
 vi.mock('../queries/firestoreRefs', () => ({
@@ -75,8 +86,8 @@ describe('useUserBoardsQuery', () => {
       wrapper: createWrapper(),
     });
 
-    // One for owned boards, one for collaborator boards
-    expect(mockOnSnapshot).toHaveBeenCalledTimes(2);
+    // One for owned boards, one for collaborator boards, one for board order
+    expect(mockOnSnapshot).toHaveBeenCalledTimes(3);
   });
 
   it('does not subscribe when user is null', () => {
@@ -100,13 +111,15 @@ describe('useUserBoardsQuery', () => {
     expect(mockOnSnapshot).not.toHaveBeenCalled();
   });
 
-  it('unsubscribes from both snapshots on unmount', () => {
+  it('unsubscribes from all snapshots on unmount', () => {
     mockUser = { uid: 'user-123' };
     const unsubOwned = vi.fn();
     const unsubCollaborated = vi.fn();
+    const unsubOrder = vi.fn();
     mockOnSnapshot
       .mockReturnValueOnce(unsubOwned)
-      .mockReturnValueOnce(unsubCollaborated);
+      .mockReturnValueOnce(unsubCollaborated)
+      .mockReturnValueOnce(unsubOrder);
 
     const { unmount } = renderHook(() => useUserBoardsQuery(), {
       wrapper: createWrapper(),
@@ -116,6 +129,7 @@ describe('useUserBoardsQuery', () => {
 
     expect(unsubOwned).toHaveBeenCalled();
     expect(unsubCollaborated).toHaveBeenCalled();
+    expect(unsubOrder).toHaveBeenCalled();
   });
 
   it('shows loading when auth is loading', () => {
@@ -129,7 +143,7 @@ describe('useUserBoardsQuery', () => {
   });
 
   describe('createBoard', () => {
-    it('calls service with input and userId', async () => {
+    it('calls service with input and userId and sets board order', async () => {
       mockUser = { uid: 'user-123' };
       const newBoard = {
         id: 'board-new',
@@ -138,6 +152,7 @@ describe('useUserBoardsQuery', () => {
         collaborators: [],
       };
       mockCreateBoard.mockResolvedValue(newBoard);
+      mockSetBoardOrder.mockResolvedValue(undefined);
 
       const { result } = renderHook(() => useUserBoardsQuery(), {
         wrapper: createWrapper(),
@@ -150,6 +165,11 @@ describe('useUserBoardsQuery', () => {
       expect(mockCreateBoard).toHaveBeenCalledWith(
         { title: 'New Board' },
         'user-123',
+      );
+      expect(mockSetBoardOrder).toHaveBeenCalledWith(
+        'user-123',
+        'board-new',
+        expect.any(String),
       );
     });
 

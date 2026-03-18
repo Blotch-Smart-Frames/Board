@@ -21,7 +21,7 @@ type ViewMode = 'kanban' | 'timeline';
 
 export const App = () => {
   const { user } = useAuthQuery();
-  const { boards, isLoading, createBoard } = useUserBoardsQuery();
+  const { boards, isLoading, createBoard, reorderBoard } = useUserBoardsQuery();
   const [selectedBoardId, setSelectedBoardId] = useBoardIdFromUrl();
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [sharingBoardId, setSharingBoardId] = useState<string | null>(null);
@@ -79,6 +79,7 @@ export const App = () => {
       onDeleteBoard={handleDeleteBoard}
       onRenameBoard={handleRenameBoard}
       onShareBoard={setSharingBoardId}
+      onReorderBoard={reorderBoard}
     />
   );
 

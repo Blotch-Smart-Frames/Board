@@ -106,6 +106,7 @@ vi.mock('@dnd-kit/core', () => ({
   DndContext: ({ children }: { children: React.ReactNode }) => children,
   DragOverlay: ({ children }: { children: React.ReactNode }) => children,
   closestCorners: vi.fn(),
+  closestCenter: vi.fn(),
   KeyboardSensor: vi.fn(),
   PointerSensor: vi.fn(),
   useSensor: vi.fn(),
@@ -169,6 +170,7 @@ describe('App', () => {
         boards: [],
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
     });
 
@@ -206,6 +208,7 @@ describe('App', () => {
         boards: [],
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
 
       render(<App />);
@@ -219,6 +222,7 @@ describe('App', () => {
         boards: [],
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
 
       render(<App />);
@@ -236,6 +240,7 @@ describe('App', () => {
         boards,
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
 
       render(<App />);
@@ -249,6 +254,7 @@ describe('App', () => {
         boards: [],
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
 
       render(<App />);
@@ -264,6 +270,7 @@ describe('App', () => {
         boards: [],
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
 
       render(<App />);
@@ -287,6 +294,7 @@ describe('App', () => {
         boards,
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
 
       render(<App />);
@@ -310,6 +318,7 @@ describe('App', () => {
         boards,
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
 
       render(<App />);
@@ -334,6 +343,7 @@ describe('App', () => {
         boards,
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
 
       render(<App />);
@@ -364,6 +374,7 @@ describe('App', () => {
         boards: [],
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
 
       render(<App />);
@@ -392,6 +403,7 @@ describe('App', () => {
         boards: [],
         isLoading: false,
         createBoard: mockCreateBoard,
+        reorderBoard: vi.fn(),
       });
 
       render(<App />);
@@ -433,6 +445,7 @@ describe('App', () => {
         boards,
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
 
       history.replaceState(null, '', '/board/board-1');
@@ -447,6 +460,7 @@ describe('App', () => {
         boards: [],
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
 
       history.replaceState(null, '', '/board/nonexistent');
@@ -466,6 +480,7 @@ describe('App', () => {
         boards: [],
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
 
       history.replaceState(null, '', '/board/nonexistent');
@@ -492,6 +507,7 @@ describe('App', () => {
         boards: [],
         isLoading: false,
         createBoard: vi.fn(),
+        reorderBoard: vi.fn(),
       });
 
       history.replaceState(null, '', '/board/board-1');

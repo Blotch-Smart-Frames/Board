@@ -5,6 +5,36 @@ import { BoardList } from './BoardList';
 import type { Board } from '../../types/board';
 import { Timestamp } from 'firebase/firestore';
 
+vi.mock('@dnd-kit/core', () => ({
+  DndContext: ({ children }: { children: React.ReactNode }) => children,
+  DragOverlay: ({ children }: { children: React.ReactNode }) => children,
+  closestCenter: vi.fn(),
+  PointerSensor: vi.fn(),
+  useSensor: vi.fn(),
+  useSensors: vi.fn(() => []),
+}));
+
+vi.mock('@dnd-kit/sortable', () => ({
+  SortableContext: ({ children }: { children: React.ReactNode }) => children,
+  verticalListSortingStrategy: {},
+  useSortable: () => ({
+    attributes: {},
+    listeners: {},
+    setNodeRef: vi.fn(),
+    transform: null,
+    transition: null,
+    isDragging: false,
+  }),
+}));
+
+vi.mock('@dnd-kit/utilities', () => ({
+  CSS: {
+    Transform: {
+      toString: () => null,
+    },
+  },
+}));
+
 const createMockBoard = (overrides: Partial<Board> = {}): Board => ({
   id: 'board-1',
   title: 'Test Board',

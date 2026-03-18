@@ -1,5 +1,18 @@
 import { useState } from 'react';
 import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
   Box,
   Paper,
   Typography,
@@ -9,7 +22,6 @@ import {
   ListItemButton,
   ListItemText,
   ListItemIcon,
-  IconButton,
   Menu,
   MenuItem,
   TextField,
@@ -22,12 +34,13 @@ import {
 import {
   Add as AddIcon,
   Dashboard as BoardIcon,
-  MoreVert as MoreIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
   Share as ShareIcon,
 } from '@mui/icons-material';
 import { useForm } from '@tanstack/react-form';
+import { SortableBoardItem } from './SortableBoardItem';
+import { getOrderAtIndex } from '../../utils/ordering';
 import type { Board } from '../../types/board';
 
 type BoardListProps = {
@@ -39,6 +52,7 @@ type BoardListProps = {
   onDeleteBoard?: (boardId: string) => Promise<void>;
   onRenameBoard?: (boardId: string, title: string) => Promise<void>;
   onShareBoard?: (boardId: string) => void;
+  onReorderBoard?: (boardId: string, newOrder: string) => Promise<void>;
 };
 
 export const BoardList = ({
@@ -50,11 +64,36 @@ export const BoardList = ({
   onDeleteBoard,
   onRenameBoard,
   onShareBoard,
+  onReorderBoard,
 }: BoardListProps) => {
   const [isCreating, setIsCreating] = useState(false);
   const [renamingBoardId, setRenamingBoardId] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuBoardId, setMenuBoardId] = useState<string | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id || !onReorderBoard) return;
+
+    const oldIndex = boards.findIndex((b) => b.id === active.id);
+    const newIndex = boards.findIndex((b) => b.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Compute the target index excluding the dragged item
+    const withoutDragged = boards.filter((b) => b.id !== active.id);
+    const newOrder = getOrderAtIndex(withoutDragged, newIndex);
+    onReorderBoard(active.id as string, newOrder);
+  };
+
+  const activeDragBoard = activeDragId
+    ? boards.find((b) => b.id === activeDragId)
+    : null;
 
   const form = useForm({
     defaultValues: { title: '' },
@@ -139,49 +178,62 @@ export const BoardList = ({
           <CircularProgress size={24} />
         </Box>
       ) : (
-        <List className="flex-1 overflow-y-auto">
-          {boards.map((board) => (
-            <ListItem
-              key={board.id}
-              disablePadding
-              secondaryAction={
-                <IconButton
-                  edge="end"
-                  size="small"
-                  onClick={(e) => handleMenuOpen(e, board.id)}
-                >
-                  <MoreIcon fontSize="small" />
-                </IconButton>
-              }
-            >
-              <ListItemButton
-                selected={board.id === selectedBoardId}
-                onClick={() => onSelectBoard(board.id)}
-              >
-                <ListItemIcon>
-                  <BoardIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary={board.title}
-                  primaryTypographyProps={{
-                    noWrap: true,
-                    className: 'font-medium',
-                  }}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={(event) => setActiveDragId(event.active.id as string)}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={boards.map((b) => b.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <List className="flex-1 overflow-y-auto">
+              {boards.map((board) => (
+                <SortableBoardItem
+                  key={board.id}
+                  board={board}
+                  isSelected={board.id === selectedBoardId}
+                  onSelect={onSelectBoard}
+                  onMenuOpen={handleMenuOpen}
                 />
-              </ListItemButton>
-            </ListItem>
-          ))}
+              ))}
 
-          {boards.length === 0 && (
-            <ListItem>
-              <ListItemText
-                primary="No boards yet"
-                secondary="Create your first board to get started"
-                className="text-center"
-              />
-            </ListItem>
-          )}
-        </List>
+              {boards.length === 0 && (
+                <ListItem>
+                  <ListItemText
+                    primary="No boards yet"
+                    secondary="Create your first board to get started"
+                    className="text-center"
+                  />
+                </ListItem>
+              )}
+            </List>
+          </SortableContext>
+
+          <DragOverlay>
+            {activeDragBoard && (
+              <ListItem
+                component="div"
+                disablePadding
+                sx={{ bgcolor: 'background.paper', boxShadow: 3 }}
+              >
+                <ListItemButton selected={false}>
+                  <ListItemIcon>
+                    <BoardIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={activeDragBoard.title}
+                    primaryTypographyProps={{
+                      noWrap: true,
+                      className: 'font-medium',
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            )}
+          </DragOverlay>
+        </DndContext>
       )}
 
       <Box className="border-t p-4">
