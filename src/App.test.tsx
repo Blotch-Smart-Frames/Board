@@ -31,6 +31,10 @@ vi.mock('./hooks/useUserBoardsQuery', () => ({
   useUserBoardsQuery: () => mockUseUserBoardsQuery(),
 }));
 
+vi.mock('./hooks/useVersionCheck', () => ({
+  useVersionCheck: () => ({ hasNewVersion: false }),
+}));
+
 vi.mock('./hooks/useCollaboratorsQuery', () => ({
   useCollaboratorsQuery: () => ({
     collaborators: [],

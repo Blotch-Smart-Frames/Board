@@ -12,6 +12,8 @@ import { useUserBoardsQuery } from './hooks/useUserBoardsQuery';
 import { useAuthQuery } from './hooks/useAuthQuery';
 import { useCollaboratorsQuery } from './hooks/useCollaboratorsQuery';
 import { useBoardIdFromUrl } from './hooks/useBoardIdFromUrl';
+import { VersionUpdateSnackbar } from './components/layout/VersionUpdateSnackbar';
+import { useVersionCheck } from './hooks/useVersionCheck';
 import { deleteBoard, updateBoard, shareBoard } from './services/boardService';
 import { getUserByEmail } from './services/userService';
 
@@ -20,6 +22,7 @@ const DRAWER_WIDTH = 280;
 type ViewMode = 'kanban' | 'timeline';
 
 export const App = () => {
+  const { hasNewVersion } = useVersionCheck();
   const { user } = useAuthQuery();
   const { boards, isLoading, createBoard, reorderBoard } = useUserBoardsQuery();
   const [selectedBoardId, setSelectedBoardId] = useBoardIdFromUrl();
@@ -166,6 +169,11 @@ export const App = () => {
             </Box>
           </Box>
         </Box>
+
+        <VersionUpdateSnackbar
+          open={hasNewVersion}
+          onRefresh={() => window.location.reload()}
+        />
 
         {sharingBoard && (
           <ShareDialog

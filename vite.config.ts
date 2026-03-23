@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { versionPlugin } from './vite-plugin-version';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -11,6 +12,7 @@ export default defineConfig({
       },
     }),
     tailwindcss(),
+    versionPlugin(),
   ],
   test: {
     globals: true,
