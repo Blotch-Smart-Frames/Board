@@ -44,7 +44,7 @@ import { getOrderAtIndex } from '../../utils/ordering';
 import type { Board } from '../../types/board';
 
 type BoardListProps = {
-  boards: Board[];
+  boards: (Board & { order?: string })[];
   selectedBoardId?: string | null;
   isLoading?: boolean;
   onSelectBoard: (boardId: string) => void;

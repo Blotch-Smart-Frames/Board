@@ -330,7 +330,7 @@ describe('TaskDetailDialog', () => {
 
       expect(screen.queryByText('A description')).not.toBeInTheDocument();
       expect(screen.queryByText('Comments')).not.toBeInTheDocument();
-      expect(screen.getByText('No activity yet')).toBeInTheDocument();
+      expect(screen.getByText(/created this task/i)).toBeInTheDocument();
     });
 
     it('switches back to Details tab', async () => {

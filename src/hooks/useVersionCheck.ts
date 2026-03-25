@@ -17,8 +17,7 @@ export const useVersionCheck = () => {
     refetchIntervalInBackground: true,
   });
 
-  const hasNewVersion =
-    !!remoteHash && remoteHash !== __BUILD_HASH__;
+  const hasNewVersion = !!remoteHash && remoteHash !== __BUILD_HASH__;
 
   return { hasNewVersion };
 };

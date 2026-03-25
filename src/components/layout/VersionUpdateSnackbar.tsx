@@ -9,7 +9,10 @@ export const VersionUpdateSnackbar = ({
   open,
   onRefresh,
 }: VersionUpdateSnackbarProps) => (
-  <Snackbar open={open} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+  <Snackbar
+    open={open}
+    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+  >
     <Alert
       severity="info"
       variant="filled"

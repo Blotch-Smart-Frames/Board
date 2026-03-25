@@ -23,6 +23,7 @@ import {
 } from '@mui/icons-material';
 import { LabelChip } from '../common/LabelChip';
 import { TaskAssignees } from './TaskAssignees';
+import { AssigneePicker } from './AssigneePicker';
 import { AttachmentSection } from '../attachments/AttachmentSection';
 import { CommentsSection } from './CommentsSection';
 import { HistorySection } from './HistorySection';
@@ -40,6 +41,7 @@ type TaskDetailDialogProps = {
   onEdit: () => void;
   onAttachmentsChange: (attachments: Attachment[]) => void;
   onMoveTask?: (newListId: string) => void;
+  onAssigneesChange?: (userIds: string[]) => void;
 };
 
 const formatDate = (timestamp: Task['dueDate']) => {
@@ -63,8 +65,10 @@ export const TaskDetailDialog = ({
   onEdit,
   onAttachmentsChange,
   onMoveTask,
+  onAssigneesChange,
 }: TaskDetailDialogProps) => {
   const [tabIndex, setTabIndex] = useState(0);
+  const [assigneesExpanded, setAssigneesExpanded] = useState(false);
 
   if (!task) return null;
 
@@ -153,18 +157,37 @@ export const TaskDetailDialog = ({
               </Box>
             )}
 
-            {assignedUsers.length > 0 && (
-              <Box>
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  gutterBottom
+            <Box>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                gutterBottom
+                onClick={() => setAssigneesExpanded((prev) => !prev)}
+                sx={{ cursor: 'pointer' }}
+              >
+                Assignees
+              </Typography>
+              {assigneesExpanded ? (
+                <AssigneePicker
+                  collaborators={collaborators}
+                  selectedUserIds={task.assignedTo ?? []}
+                  onChange={(userIds) => onAssigneesChange?.(userIds)}
+                />
+              ) : (
+                <Box
+                  onClick={() => setAssigneesExpanded(true)}
+                  sx={{ cursor: 'pointer' }}
                 >
-                  Assignees
-                </Typography>
-                <TaskAssignees assignedUsers={assignedUsers} />
-              </Box>
-            )}
+                  {assignedUsers.length > 0 ? (
+                    <TaskAssignees assignedUsers={assignedUsers} />
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No assignees
+                    </Typography>
+                  )}
+                </Box>
+              )}
+            </Box>
 
             {(task.startDate || task.dueDate) && (
               <Box>
@@ -219,6 +242,8 @@ export const TaskDetailDialog = ({
             boardId={boardId}
             taskId={task.id}
             collaborators={collaborators}
+            createdBy={task.createdBy}
+            createdAt={task.createdAt}
           />
         )}
       </DialogContent>

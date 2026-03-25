@@ -411,6 +411,11 @@ export const Board = ({
               }
             }
           }}
+          onAssigneesChange={(userIds) => {
+            if (viewingTask) {
+              updateTask(viewingTask.id, { assignedTo: userIds });
+            }
+          }}
           onMoveTask={(newListId) => {
             if (viewingTask && newListId !== viewingTask.listId) {
               const targetListTasks = tasks.filter(

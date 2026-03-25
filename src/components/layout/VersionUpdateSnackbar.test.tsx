@@ -8,13 +8,17 @@ describe('VersionUpdateSnackbar', () => {
     render(<VersionUpdateSnackbar open onRefresh={() => {}} />);
 
     expect(screen.getByText('A new version is available.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /refresh/i }),
+    ).toBeInTheDocument();
   });
 
   it('does not render when closed', () => {
     render(<VersionUpdateSnackbar open={false} onRefresh={() => {}} />);
 
-    expect(screen.queryByText('A new version is available.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('A new version is available.'),
+    ).not.toBeInTheDocument();
   });
 
   it('calls onRefresh when Refresh button is clicked', async () => {

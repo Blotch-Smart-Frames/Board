@@ -1,5 +1,6 @@
 import { Box, Typography, CircularProgress } from '@mui/material';
 import { useHistoryQuery } from '../../hooks/useHistoryQuery';
+import type { Timestamp } from 'firebase/firestore';
 import type { HistoryEntry } from '../../types/board';
 import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
 
@@ -7,6 +8,8 @@ type HistorySectionProps = {
   boardId: string;
   taskId: string;
   collaborators: Collaborator[];
+  createdBy?: string;
+  createdAt?: Timestamp;
 };
 
 const formatRelativeTime = (timestamp: HistoryEntry['createdAt']) => {
@@ -63,6 +66,8 @@ export const HistorySection = ({
   boardId,
   taskId,
   collaborators,
+  createdBy,
+  createdAt,
 }: HistorySectionProps) => {
   const { history, isLoading } = useHistoryQuery(boardId, taskId);
 
@@ -74,7 +79,11 @@ export const HistorySection = ({
     );
   }
 
-  if (history.length === 0) {
+  const creatorName =
+    createdBy && collaborators.find((c) => c.id === createdBy)?.name;
+  const hasEntries = history.length > 0 || createdAt;
+
+  if (!hasEntries) {
     return (
       <Typography variant="body2" color="text.disabled">
         No activity yet
@@ -106,6 +115,28 @@ export const HistorySection = ({
           </Box>
         </Box>
       ))}
+      {createdAt && (
+        <Box className="flex items-start gap-2">
+          <Box
+            sx={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              bgcolor: 'text.disabled',
+              mt: 0.8,
+              flexShrink: 0,
+            }}
+          />
+          <Box className="min-w-0 flex-1">
+            <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
+              {creatorName ?? 'Someone'} created this task
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {formatRelativeTime(createdAt)}
+            </Typography>
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 };
