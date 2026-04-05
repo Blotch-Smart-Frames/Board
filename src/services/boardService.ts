@@ -28,7 +28,7 @@ import type {
   HistoryEntry,
 } from '../types/board';
 import { initializeDefaultLabels } from './labelService';
-import { deleteTaskAttachment } from './storageService';
+import { deleteTaskAttachment, deleteBoardBackground } from './storageService';
 import { getOrderAtEnd } from '../utils/ordering';
 
 // Board operations
@@ -71,25 +71,73 @@ export const updateBoard = async (
   });
 };
 
+const BATCH_LIMIT = 500;
+
+const commitInChunks = async (
+  refs: ReturnType<typeof doc>[],
+): Promise<void> => {
+  for (let i = 0; i < refs.length; i += BATCH_LIMIT) {
+    const chunk = refs.slice(i, i + BATCH_LIMIT);
+    const batch = writeBatch(db);
+    chunk.forEach((ref) => batch.delete(ref));
+    await batch.commit();
+  }
+};
+
 export const deleteBoard = async (boardId: string): Promise<void> => {
-  const batch = writeBatch(db);
+  // Fetch all top-level collections in parallel
+  const [listsSnap, tasksSnap, labelsSnap, sprintsSnap] = await Promise.all([
+    getDocs(collection(db, 'boards', boardId, 'lists')),
+    getDocs(collection(db, 'boards', boardId, 'tasks')),
+    getDocs(collection(db, 'boards', boardId, 'labels')),
+    getDocs(collection(db, 'boards', boardId, 'sprints')),
+  ]);
 
-  // Delete all lists
-  const listsSnap = await getDocs(collection(db, 'boards', boardId, 'lists'));
-  listsSnap.forEach((doc) => batch.delete(doc.ref));
+  // Collect storage paths from task attachments for cleanup
+  const storagePaths: string[] = [];
+  tasksSnap.forEach((taskDoc) => {
+    const data = taskDoc.data();
+    if (data.attachments?.length) {
+      data.attachments.forEach((a: { storagePath: string }) => {
+        storagePaths.push(a.storagePath);
+      });
+    }
+  });
 
-  // Delete all tasks
-  const tasksSnap = await getDocs(collection(db, 'boards', boardId, 'tasks'));
-  tasksSnap.forEach((doc) => batch.delete(doc.ref));
+  // Fetch all task subcollections (comments + history) in parallel
+  const subcollectionRefs: ReturnType<typeof doc>[] = [];
+  const subcollectionFetches = tasksSnap.docs.flatMap((taskDoc) => [
+    getDocs(
+      collection(db, 'boards', boardId, 'tasks', taskDoc.id, 'comments'),
+    ).then((snap) => snap.forEach((d) => subcollectionRefs.push(d.ref))),
+    getDocs(
+      collection(db, 'boards', boardId, 'tasks', taskDoc.id, 'history'),
+    ).then((snap) => snap.forEach((d) => subcollectionRefs.push(d.ref))),
+  ]);
+  await Promise.all(subcollectionFetches);
 
-  // Delete all labels
-  const labelsSnap = await getDocs(collection(db, 'boards', boardId, 'labels'));
-  labelsSnap.forEach((doc) => batch.delete(doc.ref));
+  // Collect all document refs to delete
+  const allRefs: ReturnType<typeof doc>[] = [
+    ...subcollectionRefs,
+    ...listsSnap.docs.map((d) => d.ref),
+    ...tasksSnap.docs.map((d) => d.ref),
+    ...labelsSnap.docs.map((d) => d.ref),
+    ...sprintsSnap.docs.map((d) => d.ref),
+    doc(db, 'boards', boardId),
+  ];
 
-  // Delete the board
-  batch.delete(doc(db, 'boards', boardId));
+  // Delete all Firestore docs in batches of 500
+  await commitInChunks(allRefs);
 
-  await batch.commit();
+  // Best-effort storage cleanup
+  try {
+    await deleteBoardBackground(boardId);
+  } catch {
+    // Background image may not exist
+  }
+  await Promise.all(
+    storagePaths.map((path) => deleteTaskAttachment(path).catch(() => {})),
+  );
 };
 
 export const shareBoard = async (
