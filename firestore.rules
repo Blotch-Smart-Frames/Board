@@ -27,6 +27,11 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create, update: if isOwner(userId);
+
+      // User preferences subcollection (board order, etc.)
+      match /preferences/{prefId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // Boards collection

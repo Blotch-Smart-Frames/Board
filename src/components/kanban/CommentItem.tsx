@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Box, IconButton, TextField, Typography, Button } from '@mui/material';
+import { Box, IconButton, Typography, Button } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import MDEditor from '@uiw/react-md-editor';
+import { MarkdownRenderer } from '../common/MarkdownRenderer';
 import type { Comment } from '../../types/board';
 import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
 
@@ -82,15 +84,17 @@ export const CommentItem = ({
         )}
       </Box>
       {editing ? (
-        <Box className="flex flex-col gap-1" sx={{ mt: 0.5 }}>
-          <TextField
-            size="small"
-            fullWidth
-            multiline
-            rows={2}
+        <Box
+          className="flex flex-col gap-1"
+          sx={{ mt: 0.5 }}
+          data-color-mode="light"
+        >
+          <MDEditor
             value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            disabled={saving}
+            onChange={(val) => setEditText(val || '')}
+            height={120}
+            preview="live"
+            previewOptions={{ disallowedElements: ['style', 'script'] }}
           />
           <Box className="flex justify-end gap-1">
             <Button size="small" onClick={handleCancel} disabled={saving}>
@@ -107,9 +111,9 @@ export const CommentItem = ({
           </Box>
         </Box>
       ) : (
-        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mt: 0.5 }}>
-          {comment.text}
-        </Typography>
+        <Box sx={{ mt: 0.5 }}>
+          <MarkdownRenderer>{comment.text}</MarkdownRenderer>
+        </Box>
       )}
     </Box>
   );

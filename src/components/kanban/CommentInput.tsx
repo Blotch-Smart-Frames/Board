@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Box, Button, TextField } from '@mui/material';
+import { Box, Button } from '@mui/material';
+import MDEditor from '@uiw/react-md-editor';
 
 type CommentInputProps = {
   onSubmit: (text: string) => Promise<void>;
@@ -21,24 +22,15 @@ export const CommentInput = ({ onSubmit }: CommentInputProps) => {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      handleSubmit();
-    }
-  };
-
   return (
-    <Box className="flex flex-col gap-1">
-      <TextField
-        placeholder="Add a comment..."
-        size="small"
-        fullWidth
-        multiline
-        rows={2}
+    <Box className="flex flex-col gap-1" data-color-mode="light">
+      <MDEditor
         value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={submitting}
+        onChange={(val) => setText(val || '')}
+        height={120}
+        preview="live"
+        textareaProps={{ placeholder: 'Add a comment...' }}
+        previewOptions={{ disallowedElements: ['style', 'script'] }}
       />
       <Box className="flex justify-end">
         <Button

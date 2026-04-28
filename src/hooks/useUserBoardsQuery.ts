@@ -25,9 +25,13 @@ const mergeBoards = (
   for (const b of collaborated) {
     if (!map.has(b.id)) map.set(b.id, { ...b, order: orderMap[b.id] });
   }
-  return Array.from(map.values()).sort((a, b) =>
-    compareOrder(a.order, b.order),
-  );
+  const boards = Array.from(map.values());
+  for (const b of boards) {
+    if (!b.order) {
+      b.order = getOrderAtEnd(boards);
+    }
+  }
+  return boards.sort((a, b) => compareOrder(a.order, b.order));
 };
 
 export const useUserBoardsQuery = () => {
@@ -132,15 +136,16 @@ export const useUserBoardsQuery = () => {
 
   const reorderBoard = async (boardId: string, newOrder: string) => {
     if (!user) return;
-    // Optimistic update
+    // Update the ref so any onSnapshot-triggered updateCache() stays consistent
+    orderMapRef.current = { ...orderMapRef.current, [boardId]: newOrder };
+    // Optimistic update using the same merge logic as updateCache()
     queryClient.setQueryData(
       queryKeys.boards.user(user.uid),
-      (old: BoardWithOrder[] | undefined) => {
-        if (!old) return old;
-        return old
-          .map((b) => (b.id === boardId ? { ...b, order: newOrder } : b))
-          .sort((a, b) => compareOrder(a.order, b.order));
-      },
+      mergeBoards(
+        ownedRef.current,
+        collaboratedRef.current,
+        orderMapRef.current,
+      ),
     );
     await setBoardOrder(user.uid, boardId, newOrder);
   };
