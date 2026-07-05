@@ -1,5 +1,6 @@
 import MDEditor from '@uiw/react-md-editor';
 import { Box } from '@mui/material';
+import { useColorMode } from '../../hooks/useColorMode';
 
 type MarkdownRendererProps = {
   children: string;
@@ -7,7 +8,7 @@ type MarkdownRendererProps = {
 
 export const MarkdownRenderer = ({ children }: MarkdownRendererProps) => (
   <Box
-    data-color-mode="light"
+    data-color-mode={useColorMode()}
     sx={{
       '& .wmde-markdown': {
         background: 'transparent',

@@ -3,6 +3,7 @@ import { Box, IconButton, Typography, Button } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import MDEditor from '@uiw/react-md-editor';
 import { MarkdownRenderer } from '../common/MarkdownRenderer';
+import { useColorMode } from '../../hooks/useColorMode';
 import type { Comment } from '../../types/board';
 import type { Collaborator } from '../../hooks/useCollaboratorsQuery';
 
@@ -35,6 +36,7 @@ export const CommentItem = ({
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(comment.text);
   const [saving, setSaving] = useState(false);
+  const colorMode = useColorMode();
 
   const handleSave = async () => {
     const trimmed = editText.trim();
@@ -87,7 +89,7 @@ export const CommentItem = ({
         <Box
           className="flex flex-col gap-1"
           sx={{ mt: 0.5 }}
-          data-color-mode="light"
+          data-color-mode={colorMode}
         >
           <MDEditor
             value={editText}

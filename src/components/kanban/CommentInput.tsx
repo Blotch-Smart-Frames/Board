@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Box, Button } from '@mui/material';
 import MDEditor from '@uiw/react-md-editor';
+import { useColorMode } from '../../hooks/useColorMode';
 
 type CommentInputProps = {
   onSubmit: (text: string) => Promise<void>;
@@ -9,6 +10,7 @@ type CommentInputProps = {
 export const CommentInput = ({ onSubmit }: CommentInputProps) => {
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const colorMode = useColorMode();
 
   const handleSubmit = async () => {
     const trimmed = text.trim();
@@ -23,12 +25,12 @@ export const CommentInput = ({ onSubmit }: CommentInputProps) => {
   };
 
   return (
-    <Box className="flex flex-col gap-1" data-color-mode="light">
+    <Box className="flex flex-col gap-1" data-color-mode={colorMode}>
       <MDEditor
         value={text}
         onChange={(val) => setText(val || '')}
         height={120}
-        preview="live"
+        preview="edit"
         textareaProps={{ placeholder: 'Add a comment...' }}
         previewOptions={{ disallowedElements: ['style', 'script'] }}
       />
