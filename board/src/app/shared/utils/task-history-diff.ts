@@ -85,6 +85,34 @@ export const diffTaskChanges = (
     }
   }
 
+  // Attachment changes
+  if (updates.attachments !== undefined) {
+    const oldAttachments = oldTask.attachments ?? [];
+    const newAttachments = updates.attachments ?? [];
+    const oldIds = new Set(oldAttachments.map((a) => a.id));
+    const newIds = new Set(newAttachments.map((a) => a.id));
+
+    for (const attachment of newAttachments) {
+      if (!oldIds.has(attachment.id)) {
+        entries.push({
+          action: 'attachment_added',
+          userId,
+          metadata: { fileName: attachment.fileName },
+        });
+      }
+    }
+
+    for (const attachment of oldAttachments) {
+      if (!newIds.has(attachment.id)) {
+        entries.push({
+          action: 'attachment_removed',
+          userId,
+          metadata: { fileName: attachment.fileName },
+        });
+      }
+    }
+  }
+
   // Completion status
   if (updates.completedAt !== undefined) {
     if (updates.completedAt && !oldTask.completedAt) {

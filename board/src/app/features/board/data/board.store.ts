@@ -1,4 +1,4 @@
-import { Injectable, inject, computed, linkedSignal } from '@angular/core';
+import { Injectable, inject, computed, linkedSignal, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { map } from 'rxjs';
@@ -17,7 +17,7 @@ import { BoardService } from '../../../core/services/board.service';
 import { docSignal, collectionSignal } from '../../../core/interop/signal-interop';
 import { collaboratorsResource } from '../../../core/interop/collaborators-resource';
 import { diffTaskChanges } from '../../../shared/utils/task-history-diff';
-import { compareOrder, getOrderAtIndex } from '../../../shared/utils/ordering';
+import { compareOrder, getOrderAtIndex, getOrderAtEnd } from '../../../shared/utils/ordering';
 import type {
   Board,
   List,
@@ -86,6 +86,10 @@ export class BoardStore {
 
   readonly isLoading = computed(() => !!this.boardId() && this.board() === undefined);
 
+  /** Board-wide filters applied in `listsWithTasks`, mirroring the source app's Board.tsx filteredTasks. */
+  readonly assigneeFilter = signal<string | null>(null);
+  readonly labelFilter = signal<string[]>([]);
+
   // Optimistic drag overrides, applied on top of the live Firestore data so a
   // reorder shows instantly instead of snapping back until the snapshot echoes.
   // linkedSignal resets them to empty whenever fresh server data arrives, which
@@ -103,15 +107,20 @@ export class BoardStore {
   readonly listsWithTasks = computed(() => {
     const listOverrides = this.listOverrides();
     const taskOverrides = this.taskOverrides();
+    const assigneeFilter = this.assigneeFilter();
+    const labelFilter = this.labelFilter();
 
     const lists = (this.lists() ?? []).map((list) => ({
       ...list,
       order: listOverrides.get(list.id) ?? list.order,
     }));
-    const tasks = (this.tasks() ?? []).map((task) => {
-      const override = taskOverrides.get(task.id);
-      return override ? { ...task, listId: override.listId, order: override.order } : task;
-    });
+    const tasks = (this.tasks() ?? [])
+      .map((task) => {
+        const override = taskOverrides.get(task.id);
+        return override ? { ...task, listId: override.listId, order: override.order } : task;
+      })
+      .filter((task) => !assigneeFilter || task.assignedTo?.includes(assigneeFilter))
+      .filter((task) => labelFilter.length === 0 || task.labelIds?.some((id) => labelFilter.includes(id)));
 
     return lists
       .sort((a, b) => compareOrder(a.order, b.order))
@@ -240,6 +249,15 @@ export class BoardStore {
         ])
         .catch(() => {});
     }
+  }
+
+  /** Moves a task to the end of a different list (e.g. from the task detail dialog's "List" select). */
+  moveTaskToList(taskId: string, newListId: string): Promise<void> {
+    const tasks = this.tasks() ?? [];
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task || task.listId === newListId) return Promise.resolve();
+    const targetListTasks = tasks.filter((t) => t.listId === newListId);
+    return this.moveTask(taskId, newListId, getOrderAtEnd(targetListTasks));
   }
 
   /**

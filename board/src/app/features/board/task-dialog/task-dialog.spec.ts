@@ -2,10 +2,33 @@ import type { Timestamp } from 'firebase/firestore';
 import { render, screen, waitFor } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { TaskDialog } from './task-dialog';
-import type { Task } from '../../../shared/types/board';
+import type { Sprint, Task } from '../../../shared/types/board';
+
+// jsdom lacks these; the sprint picker's hlm-select touches them once its
+// option list opens (active-descendant highlighting + overlay positioning).
+class ResizeObserverStub {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
+Element.prototype.scrollIntoView ??= function scrollIntoViewPolyfill(): void {};
 
 function ts(date: Date): Timestamp {
   return { toDate: () => date } as Timestamp;
+}
+
+function fakeSprint(overrides: Partial<Sprint> = {}): Sprint {
+  return {
+    id: 's1',
+    name: 'Sprint 1',
+    startDate: ts(new Date(2026, 0, 1)),
+    endDate: ts(new Date(2026, 0, 14)),
+    order: 'a0',
+    createdAt: ts(new Date(2026, 0, 1)),
+    updatedAt: ts(new Date(2026, 0, 1)),
+    ...overrides,
+  };
 }
 
 function fakeTask(overrides: Partial<Task> = {}): Task {
@@ -22,8 +45,15 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
   };
 }
 
-async function openWith(task: Task | null, saveHandler = vi.fn().mockResolvedValue(undefined), deleteHandler: (() => Promise<void>) | null = null) {
-  const view = await render(TaskDialog, { inputs: { saveHandler, deleteHandler } });
+async function openWith(
+  task: Task | null,
+  saveHandler = vi.fn().mockResolvedValue(undefined),
+  deleteHandler: (() => Promise<void>) | null = null,
+  sprints: Sprint[] = [],
+) {
+  const view = await render(TaskDialog, {
+    inputs: { saveHandler, deleteHandler, boardId: 'board-1', labels: [], collaborators: [], sprints },
+  });
   view.fixture.componentInstance.open(task);
   view.fixture.detectChanges();
   await view.fixture.whenStable();
@@ -75,6 +105,17 @@ describe('TaskDialog', () => {
 
     expect(screen.getByText(/due date must be on or after the start date/i)).toBeInTheDocument();
     expect(saveHandler).not.toHaveBeenCalled();
+  });
+
+  it('includes the selected sprint when saving', async () => {
+    const user = userEvent.setup();
+    const { saveHandler } = await openWith(fakeTask(), undefined, null, [fakeSprint({ name: 'Sprint A' })]);
+
+    await user.click(await screen.findByRole('combobox', { name: 'Sprint' }));
+    await user.click(await screen.findByRole('option', { name: /sprint a/i }));
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() => expect(saveHandler).toHaveBeenCalledWith(expect.objectContaining({ sprintId: 's1' })));
   });
 
   it('deletes the task from the dialog when a delete handler is provided', async () => {

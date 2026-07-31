@@ -6,13 +6,14 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { BoardStore } from '../../features/board/data/board.store';
 import { BoardsSidebar } from '../../features/boards/boards-sidebar/boards-sidebar';
 import { KanbanBoard } from '../../features/board/kanban-board/kanban-board';
+import { TimelineView } from '../../features/timeline/timeline-view/timeline-view';
 import { isMobileSignal } from '../../core/interop/breakpoint-signal';
 import { AppBar, type ViewMode } from '../app-bar/app-bar';
 
 @Component({
   selector: 'app-board-workspace',
   providers: [BoardStore],
-  imports: [NgTemplateOutlet, RouterLink, HlmButton, HlmSpinner, AppBar, BoardsSidebar, KanbanBoard],
+  imports: [NgTemplateOutlet, RouterLink, HlmButton, HlmSpinner, AppBar, BoardsSidebar, KanbanBoard, TimelineView],
   template: `
     <div class="flex h-dvh flex-col">
       <app-app-bar
@@ -56,8 +57,10 @@ import { AppBar, type ViewMode } from '../app-bar/app-bar';
               <p class="text-muted-foreground">You don't have access to this board, or it doesn't exist.</p>
               <a hlmBtn variant="outline" routerLink="/" class="mt-1">Go to boards</a>
             </div>
-          } @else {
+          } @else if (viewMode() === 'kanban') {
             <app-kanban-board />
+          } @else {
+            <app-timeline-view />
           }
         </main>
       </div>

@@ -19,8 +19,8 @@ import type { Task, Label } from '../../../shared/types/board';
       hlmCard
       class="hover:ring-primary/40 cursor-pointer gap-0 p-3 transition-shadow hover:shadow-md"
       [style.background-color]="task().color ? task().color + '15' : null"
-      (click)="edit.emit(task())"
-      (keydown.enter)="edit.emit(task())"
+      (click)="view.emit(task())"
+      (keydown.enter)="view.emit(task())"
       tabindex="0"
       role="button"
       [attr.aria-label]="'Open task ' + task().title"
@@ -89,7 +89,7 @@ export class TaskCard {
 
   readonly task = input.required<Task>();
   readonly labels = input<Label[]>([]);
-  readonly edit = output<Task>();
+  readonly view = output<Task>();
 
   protected readonly isCompleted = computed(() => !!this.task().completedAt);
 

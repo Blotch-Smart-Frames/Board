@@ -4,7 +4,22 @@ import { render, screen, waitFor } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { KanbanBoard } from './kanban-board';
 import { BoardStore } from '../data/board.store';
+import { FIRESTORE_DB } from '../../../core/firebase/firebase.config';
+import { AuthStore } from '../../../core/auth/auth.store';
+import { BoardService } from '../../../core/services/board.service';
+import { StorageService } from '../../../core/services/storage.service';
 import type { Board, Task } from '../../../shared/types/board';
+
+// The task detail dialog's CommentsSection/HistorySection read live Firestore
+// queries; stub the SDK so onSnapshot never fires instead of hitting real
+// Firebase (a misconfigured, key-less app in this test environment).
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'collection', path: segments.join('/') })),
+  doc: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'doc', path: segments.join('/') })),
+  query: vi.fn((ref: unknown, ...constraints: unknown[]) => ({ type: 'query', ref, constraints })),
+  orderBy: vi.fn((field: string) => ({ orderBy: field })),
+  onSnapshot: vi.fn(() => vi.fn()),
+}));
 
 function ts(): Timestamp {
   return { toDate: () => new Date(2026, 0, 1) } as Timestamp;
@@ -36,9 +51,14 @@ function fakeTask(): Task {
 
 function setup() {
   const store = {
+    boardId: signal('board-1'),
     board: signal<Board | null>(fakeBoard()),
     labels: signal([]),
     collaborators: signal([]),
+    tasks: signal([fakeTask()]),
+    sprints: signal([]),
+    labelFilter: signal<string[]>([]),
+    assigneeFilter: signal<string | null>(null),
     listsWithTasks: signal([{ id: 'list-1', title: 'To Do', order: 'a0', createdAt: ts(), tasks: [fakeTask()] }]),
     addList: vi.fn().mockResolvedValue(undefined),
     updateListTitle: vi.fn().mockResolvedValue(undefined),
@@ -49,8 +69,18 @@ function setup() {
     setTaskCompleted: vi.fn().mockResolvedValue(undefined),
     reorderListToIndex: vi.fn().mockResolvedValue(undefined),
     moveTaskToIndex: vi.fn().mockResolvedValue(undefined),
+    moveTaskToList: vi.fn().mockResolvedValue(undefined),
   };
-  return { store, providers: [{ provide: BoardStore, useValue: store }] };
+  return {
+    store,
+    providers: [
+      { provide: BoardStore, useValue: store },
+      { provide: FIRESTORE_DB, useValue: {} },
+      { provide: AuthStore, useValue: { user: signal({ uid: 'u1' }) } },
+      { provide: BoardService, useValue: {} },
+      { provide: StorageService, useValue: {} },
+    ],
+  };
 }
 
 describe('KanbanBoard', () => {
@@ -84,12 +114,14 @@ describe('KanbanBoard', () => {
     expect(store.addTask).toHaveBeenCalledWith('list-1', { title: 'Fresh task' });
   });
 
-  it('opens the edit dialog for a task and saves an update through the store', async () => {
+  it('opens the task detail view, then the edit dialog, saving an update through the store', async () => {
     const user = userEvent.setup();
     const { store, providers } = setup();
     await render(KanbanBoard, { providers });
 
     await user.click(screen.getByRole('button', { name: /open task existing task/i }));
+    await user.click(await screen.findByRole('button', { name: /^edit$/i }));
+
     const title = await screen.findByLabelText('Title');
     await user.clear(title);
     await user.type(title, 'Renamed task');

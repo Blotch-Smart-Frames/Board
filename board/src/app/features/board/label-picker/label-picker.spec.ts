@@ -1,0 +1,97 @@
+import type { Timestamp } from 'firebase/firestore';
+import { render, screen } from '@testing-library/angular';
+import userEvent from '@testing-library/user-event';
+import { LabelPicker } from './label-picker';
+import { LabelService } from '../../../core/services/label.service';
+import type { Label } from '../../../shared/types/board';
+
+function ts(): Timestamp {
+  return { toDate: () => new Date() } as Timestamp;
+}
+
+function fakeLabel(overrides: Partial<Label> = {}): Label {
+  return {
+    id: 'label-1',
+    name: 'Bug',
+    color: '#EF4444',
+    order: 'a0',
+    createdAt: ts(),
+    updatedAt: ts(),
+    ...overrides,
+  };
+}
+
+function fakeLabelService() {
+  return {
+    createLabel: vi.fn().mockResolvedValue(fakeLabel()),
+    updateLabel: vi.fn().mockResolvedValue(undefined),
+    deleteLabel: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
+describe('LabelPicker', () => {
+  it('renders a row per provided label', async () => {
+    await render(LabelPicker, {
+      inputs: {
+        boardId: 'board-1',
+        labels: [fakeLabel({ id: 'l1', name: 'Bug' }), fakeLabel({ id: 'l2', name: 'Feature' })],
+      },
+      providers: [{ provide: LabelService, useValue: fakeLabelService() }],
+    });
+
+    expect(screen.getByText('Bug')).toBeInTheDocument();
+    expect(screen.getByText('Feature')).toBeInTheDocument();
+  });
+
+  it('emits selectedLabelIdsChange with the id added when selecting an unselected label', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    await render(LabelPicker, {
+      inputs: { boardId: 'board-1', labels: [fakeLabel({ id: 'l1', name: 'Bug' })], selectedLabelIds: [] },
+      on: { selectedLabelIdsChange: onChange },
+      providers: [{ provide: LabelService, useValue: fakeLabelService() }],
+    });
+
+    await user.click(screen.getByRole('checkbox', { name: 'Toggle label Bug' }));
+
+    expect(onChange).toHaveBeenCalledWith(['l1']);
+  });
+
+  it('emits selectedLabelIdsChange with the id removed when deselecting a selected label', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    await render(LabelPicker, {
+      inputs: { boardId: 'board-1', labels: [fakeLabel({ id: 'l1', name: 'Bug' })], selectedLabelIds: ['l1'] },
+      on: { selectedLabelIdsChange: onChange },
+      providers: [{ provide: LabelService, useValue: fakeLabelService() }],
+    });
+
+    await user.click(screen.getByRole('checkbox', { name: 'Toggle label Bug' }));
+
+    expect(onChange).toHaveBeenCalledWith([]);
+  });
+
+  it('opens the label-management dialog when Manage is clicked', async () => {
+    const user = userEvent.setup();
+    await render(LabelPicker, {
+      inputs: { boardId: 'board-1', labels: [fakeLabel()] },
+      providers: [{ provide: LabelService, useValue: fakeLabelService() }],
+    });
+
+    await user.click(screen.getByRole('button', { name: /^manage$/i }));
+
+    expect(await screen.findByRole('heading', { name: /manage labels/i })).toBeInTheDocument();
+  });
+
+  it('opens the label-editor dialog in create mode when Create label is clicked', async () => {
+    const user = userEvent.setup();
+    await render(LabelPicker, {
+      inputs: { boardId: 'board-1', labels: [] },
+      providers: [{ provide: LabelService, useValue: fakeLabelService() }],
+    });
+
+    await user.click(screen.getByRole('button', { name: /create label/i }));
+
+    expect(await screen.findByRole('heading', { name: /create label/i })).toBeInTheDocument();
+  });
+});

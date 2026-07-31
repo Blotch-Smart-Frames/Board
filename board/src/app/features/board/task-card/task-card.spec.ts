@@ -60,27 +60,27 @@ describe('TaskCard', () => {
     expect(screen.getByText('Jun 1')).toBeInTheDocument();
   });
 
-  it('emits edit when the card is clicked', async () => {
+  it('emits view when the card is clicked', async () => {
     const user = userEvent.setup();
-    const onEdit = vi.fn();
+    const onView = vi.fn();
     const { providers, inputs } = setup(fakeTask());
-    await render(TaskCard, { providers, inputs, on: { edit: onEdit } });
+    await render(TaskCard, { providers, inputs, on: { view: onView } });
 
     await user.click(screen.getByRole('button', { name: /open task write tests/i }));
 
-    expect(onEdit).toHaveBeenCalled();
+    expect(onView).toHaveBeenCalled();
   });
 
   it('toggles completion via the checkbox without opening the card', async () => {
     const user = userEvent.setup();
-    const onEdit = vi.fn();
+    const onView = vi.fn();
     const { providers, inputs, setTaskCompleted } = setup(fakeTask());
-    await render(TaskCard, { providers, inputs, on: { edit: onEdit } });
+    await render(TaskCard, { providers, inputs, on: { view: onView } });
 
     await user.click(screen.getByRole('checkbox', { name: /mark write tests complete/i }));
 
     expect(setTaskCompleted).toHaveBeenCalledWith('t1', true);
-    expect(onEdit).not.toHaveBeenCalled();
+    expect(onView).not.toHaveBeenCalled();
   });
 
   it('shows completed tasks with a strikethrough title', async () => {

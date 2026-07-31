@@ -12,7 +12,7 @@ import { MarkdownRenderer } from '../markdown-renderer/markdown-renderer';
   selector: 'app-markdown-editor',
   imports: [HlmTabsImports, HlmInput, MarkdownRenderer],
   template: `
-    <hlm-tabs [tab]="activeTab()" (tabActivated)="activeTab.set($event)">
+    <hlm-tabs [tab]="activeTab()" (tabActivated)="activeTab.set($any($event))">
       <hlm-tabs-list class="w-fit">
         <button hlmTabsTrigger="edit">Write</button>
         <button hlmTabsTrigger="preview">Preview</button>

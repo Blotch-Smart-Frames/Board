@@ -166,6 +166,60 @@ describe('BoardStore', () => {
     });
   });
 
+  describe('filtering', () => {
+    function seedForFilters() {
+      onSnapshotCallbacks.get('boards/board-1/lists')!(
+        collectionSnapshot([{ id: 'list-a', data: { title: 'A', order: 'a0' } }]),
+      );
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([
+          { id: 't1', data: { listId: 'list-a', order: 'a0', assignedTo: ['u1'], labelIds: ['l1'] } },
+          { id: 't2', data: { listId: 'list-a', order: 'a1', assignedTo: ['u2'], labelIds: ['l2'] } },
+          { id: 't3', data: { listId: 'list-a', order: 'a2' } },
+        ]),
+      );
+    }
+
+    it('shows all tasks when no filters are set', () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      seedForFilters();
+
+      expect(store.listsWithTasks()[0].tasks.map((t) => t.id)).toEqual(['t1', 't2', 't3']);
+    });
+
+    it('assigneeFilter narrows tasks to those assigned to the selected user', () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      seedForFilters();
+
+      store.assigneeFilter.set('u1');
+
+      expect(store.listsWithTasks()[0].tasks.map((t) => t.id)).toEqual(['t1']);
+    });
+
+    it('labelFilter narrows tasks to those with any selected label', () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      seedForFilters();
+
+      store.labelFilter.set(['l2']);
+
+      expect(store.listsWithTasks()[0].tasks.map((t) => t.id)).toEqual(['t2']);
+    });
+
+    it('combines assigneeFilter and labelFilter with AND semantics', () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      seedForFilters();
+
+      store.assigneeFilter.set('u2');
+      store.labelFilter.set(['l1']);
+
+      expect(store.listsWithTasks()[0].tasks).toEqual([]);
+    });
+  });
+
   describe('mutations', () => {
     it('addTask includes the current user id', async () => {
       const store = TestBed.inject(BoardStore);
@@ -231,6 +285,45 @@ describe('BoardStore', () => {
         expect.objectContaining({ action: 'moved', metadata: { fromListName: 'To Do', toListName: 'Done' } }),
       ]);
       expect(boardService.moveTask).toHaveBeenCalledWith('board-1', 't1', 'list-2', 'a5');
+    });
+
+    it('moveTaskToList appends the task to the end of the destination list and logs history', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      onSnapshotCallbacks.get('boards/board-1/lists')!(
+        collectionSnapshot([
+          { id: 'list-1', data: { title: 'To Do', order: 'a0' } },
+          { id: 'list-2', data: { title: 'Done', order: 'a1' } },
+        ]),
+      );
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([
+          { id: 't1', data: { title: 'X', listId: 'list-1', order: 'a0' } },
+          { id: 't2', data: { title: 'Y', listId: 'list-2', order: 'a0' } },
+        ]),
+      );
+
+      await store.moveTaskToList('t1', 'list-2');
+
+      const [, taskId, destListId, order] = boardService.moveTask.mock.calls[0];
+      expect(taskId).toBe('t1');
+      expect(destListId).toBe('list-2');
+      expect(order > 'a0').toBe(true); // placed after t2, i.e. appended at the end
+      expect(boardService.addTaskHistory).toHaveBeenCalledWith('board-1', 't1', [
+        expect.objectContaining({ action: 'moved', metadata: { fromListName: 'To Do', toListName: 'Done' } }),
+      ]);
+    });
+
+    it('moveTaskToList is a no-op when the task is already in the destination list', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([{ id: 't1', data: { title: 'X', listId: 'list-1', order: 'a0' } }]),
+      );
+
+      await store.moveTaskToList('t1', 'list-1');
+
+      expect(boardService.moveTask).not.toHaveBeenCalled();
     });
   });
 

@@ -8,8 +8,19 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { ColorPicker } from '../../../shared/components/color-picker/color-picker';
+import { LabelPicker } from '../label-picker/label-picker';
+import { AssigneePicker } from '../assignee-picker/assignee-picker';
+import { SprintPicker } from '../../sprints/sprint-picker/sprint-picker';
 import { toDateInputValue, parseDateInput } from '../../../shared/utils/date-input';
-import type { Task, CreateTaskInput, UpdateTaskInput } from '../../../shared/types/board';
+import type {
+  Task,
+  CreateTaskInput,
+  UpdateTaskInput,
+  Label,
+  Collaborator,
+  Board,
+  Sprint,
+} from '../../../shared/types/board';
 
 type TaskFormModel = {
   title: string;
@@ -17,11 +28,26 @@ type TaskFormModel = {
   color: string;
   startDate: string;
   dueDate: string;
+  labelIds: string[];
+  assignedTo: string[];
+  sprintId: string;
 };
 
 @Component({
   selector: 'app-task-dialog',
-  imports: [HlmDialogImports, HlmButton, HlmInput, HlmLabel, HlmSpinner, ColorPicker, NgIcon, FormField],
+  imports: [
+    HlmDialogImports,
+    HlmButton,
+    HlmInput,
+    HlmLabel,
+    HlmSpinner,
+    ColorPicker,
+    LabelPicker,
+    AssigneePicker,
+    SprintPicker,
+    NgIcon,
+    FormField,
+  ],
   providers: [provideIcons({ lucideTrash2 })],
   template: `
     <hlm-dialog #dialog>
@@ -42,6 +68,34 @@ type TaskFormModel = {
           <div>
             <label hlmLabel for="task-desc">Description</label>
             <textarea hlmInput id="task-desc" class="min-h-20 w-full resize-y" [formField]="taskForm.description"></textarea>
+          </div>
+
+          <div>
+            <app-label-picker
+              [boardId]="boardId()"
+              [labels]="labels()"
+              [selectedLabelIds]="model().labelIds"
+              (selectedLabelIdsChange)="setLabelIds($event)"
+            />
+          </div>
+
+          <div>
+            <span hlmLabel>Assignees</span>
+            <app-assignee-picker
+              [collaborators]="collaborators()"
+              [selectedUserIds]="model().assignedTo"
+              (selectedUserIdsChange)="setAssignedTo($event)"
+            />
+          </div>
+
+          <div>
+            <app-sprint-picker
+              [boardId]="boardId()"
+              [board]="board()"
+              [sprints]="sprints()"
+              [selectedSprintId]="model().sprintId || null"
+              (selectedSprintIdChange)="setSprintId($event)"
+            />
           </div>
 
           <div class="flex flex-col gap-2">
@@ -100,6 +154,11 @@ type TaskFormModel = {
 export class TaskDialog {
   readonly saveHandler = input.required<(data: CreateTaskInput | UpdateTaskInput) => Promise<void>>();
   readonly deleteHandler = input<(() => Promise<void>) | null>(null);
+  readonly boardId = input.required<string>();
+  readonly labels = input.required<Label[]>();
+  readonly collaborators = input<Collaborator[]>([]);
+  readonly board = input<Board | null>(null);
+  readonly sprints = input<Sprint[]>([]);
 
   private readonly dialog = viewChild.required<HlmDialog>('dialog');
 
@@ -113,6 +172,9 @@ export class TaskDialog {
     color: '',
     startDate: '',
     dueDate: '',
+    labelIds: [],
+    assignedTo: [],
+    sprintId: '',
   });
 
   protected readonly taskForm = form(this.model, (path) => {
@@ -137,6 +199,9 @@ export class TaskDialog {
       color: task?.color ?? '',
       startDate: task?.startDate ? toDateInputValue(task.startDate.toDate()) : '',
       dueDate: task?.dueDate ? toDateInputValue(task.dueDate.toDate()) : '',
+      labelIds: task?.labelIds ?? [],
+      assignedTo: task?.assignedTo ?? [],
+      sprintId: task?.sprintId ?? '',
     });
     this.dialog().open();
   }
@@ -148,6 +213,18 @@ export class TaskDialog {
 
   protected setColor(color: string): void {
     this.model.update((m) => ({ ...m, color }));
+  }
+
+  protected setLabelIds(labelIds: string[]): void {
+    this.model.update((m) => ({ ...m, labelIds }));
+  }
+
+  protected setAssignedTo(assignedTo: string[]): void {
+    this.model.update((m) => ({ ...m, assignedTo }));
+  }
+
+  protected setSprintId(sprintId: string | null): void {
+    this.model.update((m) => ({ ...m, sprintId: sprintId ?? '' }));
   }
 
   protected clearColor(): void {
@@ -164,6 +241,9 @@ export class TaskDialog {
         color: v.color || (isEditing ? null : undefined),
         startDate: v.startDate ? parseDateInput(v.startDate) : isEditing ? null : undefined,
         dueDate: v.dueDate ? parseDateInput(v.dueDate) : isEditing ? null : undefined,
+        labelIds: v.labelIds,
+        assignedTo: v.assignedTo,
+        sprintId: v.sprintId || (isEditing ? null : undefined),
       };
 
       this.error.set(null);

@@ -51,7 +51,7 @@ export type ListWithTasks = List & { tasks: Task[] };
       >
         @for (task of activeTasks(); track task.id) {
           <div cdkDrag [cdkDragData]="task">
-            <app-task-card [task]="task" [labels]="labels()" (edit)="editTask.emit($event)" />
+            <app-task-card [task]="task" [labels]="labels()" (view)="viewTask.emit($event)" />
           </div>
         } @empty {
           <p class="text-muted-foreground py-4 text-center text-sm">No tasks yet</p>
@@ -65,7 +65,7 @@ export type ListWithTasks = List & { tasks: Task[] };
           </summary>
           <div class="mt-2 space-y-2">
             @for (task of completedTasks(); track task.id) {
-              <app-task-card [task]="task" [labels]="labels()" (edit)="editTask.emit($event)" />
+              <app-task-card [task]="task" [labels]="labels()" (view)="viewTask.emit($event)" />
             }
           </div>
         </details>
@@ -112,7 +112,7 @@ export class ListColumn {
   readonly updateTitle = output<string>();
   readonly deleteList = output<void>();
   readonly addTask = output<string>();
-  readonly editTask = output<Task>();
+  readonly viewTask = output<Task>();
   readonly taskDropped = output<CdkDragDrop<Task[]>>();
   readonly moveLeft = output<void>();
   readonly moveRight = output<void>();

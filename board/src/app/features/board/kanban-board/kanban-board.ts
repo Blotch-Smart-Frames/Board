@@ -4,14 +4,40 @@ import { BoardBackground } from '../board-background/board-background';
 import { ListColumn } from '../list-column/list-column';
 import { AddListButton } from '../add-list-button/add-list-button';
 import { TaskDialog } from '../task-dialog/task-dialog';
+import { TaskDetailDialog } from '../task-detail/task-detail-dialog';
+import { LabelFilter } from '../label-filter/label-filter';
+import { AssigneeFilter } from '../assignee-filter/assignee-filter';
 import { BoardStore } from '../data/board.store';
 import type { Task, UpdateTaskInput } from '../../../shared/types/board';
 
 @Component({
   selector: 'app-kanban-board',
-  imports: [CdkDropList, CdkDrag, BoardBackground, ListColumn, AddListButton, TaskDialog],
+  imports: [
+    CdkDropList,
+    CdkDrag,
+    BoardBackground,
+    ListColumn,
+    AddListButton,
+    TaskDialog,
+    TaskDetailDialog,
+    LabelFilter,
+    AssigneeFilter,
+  ],
   template: `
     <app-board-background [imageUrl]="store.board()?.backgroundImageUrl">
+      <div class="flex flex-wrap items-center gap-2 px-4 py-2">
+        <app-label-filter
+          [labels]="store.labels() ?? []"
+          [selectedLabelIds]="store.labelFilter()"
+          (selectedLabelIdsChange)="store.labelFilter.set($event)"
+        />
+        <app-assignee-filter
+          [collaborators]="store.collaborators()"
+          [selectedAssigneeId]="store.assigneeFilter()"
+          (selectedAssigneeIdChange)="store.assigneeFilter.set($event)"
+        />
+      </div>
+
       <div class="flex-1 overflow-x-auto overflow-y-hidden p-4">
         <div class="flex h-full items-start gap-4">
           <div
@@ -31,7 +57,7 @@ import type { Task, UpdateTaskInput } from '../../../shared/types/board';
                   (updateTitle)="store.updateListTitle(list.id, { title: $event })"
                   (deleteList)="store.deleteList(list.id)"
                   (addTask)="store.addTask(list.id, { title: $event })"
-                  (editTask)="openEdit($event)"
+                  (viewTask)="openDetail($event)"
                   (taskDropped)="onTaskDrop($event)"
                   (moveLeft)="store.reorderListToIndex(list.id, i - 1)"
                   (moveRight)="store.reorderListToIndex(list.id, i + 1)"
@@ -44,12 +70,23 @@ import type { Task, UpdateTaskInput } from '../../../shared/types/board';
       </div>
     </app-board-background>
 
-    <app-task-dialog #taskDialog [saveHandler]="saveHandler" [deleteHandler]="deleteHandler" />
+    <app-task-dialog
+      #taskDialog
+      [saveHandler]="saveHandler"
+      [deleteHandler]="deleteHandler"
+      [boardId]="store.boardId() ?? ''"
+      [labels]="store.labels() ?? []"
+      [collaborators]="store.collaborators()"
+      [board]="store.board() ?? null"
+      [sprints]="store.sprints() ?? []"
+    />
+    <app-task-detail-dialog #detailDialog (edit)="openEdit($event)" />
   `,
 })
 export class KanbanBoard {
   protected readonly store = inject(BoardStore);
   private readonly taskDialog = viewChild.required<TaskDialog>('taskDialog');
+  private readonly detailDialog = viewChild.required<TaskDetailDialog>('detailDialog');
   private readonly editingTask = signal<Task | null>(null);
 
   protected readonly listIds = computed(() => this.store.listsWithTasks().map((l) => l.id));
@@ -63,6 +100,10 @@ export class KanbanBoard {
     const task = this.editingTask();
     if (task) await this.store.deleteTask(task.id);
   };
+
+  protected openDetail(task: Task): void {
+    this.detailDialog().open(task);
+  }
 
   protected openEdit(task: Task): void {
     this.editingTask.set(task);
