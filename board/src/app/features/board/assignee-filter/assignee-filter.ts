@@ -9,11 +9,22 @@ const ALL_VALUE = '__all__';
   selector: 'app-assignee-filter',
   imports: [HlmToggleGroupImports, UserAvatar],
   template: `
-    <div hlmToggleGroup type="single" class="flex-wrap justify-start" [value]="value()" (valueChange)="onValueChange($event)">
+    <div
+      hlmToggleGroup
+      type="single"
+      class="flex-wrap justify-start"
+      [value]="value()"
+      (valueChange)="onValueChange($event)"
+    >
       <button hlmToggleGroupItem [value]="allValue">All</button>
       @for (collaborator of collaborators(); track collaborator.id) {
         <button hlmToggleGroupItem [value]="collaborator.id" class="gap-1.5">
-          <app-user-avatar [name]="collaborator.name" [photoURL]="collaborator.photoURL" size="small" [showTooltip]="false" />
+          <app-user-avatar
+            [name]="collaborator.name"
+            [photoURL]="collaborator.photoURL"
+            size="small"
+            [showTooltip]="false"
+          />
           {{ collaborator.name }}
         </button>
       }

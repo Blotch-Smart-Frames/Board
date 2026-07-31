@@ -1,37 +1,45 @@
 import { Component, computed, input, output } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideVideo, lucideTrash2 } from '@ng-icons/lucide';
-import { HlmButton } from '@spartan-ng/helm/button';
+import { lucideFileVideo, lucideTrash2 } from '@ng-icons/lucide';
+import { HlmAttachmentImports } from '@spartan-ng/helm/attachment';
 import { formatFileSize, isImageFile } from '../../../../shared/utils/file-utils';
 import type { Attachment } from '../../../../shared/types/board';
 
 @Component({
   selector: 'app-attachment-preview',
-  imports: [NgIcon, HlmButton],
-  providers: [provideIcons({ lucideVideo, lucideTrash2 })],
+  imports: [NgIcon, HlmAttachmentImports],
+  providers: [provideIcons({ lucideFileVideo, lucideTrash2 })],
   template: `
-    <div class="flex items-center gap-2 rounded-md border p-2">
-      <div class="bg-muted flex size-10 shrink-0 items-center justify-center overflow-hidden rounded">
+    <div hlmAttachment class="w-full">
+      <div hlmAttachmentMedia [variant]="isImage() ? 'image' : 'icon'">
         @if (isImage()) {
-          <img [src]="attachment().downloadUrl" [alt]="attachment().fileName" class="size-full object-cover" />
+          <img [src]="attachment().downloadUrl" [alt]="attachment().fileName" />
         } @else {
-          <ng-icon name="lucideVideo" class="text-muted-foreground" />
+          <ng-icon name="lucideFileVideo" class="text-muted-foreground" />
         }
       </div>
-      <div class="min-w-0 flex-1">
+      <div hlmAttachmentContent>
         <a
-          class="text-primary block truncate text-sm underline"
+          hlmAttachmentTitle
+          hlmAttachmentTrigger
+          class="text-primary truncate underline"
           [href]="attachment().downloadUrl"
           target="_blank"
           rel="noopener noreferrer"
         >
           {{ attachment().fileName }}
         </a>
-        <p class="text-muted-foreground text-xs">{{ size() }}</p>
+        <span hlmAttachmentDescription class="text-muted-foreground text-xs">{{ size() }}</span>
       </div>
-      <button hlmBtn variant="ghost" size="icon-sm" aria-label="Delete attachment" (click)="deleted.emit(attachment().id)">
-        <ng-icon name="lucideTrash2" />
-      </button>
+      <div hlmAttachmentActions>
+        <button
+          hlmAttachmentAction
+          aria-label="Delete attachment"
+          (click)="deleted.emit(attachment().id)"
+        >
+          <ng-icon name="lucideTrash2" />
+        </button>
+      </div>
     </div>
   `,
 })

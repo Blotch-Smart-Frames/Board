@@ -7,13 +7,24 @@ import { BoardStore } from '../../features/board/data/board.store';
 import { BoardsSidebar } from '../../features/boards/boards-sidebar/boards-sidebar';
 import { KanbanBoard } from '../../features/board/kanban-board/kanban-board';
 import { TimelineView } from '../../features/timeline/timeline-view/timeline-view';
+import { ShareDialog } from '../../features/collaboration/share-dialog/share-dialog';
 import { isMobileSignal } from '../../core/interop/breakpoint-signal';
 import { AppBar, type ViewMode } from '../app-bar/app-bar';
 
 @Component({
   selector: 'app-board-workspace',
   providers: [BoardStore],
-  imports: [NgTemplateOutlet, RouterLink, HlmButton, HlmSpinner, AppBar, BoardsSidebar, KanbanBoard, TimelineView],
+  imports: [
+    NgTemplateOutlet,
+    RouterLink,
+    HlmButton,
+    HlmSpinner,
+    AppBar,
+    BoardsSidebar,
+    KanbanBoard,
+    TimelineView,
+    ShareDialog,
+  ],
   template: `
     <div class="flex h-dvh flex-col">
       <app-app-bar
@@ -23,6 +34,7 @@ import { AppBar, type ViewMode } from '../app-bar/app-bar';
         [viewMode]="store.board() ? viewMode() : undefined"
         (menuClick)="toggleDrawer()"
         (viewModeChange)="viewMode.set($event)"
+        (share)="openShare()"
       />
 
       <div class="flex flex-1 overflow-hidden">
@@ -54,7 +66,9 @@ import { AppBar, type ViewMode } from '../app-bar/app-bar';
           } @else if (!store.board()) {
             <div class="flex h-full flex-col items-center justify-center gap-2 text-center">
               <h2 class="text-xl font-medium">Board not found</h2>
-              <p class="text-muted-foreground">You don't have access to this board, or it doesn't exist.</p>
+              <p class="text-muted-foreground">
+                You don't have access to this board, or it doesn't exist.
+              </p>
               <a hlmBtn variant="outline" routerLink="/" class="mt-1">Go to boards</a>
             </div>
           } @else if (viewMode() === 'kanban') {
@@ -65,6 +79,15 @@ import { AppBar, type ViewMode } from '../app-bar/app-bar';
         </main>
       </div>
     </div>
+
+    @if (store.board(); as board) {
+      <app-share-dialog
+        #shareDialog
+        [boardId]="store.boardId()!"
+        [boardTitle]="board.title"
+        [collaborators]="store.collaborators()"
+      />
+    }
 
     <ng-template #sidebarContent>
       <app-boards-sidebar />
@@ -81,6 +104,7 @@ export class BoardWorkspace {
   protected readonly title = computed(() => this.store.board()?.title ?? 'Board by Blotch');
 
   private readonly mobileDrawer = viewChild<ElementRef<HTMLDialogElement>>('mobileDrawer');
+  private readonly shareDialog = viewChild<ShareDialog>('shareDialog');
 
   constructor() {
     effect(() => {
@@ -96,5 +120,9 @@ export class BoardWorkspace {
 
   protected toggleDrawer(): void {
     this.drawerOpen.update((open) => !open);
+  }
+
+  protected openShare(): void {
+    this.shareDialog()?.open();
   }
 }

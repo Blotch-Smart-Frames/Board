@@ -1,8 +1,18 @@
-import { Component, ElementRef, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucidePaperclip } from '@ng-icons/lucide';
+import { HlmAttachmentImports } from '@spartan-ng/helm/attachment';
 import { HlmButton } from '@spartan-ng/helm/button';
-import { HlmProgress, HlmProgressIndicator } from '@spartan-ng/helm/progress';
+import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { HlmAlert, HlmAlertDescription } from '@spartan-ng/helm/alert';
 import { StorageService } from '../../../../core/services/storage.service';
 import { ALLOWED_ATTACHMENT_TYPES } from '../../../../shared/utils/file-utils';
@@ -13,13 +23,27 @@ type UploadInProgress = { id: string; fileName: string; progress: number };
 
 @Component({
   selector: 'app-attachment-section',
-  imports: [NgIcon, HlmButton, HlmProgress, HlmProgressIndicator, HlmAlert, HlmAlertDescription, AttachmentPreview],
+  imports: [
+    NgIcon,
+    HlmButton,
+    HlmSpinner,
+    HlmAlert,
+    HlmAlertDescription,
+    HlmAttachmentImports,
+    AttachmentPreview,
+  ],
   providers: [provideIcons({ lucidePaperclip })],
   template: `
     <div>
       <div class="mb-2 flex items-center justify-between">
         <h3 class="text-muted-foreground text-sm font-medium">Attachments</h3>
-        <button hlmBtn variant="ghost" size="sm" [disabled]="uploads().length > 0" (click)="fileInput.click()">
+        <button
+          hlmBtn
+          variant="ghost"
+          size="sm"
+          [disabled]="uploads().length > 0"
+          (click)="fileInput.click()"
+        >
           <ng-icon name="lucidePaperclip" class="mr-2" />
           Add attachment
         </button>
@@ -39,18 +63,24 @@ type UploadInProgress = { id: string; fileName: string; progress: number };
         </div>
       }
 
-      @if (attachments().length > 0 || uploads().length > 0) {
-        <div class="flex flex-col gap-2">
+      @if (hasContent()) {
+        <div hlmAttachmentGroup class="flex-col flex-nowrap overflow-x-visible">
           @for (upload of uploads(); track upload.id) {
-            <div class="rounded-md border p-2">
-              <p class="truncate text-sm">{{ upload.fileName }}</p>
-              <div hlmProgress class="mt-1" [value]="upload.progress">
-                <div hlmProgressIndicator></div>
+            <div hlmAttachment state="uploading" class="w-full">
+              <div hlmAttachmentMedia>
+                <hlm-spinner />
+              </div>
+              <div hlmAttachmentContent>
+                <span hlmAttachmentTitle>{{ upload.fileName }}</span>
+                <span hlmAttachmentDescription>Uploading · {{ upload.progress }}%</span>
               </div>
             </div>
           }
           @for (attachment of attachments(); track attachment.id) {
-            <app-attachment-preview [attachment]="attachment" (deleted)="removeAttachment($event)" />
+            <app-attachment-preview
+              [attachment]="attachment"
+              (deleted)="removeAttachment($event)"
+            />
           }
         </div>
       }
@@ -70,6 +100,10 @@ export class AttachmentSection {
   protected readonly error = signal<string | null>(null);
   private readonly fileInput = viewChild.required<ElementRef<HTMLInputElement>>('fileInput');
 
+  protected readonly hasContent = computed(
+    () => this.attachments().length > 0 || this.uploads().length > 0,
+  );
+
   protected onFilesSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files ?? []);
@@ -82,7 +116,9 @@ export class AttachmentSection {
 
       this.storageService
         .uploadTaskAttachment(this.boardId(), this.taskId(), file, (progress) => {
-          this.uploads.update((list) => list.map((u) => (u.id === uploadId ? { ...u, progress } : u)));
+          this.uploads.update((list) =>
+            list.map((u) => (u.id === uploadId ? { ...u, progress } : u)),
+          );
         })
         .then((attachment) => {
           this.uploads.update((list) => list.filter((u) => u.id !== uploadId));
@@ -101,8 +137,4 @@ export class AttachmentSection {
     this.storageService.deleteTaskAttachment(attachment.storagePath).catch(() => {});
     this.attachmentsChange.emit(this.attachments().filter((a) => a.id !== attachmentId));
   }
-
-  protected readonly hasContent = computed(
-    () => this.attachments().length > 0 || this.uploads().length > 0,
-  );
 }

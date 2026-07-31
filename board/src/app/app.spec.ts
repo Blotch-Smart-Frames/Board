@@ -2,6 +2,7 @@ import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { render, screen } from '@testing-library/angular';
 import { AuthStore } from './core/auth/auth.store';
+import { VersionCheckService } from './core/version/version-check.service';
 import { App } from './app';
 
 function stubMatchMedia() {
@@ -10,6 +11,8 @@ function stubMatchMedia() {
     vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })),
   );
 }
+
+const stubbedVersionCheck = { hasNewVersion: signal(false) };
 
 describe('App', () => {
   afterEach(() => {
@@ -21,7 +24,11 @@ describe('App', () => {
     await render(App, {
       providers: [
         provideRouter([]),
-        { provide: AuthStore, useValue: { isAuthReady: signal(false), isAuthenticated: signal(false) } },
+        {
+          provide: AuthStore,
+          useValue: { isAuthReady: signal(false), isAuthenticated: signal(false) },
+        },
+        { provide: VersionCheckService, useValue: stubbedVersionCheck },
       ],
     });
 
@@ -37,6 +44,7 @@ describe('App', () => {
           provide: AuthStore,
           useValue: { isAuthReady: signal(true), isAuthenticated: signal(false), login: vi.fn() },
         },
+        { provide: VersionCheckService, useValue: stubbedVersionCheck },
       ],
     });
 
@@ -48,7 +56,11 @@ describe('App', () => {
     await render(App, {
       providers: [
         provideRouter([]),
-        { provide: AuthStore, useValue: { isAuthReady: signal(true), isAuthenticated: signal(true) } },
+        {
+          provide: AuthStore,
+          useValue: { isAuthReady: signal(true), isAuthenticated: signal(true) },
+        },
+        { provide: VersionCheckService, useValue: stubbedVersionCheck },
       ],
     });
 

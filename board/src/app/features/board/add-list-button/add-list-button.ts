@@ -23,10 +23,22 @@ import { HlmInput } from '@spartan-ng/helm/input';
           aria-label="List title"
         />
         <div class="mt-2 flex items-center gap-2">
-          <button hlmBtn size="sm" [disabled]="!draft().trim()" (mousedown)="$event.preventDefault()" (click)="add()">
+          <button
+            hlmBtn
+            size="sm"
+            [disabled]="!draft().trim()"
+            (mousedown)="$event.preventDefault()"
+            (click)="add()"
+          >
             Add list
           </button>
-          <button hlmBtn size="sm" variant="ghost" (mousedown)="$event.preventDefault()" (click)="cancel()">
+          <button
+            hlmBtn
+            size="sm"
+            variant="ghost"
+            (mousedown)="$event.preventDefault()"
+            (click)="cancel()"
+          >
             Cancel
           </button>
         </div>
@@ -34,11 +46,11 @@ import { HlmInput } from '@spartan-ng/helm/input';
     } @else {
       <button
         hlmBtn
-        variant="secondary"
-        class="bg-background/40 hover:bg-background/60 w-72 shrink-0 justify-start"
+        variant="ghost"
+        class="bg-background/90 hover:bg-background text-foreground h-auto w-72 shrink-0 justify-start rounded-lg p-4 text-sm font-medium shadow-sm"
         (click)="startAdding()"
       >
-        <ng-icon name="lucidePlus" class="mr-2" />
+        <ng-icon name="lucidePlus" class="mr-2 size-5" />
         Add another list
       </button>
     }

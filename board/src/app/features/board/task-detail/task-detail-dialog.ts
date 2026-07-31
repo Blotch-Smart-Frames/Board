@@ -52,7 +52,11 @@ function formatDate(timestamp: Timestamp): string {
             <h3 hlmDialogTitle class="pr-6 break-words">{{ task.title }}</h3>
           </hlm-dialog-header>
 
-          <hlm-tabs [tab]="activeTab()" (tabActivated)="activeTab.set($any($event))" class="flex min-h-0 flex-1 flex-col">
+          <hlm-tabs
+            [tab]="activeTab()"
+            (tabActivated)="activeTab.set($any($event))"
+            class="flex min-h-0 flex-1 flex-col"
+          >
             <hlm-tabs-list class="w-fit">
               <button hlmTabsTrigger="details">Details</button>
               <button hlmTabsTrigger="history">History</button>
@@ -62,7 +66,11 @@ function formatDate(timestamp: Timestamp): string {
               @if (store.listsWithTasks().length > 0) {
                 <div>
                   <label hlmLabel for="detail-list-trigger">List</label>
-                  <hlm-select [value]="task.listId" (valueChange)="onMoveToList($event)">
+                  <hlm-select
+                    [value]="task.listId"
+                    [itemToString]="listIdToTitle"
+                    (valueChange)="onMoveToList($event)"
+                  >
                     <hlm-select-trigger [buttonId]="'detail-list-trigger'" class="w-full">
                       <hlm-select-value />
                     </hlm-select-trigger>
@@ -94,7 +102,11 @@ function formatDate(timestamp: Timestamp): string {
               }
 
               <div>
-                <button type="button" class="text-muted-foreground mb-1 text-sm font-medium" (click)="toggleAssignees()">
+                <button
+                  type="button"
+                  class="text-muted-foreground mb-1 text-sm font-medium"
+                  (click)="toggleAssignees()"
+                >
                   Assignees
                 </button>
                 @if (assigneesExpanded()) {
@@ -139,7 +151,11 @@ function formatDate(timestamp: Timestamp): string {
 
               <hr class="border-border" />
 
-              <app-comments-section [boardId]="boardId()" [taskId]="task.id" [collaborators]="store.collaborators()" />
+              <app-comments-section
+                [boardId]="boardId()"
+                [taskId]="task.id"
+                [collaborators]="store.collaborators()"
+              />
             </div>
 
             <div hlmTabsContent="history" class="overflow-y-auto py-2">
@@ -175,7 +191,9 @@ export class TaskDetailDialog {
   protected readonly activeTab = signal<'details' | 'history'>('details');
   protected readonly assigneesExpanded = signal(false);
 
-  protected readonly task = computed(() => (this.store.tasks() ?? []).find((t) => t.id === this.taskId()));
+  protected readonly task = computed(() =>
+    (this.store.tasks() ?? []).find((t) => t.id === this.taskId()),
+  );
   protected readonly boardId = computed(() => this.store.boardId() ?? '');
 
   protected readonly taskLabels = computed(() => {
@@ -229,4 +247,7 @@ export class TaskDetailDialog {
     if (!task || typeof value !== 'string' || !value) return;
     this.store.moveTaskToList(task.id, value);
   }
+
+  protected readonly listIdToTitle = (id: string): string =>
+    this.store.listsWithTasks().find((l) => l.id === id)?.title ?? '';
 }

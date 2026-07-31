@@ -1,4 +1,13 @@
-import { Component, ElementRef, computed, effect, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { CdkDropList, CdkDrag, CdkDragHandle, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucidePlus, lucideGripVertical } from '@ng-icons/lucide';
@@ -42,7 +51,7 @@ export type ListWithTasks = List & { tasks: Task[] };
       </div>
 
       <div
-        class="flex-1 space-y-2 overflow-y-auto px-2 pb-2"
+        class="flex-1 space-y-2 overflow-y-auto p-2"
         cdkDropList
         [id]="list().id"
         [cdkDropListData]="activeTasks()"
@@ -85,15 +94,32 @@ export type ListWithTasks = List & { tasks: Task[] };
             aria-label="Task title"
           ></textarea>
           <div class="mt-2 flex items-center gap-2">
-            <button hlmBtn size="sm" [disabled]="!draft().trim()" (mousedown)="$event.preventDefault()" (click)="submitTask()">
+            <button
+              hlmBtn
+              size="sm"
+              [disabled]="!draft().trim()"
+              (mousedown)="$event.preventDefault()"
+              (click)="submitTask()"
+            >
               Add
             </button>
-            <button hlmBtn size="sm" variant="ghost" (mousedown)="$event.preventDefault()" (click)="cancelAdd()">
+            <button
+              hlmBtn
+              size="sm"
+              variant="ghost"
+              (mousedown)="$event.preventDefault()"
+              (click)="cancelAdd()"
+            >
               Cancel
             </button>
           </div>
         } @else {
-          <button hlmBtn variant="ghost" class="text-muted-foreground w-full justify-start" (click)="startAdd()">
+          <button
+            hlmBtn
+            variant="ghost"
+            class="text-muted-foreground w-full justify-start"
+            (click)="startAdd()"
+          >
             <ng-icon name="lucidePlus" class="mr-2" />
             Add a task
           </button>
@@ -118,7 +144,9 @@ export class ListColumn {
   readonly moveRight = output<void>();
 
   protected readonly activeTasks = computed(() => this.list().tasks.filter((t) => !t.completedAt));
-  protected readonly completedTasks = computed(() => this.list().tasks.filter((t) => t.completedAt));
+  protected readonly completedTasks = computed(() =>
+    this.list().tasks.filter((t) => t.completedAt),
+  );
 
   protected readonly addingTask = signal(false);
   protected readonly draft = signal('');

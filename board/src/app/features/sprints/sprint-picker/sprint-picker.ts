@@ -20,14 +20,20 @@ const NO_SPRINT_VALUE = '';
   template: `
     <div>
       <div class="mb-2 flex items-center justify-between">
-        <label hlmLabel for="sprint-picker-trigger" class="text-muted-foreground text-sm">Sprint</label>
+        <label hlmLabel for="sprint-picker-trigger" class="text-muted-foreground text-sm"
+          >Sprint</label
+        >
         <button hlmBtn variant="ghost" size="sm" type="button" (click)="openManagement()">
           <ng-icon name="lucideSettings" class="mr-2" />
           Manage
         </button>
       </div>
 
-      <hlm-select [value]="selectedSprintId() ?? noSprintValue" (valueChange)="onValueChange($event)">
+      <hlm-select
+        [value]="selectedSprintId() ?? noSprintValue"
+        [itemToString]="sprintIdToLabel"
+        (valueChange)="onValueChange($event)"
+      >
         <hlm-select-trigger [buttonId]="'sprint-picker-trigger'" class="w-full">
           <hlm-select-value />
         </hlm-select-trigger>
@@ -51,7 +57,12 @@ const NO_SPRINT_VALUE = '';
     </div>
 
     <app-sprint-dialog #sprintDialog [boardId]="boardId()" [saveHandler]="createHandler" />
-    <app-sprint-management #management [boardId]="boardId()" [board]="board()" [sprints]="sprints()" />
+    <app-sprint-management
+      #management
+      [boardId]="boardId()"
+      [board]="board()"
+      [sprints]="sprints()"
+    />
   `,
 })
 export class SprintPicker {
@@ -68,7 +79,9 @@ export class SprintPicker {
   private readonly sprintDialog = viewChild.required<SprintDialog>('sprintDialog');
   private readonly management = viewChild.required<SprintManagement>('management');
 
-  protected readonly sorted = computed(() => [...this.sprints()].sort((a, b) => compareOrder(a.order, b.order)));
+  protected readonly sorted = computed(() =>
+    [...this.sprints()].sort((a, b) => compareOrder(a.order, b.order)),
+  );
 
   protected onValueChange(value: unknown): void {
     if (typeof value !== 'string') return;
@@ -89,4 +102,9 @@ export class SprintPicker {
 
   protected readonly createHandler = (data: CreateSprintInput): Promise<void> =>
     this.sprintService.createSprint(this.boardId(), data).then(() => {});
+
+  protected readonly sprintIdToLabel = (id: string): string => {
+    if (id === NO_SPRINT_VALUE) return 'No sprint (Backlog)';
+    return this.sprints().find((s) => s.id === id)?.name ?? '';
+  };
 }

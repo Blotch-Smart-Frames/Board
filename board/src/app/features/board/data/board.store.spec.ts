@@ -6,13 +6,17 @@ import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { FIRESTORE_DB } from '../../../core/firebase/firebase.config';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { BoardService } from '../../../core/services/board.service';
+import { SyncService } from '../../../core/services/sync.service';
 import { UserService } from '../../../core/services/user.service';
 import { BoardStore } from './board.store';
 
 type SnapshotCallback = (snapshot: unknown) => void;
 
 vi.mock('firebase/firestore', () => ({
-  collection: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'collection', path: segments.join('/') })),
+  collection: vi.fn((_db: unknown, ...segments: string[]) => ({
+    type: 'collection',
+    path: segments.join('/'),
+  })),
   doc: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'doc', path: segments.join('/') })),
   query: vi.fn((ref: unknown, ...constraints: unknown[]) => ({ type: 'query', ref, constraints })),
   orderBy: vi.fn((field: string) => ({ orderBy: field })),
@@ -41,6 +45,10 @@ describe('BoardStore', () => {
     moveTask: ReturnType<typeof vi.fn>;
     addTaskHistory: ReturnType<typeof vi.fn>;
   };
+  let syncService: {
+    syncTaskToCalendar: ReturnType<typeof vi.fn>;
+    unlinkTaskFromCalendar: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -57,9 +65,15 @@ describe('BoardStore', () => {
       moveTask: vi.fn().mockResolvedValue(undefined),
       addTaskHistory: vi.fn().mockResolvedValue(undefined),
     };
+    syncService = {
+      syncTaskToCalendar: vi.fn().mockResolvedValue(null),
+      unlinkTaskFromCalendar: vi.fn().mockResolvedValue(undefined),
+    };
 
     vi.mocked(onSnapshot).mockImplementation((ref: unknown, onNext: unknown) => {
-      const path = (ref as { path?: string; ref?: { path: string } }).path ?? (ref as { ref: { path: string } }).ref.path;
+      const path =
+        (ref as { path?: string; ref?: { path: string } }).path ??
+        (ref as { ref: { path: string } }).ref.path;
       onSnapshotCallbacks.set(path, onNext as SnapshotCallback);
       return vi.fn(); // unsubscribe
     });
@@ -70,6 +84,7 @@ describe('BoardStore', () => {
         { provide: ActivatedRoute, useValue: { paramMap: paramMap$ } },
         { provide: AuthStore, useValue: { user: signal({ uid: 'u1' }) } },
         { provide: BoardService, useValue: boardService },
+        { provide: SyncService, useValue: syncService },
         { provide: UserService, useValue: { getUsersByIds: vi.fn().mockResolvedValue([]) } },
         BoardStore,
       ],
@@ -173,8 +188,14 @@ describe('BoardStore', () => {
       );
       onSnapshotCallbacks.get('boards/board-1/tasks')!(
         collectionSnapshot([
-          { id: 't1', data: { listId: 'list-a', order: 'a0', assignedTo: ['u1'], labelIds: ['l1'] } },
-          { id: 't2', data: { listId: 'list-a', order: 'a1', assignedTo: ['u2'], labelIds: ['l2'] } },
+          {
+            id: 't1',
+            data: { listId: 'list-a', order: 'a0', assignedTo: ['u1'], labelIds: ['l1'] },
+          },
+          {
+            id: 't2',
+            data: { listId: 'list-a', order: 'a1', assignedTo: ['u2'], labelIds: ['l2'] },
+          },
           { id: 't3', data: { listId: 'list-a', order: 'a2' } },
         ]),
       );
@@ -227,7 +248,12 @@ describe('BoardStore', () => {
 
       await store.addTask('list-1', { title: 'New task' });
 
-      expect(boardService.addTask).toHaveBeenCalledWith('board-1', 'list-1', { title: 'New task' }, 'u1');
+      expect(boardService.addTask).toHaveBeenCalledWith(
+        'board-1',
+        'list-1',
+        { title: 'New task' },
+        'u1',
+      );
     });
 
     it('updateTask records field-change history for a known task', async () => {
@@ -243,7 +269,9 @@ describe('BoardStore', () => {
       expect(boardService.addTaskHistory).toHaveBeenCalledWith(
         'board-1',
         't1',
-        expect.arrayContaining([expect.objectContaining({ action: 'field_changed', field: 'title' })]),
+        expect.arrayContaining([
+          expect.objectContaining({ action: 'field_changed', field: 'title' }),
+        ]),
       );
     });
 
@@ -282,7 +310,10 @@ describe('BoardStore', () => {
       await store.moveTask('t1', 'list-2', 'a5');
 
       expect(boardService.addTaskHistory).toHaveBeenCalledWith('board-1', 't1', [
-        expect.objectContaining({ action: 'moved', metadata: { fromListName: 'To Do', toListName: 'Done' } }),
+        expect.objectContaining({
+          action: 'moved',
+          metadata: { fromListName: 'To Do', toListName: 'Done' },
+        }),
       ]);
       expect(boardService.moveTask).toHaveBeenCalledWith('board-1', 't1', 'list-2', 'a5');
     });
@@ -310,7 +341,10 @@ describe('BoardStore', () => {
       expect(destListId).toBe('list-2');
       expect(order > 'a0').toBe(true); // placed after t2, i.e. appended at the end
       expect(boardService.addTaskHistory).toHaveBeenCalledWith('board-1', 't1', [
-        expect.objectContaining({ action: 'moved', metadata: { fromListName: 'To Do', toListName: 'Done' } }),
+        expect.objectContaining({
+          action: 'moved',
+          metadata: { fromListName: 'To Do', toListName: 'Done' },
+        }),
       ]);
     });
 
@@ -324,6 +358,81 @@ describe('BoardStore', () => {
       await store.moveTaskToList('t1', 'list-1');
 
       expect(boardService.moveTask).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('calendar sync', () => {
+    function seedTask(data: Record<string, unknown>) {
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([{ id: 't1', data: { title: 'X', listId: 'list-1', ...data } }]),
+      );
+    }
+
+    it('syncTaskToCalendar is called after addTask when sync is on and a due date is set', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      const created = {
+        id: 't1',
+        listId: 'list-1',
+        calendarSyncEnabled: true,
+        dueDate: new Date(),
+      };
+      boardService.addTask.mockResolvedValue(created);
+
+      await store.addTask('list-1', { title: 'X', calendarSyncEnabled: true });
+      await Promise.resolve(); // let the fire-and-forget sync land
+
+      expect(syncService.syncTaskToCalendar).toHaveBeenCalledWith('board-1', created);
+    });
+
+    it('addTask does not sync when calendarSyncEnabled is false', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      boardService.addTask.mockResolvedValue({
+        id: 't1',
+        listId: 'list-1',
+        calendarSyncEnabled: false,
+      });
+
+      await store.addTask('list-1', { title: 'X' });
+      await Promise.resolve();
+
+      expect(syncService.syncTaskToCalendar).not.toHaveBeenCalled();
+    });
+
+    it('updateTask calls syncTaskToCalendar when sync stays on and a due date is present', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      seedTask({ calendarSyncEnabled: true, dueDate: { toDate: () => new Date() } });
+
+      await store.updateTask('t1', { title: 'Updated' });
+      await Promise.resolve();
+
+      expect(syncService.syncTaskToCalendar).toHaveBeenCalled();
+    });
+
+    it('updateTask calls unlinkTaskFromCalendar when sync is toggled off', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      seedTask({ calendarSyncEnabled: true, calendarEventId: 'evt-1' });
+
+      await store.updateTask('t1', { calendarSyncEnabled: false });
+      await Promise.resolve();
+
+      expect(syncService.unlinkTaskFromCalendar).toHaveBeenCalled();
+      expect(syncService.syncTaskToCalendar).not.toHaveBeenCalled();
+    });
+
+    it('updateTask does not sync when calendarSyncEnabled stays off', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      seedTask({ calendarSyncEnabled: false });
+
+      await store.updateTask('t1', { title: 'Updated' });
+      await Promise.resolve();
+
+      expect(syncService.syncTaskToCalendar).not.toHaveBeenCalled();
+      expect(syncService.unlinkTaskFromCalendar).not.toHaveBeenCalled();
     });
   });
 

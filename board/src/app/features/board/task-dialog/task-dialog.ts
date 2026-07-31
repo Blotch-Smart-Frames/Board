@@ -4,9 +4,10 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideTrash2 } from '@ng-icons/lucide';
 import { HlmDialogImports, HlmDialog } from '@spartan-ng/helm/dialog';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
-import { HlmLabel } from '@spartan-ng/helm/label';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
+import { HlmSwitch } from '@spartan-ng/helm/switch';
 import { ColorPicker } from '../../../shared/components/color-picker/color-picker';
 import { LabelPicker } from '../label-picker/label-picker';
 import { AssigneePicker } from '../assignee-picker/assignee-picker';
@@ -31,16 +32,18 @@ type TaskFormModel = {
   labelIds: string[];
   assignedTo: string[];
   sprintId: string;
+  calendarSyncEnabled: boolean;
 };
 
 @Component({
   selector: 'app-task-dialog',
   imports: [
     HlmDialogImports,
+    HlmFieldImports,
     HlmButton,
     HlmInput,
-    HlmLabel,
     HlmSpinner,
+    HlmSwitch,
     ColorPicker,
     LabelPicker,
     AssigneePicker,
@@ -56,31 +59,43 @@ type TaskFormModel = {
           <h3 hlmDialogTitle>{{ editing() ? 'Edit task' : 'Create task' }}</h3>
         </hlm-dialog-header>
 
-        <form class="flex max-h-[70vh] flex-col gap-4 overflow-y-auto py-2" (submit)="$event.preventDefault(); save()">
-          <div>
-            <label hlmLabel for="task-title">Title</label>
-            <input hlmInput id="task-title" class="w-full" [formField]="taskForm.title" (keydown.escape)="close()" />
+        <form
+          hlmFieldGroup
+          class="max-h-[70vh] overflow-y-auto py-2"
+          (submit)="$event.preventDefault(); save()"
+        >
+          <div hlmField>
+            <label hlmFieldLabel for="task-title">Title</label>
+            <input
+              hlmInput
+              id="task-title"
+              [formField]="taskForm.title"
+              (keydown.escape)="close()"
+            />
             @for (err of taskForm.title().errors(); track err.kind) {
-              <p class="text-destructive mt-1 text-sm">{{ err.message }}</p>
+              <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
             }
           </div>
 
-          <div>
-            <label hlmLabel for="task-desc">Description</label>
-            <textarea hlmInput id="task-desc" class="min-h-20 w-full resize-y" [formField]="taskForm.description"></textarea>
+          <div hlmField>
+            <label hlmFieldLabel for="task-desc">Description</label>
+            <textarea
+              hlmInput
+              id="task-desc"
+              class="min-h-20 resize-y"
+              [formField]="taskForm.description"
+            ></textarea>
           </div>
 
-          <div>
-            <app-label-picker
-              [boardId]="boardId()"
-              [labels]="labels()"
-              [selectedLabelIds]="model().labelIds"
-              (selectedLabelIdsChange)="setLabelIds($event)"
-            />
-          </div>
+          <app-label-picker
+            [boardId]="boardId()"
+            [labels]="labels()"
+            [selectedLabelIds]="model().labelIds"
+            (selectedLabelIdsChange)="setLabelIds($event)"
+          />
 
-          <div>
-            <span hlmLabel>Assignees</span>
+          <div hlmField>
+            <span hlmFieldLabel>Assignees</span>
             <app-assignee-picker
               [collaborators]="collaborators()"
               [selectedUserIds]="model().assignedTo"
@@ -88,57 +103,85 @@ type TaskFormModel = {
             />
           </div>
 
-          <div>
-            <app-sprint-picker
-              [boardId]="boardId()"
-              [board]="board()"
-              [sprints]="sprints()"
-              [selectedSprintId]="model().sprintId || null"
-              (selectedSprintIdChange)="setSprintId($event)"
-            />
-          </div>
+          <app-sprint-picker
+            [boardId]="boardId()"
+            [board]="board()"
+            [sprints]="sprints()"
+            [selectedSprintId]="model().sprintId || null"
+            (selectedSprintIdChange)="setSprintId($event)"
+          />
 
-          <div class="flex flex-col gap-2">
-            <span class="flex items-center justify-between">
-              <span hlmLabel>Card color</span>
+          <div hlmField>
+            <div class="flex items-center justify-between">
+              <span hlmFieldLabel>Card color</span>
               @if (model().color) {
-                <button hlmBtn variant="ghost" size="sm" type="button" (click)="clearColor()">Clear</button>
+                <button hlmBtn variant="ghost" size="sm" type="button" (click)="clearColor()">
+                  Clear
+                </button>
               }
-            </span>
+            </div>
             <app-color-picker [value]="model().color" (valueChange)="setColor($event)" />
           </div>
 
-          <div class="flex gap-4">
-            <div class="flex-1">
-              <label hlmLabel for="task-start">Start date</label>
-              <input hlmInput id="task-start" type="date" class="w-full" [formField]="taskForm.startDate" />
+          <div hlmFieldGroup class="grid grid-cols-2 gap-4">
+            <div hlmField>
+              <label hlmFieldLabel for="task-start">Start date</label>
+              <input hlmInput id="task-start" type="date" [formField]="taskForm.startDate" />
             </div>
-            <div class="flex-1">
-              <label hlmLabel for="task-due">Due date</label>
-              <input hlmInput id="task-due" type="date" class="w-full" [formField]="taskForm.dueDate" />
+            <div hlmField>
+              <label hlmFieldLabel for="task-due">Due date</label>
+              <input hlmInput id="task-due" type="date" [formField]="taskForm.dueDate" />
               @for (err of taskForm.dueDate().errors(); track err.kind) {
-                <p class="text-destructive mt-1 text-sm">{{ err.message }}</p>
+                <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
+              }
+            </div>
+          </div>
+
+          <div hlmField orientation="horizontal">
+            <hlm-switch
+              inputId="task-calendar-sync"
+              [checked]="model().calendarSyncEnabled"
+              [disabled]="!model().dueDate"
+              (checkedChange)="setCalendarSyncEnabled($event)"
+            />
+            <div hlmFieldContent>
+              <label hlmFieldLabel for="task-calendar-sync">Sync with Google Calendar</label>
+              @if (!model().dueDate && model().calendarSyncEnabled) {
+                <p hlmFieldDescription>Set a due date to enable calendar sync</p>
               }
             </div>
           </div>
 
           @if (error()) {
-            <p class="text-destructive text-sm">{{ error() }}</p>
+            <hlm-field-error forceShow>{{ error() }}</hlm-field-error>
           }
         </form>
 
         <hlm-dialog-footer class="justify-between">
           <span>
             @if (editing() && deleteHandler()) {
-              <button hlmBtn variant="destructive" type="button" [disabled]="saving()" (click)="remove()">
+              <button
+                hlmBtn
+                variant="destructive"
+                type="button"
+                [disabled]="saving()"
+                (click)="remove()"
+              >
                 <ng-icon name="lucideTrash2" class="mr-2" />
                 Delete
               </button>
             }
           </span>
           <span class="flex gap-2">
-            <button hlmBtn variant="outline" type="button" [disabled]="saving()" (click)="close()">Cancel</button>
-            <button hlmBtn type="button" [disabled]="taskForm().invalid() || saving()" (click)="save()">
+            <button hlmBtn variant="outline" type="button" [disabled]="saving()" (click)="close()">
+              Cancel
+            </button>
+            <button
+              hlmBtn
+              type="button"
+              [disabled]="taskForm().invalid() || saving()"
+              (click)="save()"
+            >
               @if (saving()) {
                 <hlm-spinner class="size-4" />
               } @else {
@@ -152,7 +195,8 @@ type TaskFormModel = {
   `,
 })
 export class TaskDialog {
-  readonly saveHandler = input.required<(data: CreateTaskInput | UpdateTaskInput) => Promise<void>>();
+  readonly saveHandler =
+    input.required<(data: CreateTaskInput | UpdateTaskInput) => Promise<void>>();
   readonly deleteHandler = input<(() => Promise<void>) | null>(null);
   readonly boardId = input.required<string>();
   readonly labels = input.required<Label[]>();
@@ -175,6 +219,7 @@ export class TaskDialog {
     labelIds: [],
     assignedTo: [],
     sprintId: '',
+    calendarSyncEnabled: false,
   });
 
   protected readonly taskForm = form(this.model, (path) => {
@@ -202,6 +247,7 @@ export class TaskDialog {
       labelIds: task?.labelIds ?? [],
       assignedTo: task?.assignedTo ?? [],
       sprintId: task?.sprintId ?? '',
+      calendarSyncEnabled: task?.calendarSyncEnabled ?? false,
     });
     this.dialog().open();
   }
@@ -227,6 +273,10 @@ export class TaskDialog {
     this.model.update((m) => ({ ...m, sprintId: sprintId ?? '' }));
   }
 
+  protected setCalendarSyncEnabled(enabled: boolean): void {
+    this.model.update((m) => ({ ...m, calendarSyncEnabled: enabled }));
+  }
+
   protected clearColor(): void {
     this.setColor('');
   }
@@ -244,6 +294,7 @@ export class TaskDialog {
         labelIds: v.labelIds,
         assignedTo: v.assignedTo,
         sprintId: v.sprintId || (isEditing ? null : undefined),
+        calendarSyncEnabled: v.calendarSyncEnabled,
       };
 
       this.error.set(null);

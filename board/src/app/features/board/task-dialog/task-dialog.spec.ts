@@ -52,7 +52,14 @@ async function openWith(
   sprints: Sprint[] = [],
 ) {
   const view = await render(TaskDialog, {
-    inputs: { saveHandler, deleteHandler, boardId: 'board-1', labels: [], collaborators: [], sprints },
+    inputs: {
+      saveHandler,
+      deleteHandler,
+      boardId: 'board-1',
+      labels: [],
+      collaborators: [],
+      sprints,
+    },
   });
   view.fixture.componentInstance.open(task);
   view.fixture.detectChanges();
@@ -80,7 +87,9 @@ describe('TaskDialog', () => {
     await user.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() =>
-      expect(saveHandler).toHaveBeenCalledWith(expect.objectContaining({ title: 'Updated title', color: '#EF4444' })),
+      expect(saveHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Updated title', color: '#EF4444' }),
+      ),
     );
   });
 
@@ -109,13 +118,17 @@ describe('TaskDialog', () => {
 
   it('includes the selected sprint when saving', async () => {
     const user = userEvent.setup();
-    const { saveHandler } = await openWith(fakeTask(), undefined, null, [fakeSprint({ name: 'Sprint A' })]);
+    const { saveHandler } = await openWith(fakeTask(), undefined, null, [
+      fakeSprint({ name: 'Sprint A' }),
+    ]);
 
     await user.click(await screen.findByRole('combobox', { name: 'Sprint' }));
     await user.click(await screen.findByRole('option', { name: /sprint a/i }));
     await user.click(screen.getByRole('button', { name: /^save$/i }));
 
-    await waitFor(() => expect(saveHandler).toHaveBeenCalledWith(expect.objectContaining({ sprintId: 's1' })));
+    await waitFor(() =>
+      expect(saveHandler).toHaveBeenCalledWith(expect.objectContaining({ sprintId: 's1' })),
+    );
   });
 
   it('deletes the task from the dialog when a delete handler is provided', async () => {
@@ -126,5 +139,37 @@ describe('TaskDialog', () => {
     await user.click(await screen.findByRole('button', { name: /delete/i }));
 
     expect(deleteHandler).toHaveBeenCalled();
+  });
+
+  describe('calendar sync toggle', () => {
+    it('is disabled when there is no due date', async () => {
+      await openWith(fakeTask({ dueDate: undefined }));
+
+      const toggle = await screen.findByRole('switch', { name: /sync with google calendar/i });
+      expect(toggle).toHaveAttribute('data-disabled', 'true');
+    });
+
+    it('includes calendarSyncEnabled: true in the save payload when enabled with a due date', async () => {
+      const user = userEvent.setup();
+      const { saveHandler } = await openWith(fakeTask({ dueDate: ts(new Date(2026, 5, 1)) }));
+
+      await user.click(await screen.findByRole('switch', { name: /sync with google calendar/i }));
+      await user.click(screen.getByRole('button', { name: /^save$/i }));
+
+      await waitFor(() =>
+        expect(saveHandler).toHaveBeenCalledWith(
+          expect.objectContaining({ calendarSyncEnabled: true }),
+        ),
+      );
+    });
+
+    it('shows a hint when the toggle is on but the due date is empty', async () => {
+      const user = userEvent.setup();
+      await openWith(fakeTask({ dueDate: ts(new Date(2026, 5, 1)), calendarSyncEnabled: true }));
+
+      await user.clear(await screen.findByLabelText('Due date'));
+
+      expect(screen.getByText(/set a due date to enable calendar sync/i)).toBeInTheDocument();
+    });
   });
 });

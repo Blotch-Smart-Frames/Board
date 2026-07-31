@@ -14,6 +14,7 @@ import {
 import { FIRESTORE_DB } from '../../../core/firebase/firebase.config';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { BoardService } from '../../../core/services/board.service';
+import { SyncService } from '../../../core/services/sync.service';
 import { docSignal, collectionSignal } from '../../../core/interop/signal-interop';
 import { collaboratorsResource } from '../../../core/interop/collaborators-resource';
 import { diffTaskChanges } from '../../../shared/utils/task-history-diff';
@@ -42,11 +43,11 @@ export class BoardStore {
   private readonly route = inject(ActivatedRoute);
   private readonly authStore = inject(AuthStore);
   private readonly boardService = inject(BoardService);
+  private readonly syncService = inject(SyncService);
 
-  readonly boardId = toSignal(
-    this.route.paramMap.pipe(map((params) => params.get('boardId'))),
-    { initialValue: null },
-  );
+  readonly boardId = toSignal(this.route.paramMap.pipe(map((params) => params.get('boardId'))), {
+    initialValue: null,
+  });
 
   private readonly boardRef = computed<DocumentReference | null>(() => {
     const boardId = this.boardId();
@@ -55,7 +56,9 @@ export class BoardStore {
 
   private readonly listsQuery = computed<Query | null>(() => {
     const boardId = this.boardId();
-    return boardId ? query(collection(this.db, 'boards', boardId, 'lists'), orderBy('order')) : null;
+    return boardId
+      ? query(collection(this.db, 'boards', boardId, 'lists'), orderBy('order'))
+      : null;
   });
 
   private readonly tasksQuery = computed<CollectionReference | null>(() => {
@@ -65,12 +68,16 @@ export class BoardStore {
 
   private readonly labelsQuery = computed<Query | null>(() => {
     const boardId = this.boardId();
-    return boardId ? query(collection(this.db, 'boards', boardId, 'labels'), orderBy('order')) : null;
+    return boardId
+      ? query(collection(this.db, 'boards', boardId, 'labels'), orderBy('order'))
+      : null;
   });
 
   private readonly sprintsQuery = computed<Query | null>(() => {
     const boardId = this.boardId();
-    return boardId ? query(collection(this.db, 'boards', boardId, 'sprints'), orderBy('order')) : null;
+    return boardId
+      ? query(collection(this.db, 'boards', boardId, 'sprints'), orderBy('order'))
+      : null;
   });
 
   readonly board = docSignal<Board>(() => this.boardRef());
@@ -120,7 +127,9 @@ export class BoardStore {
         return override ? { ...task, listId: override.listId, order: override.order } : task;
       })
       .filter((task) => !assigneeFilter || task.assignedTo?.includes(assigneeFilter))
-      .filter((task) => labelFilter.length === 0 || task.labelIds?.some((id) => labelFilter.includes(id)));
+      .filter(
+        (task) => labelFilter.length === 0 || task.labelIds?.some((id) => labelFilter.includes(id)),
+      );
 
     return lists
       .sort((a, b) => compareOrder(a.order, b.order))
@@ -168,13 +177,25 @@ export class BoardStore {
 
   // --- Task mutations ---
 
-  addTask(listId: string, input: CreateTaskInput): Promise<Task> {
+  async addTask(listId: string, input: CreateTaskInput): Promise<Task> {
     const userId = this.authStore.user()?.uid;
     if (!userId) throw new Error('Not authenticated');
-    return this.boardService.addTask(this.requireBoardId(), listId, input, userId);
+    const task = await this.boardService.addTask(this.requireBoardId(), listId, input, userId);
+    if (task.calendarSyncEnabled && task.dueDate) {
+      this.syncService.syncTaskToCalendar(this.requireBoardId(), task).catch((err) => {
+        console.error('Calendar sync failed for new task:', err);
+      });
+    }
+    return task;
   }
 
-  /** Updates a task and records field-change history (labels/assignees/dates/etc.). */
+  /**
+   * Updates a task, records field-change history (labels/assignees/dates/etc.),
+   * and reconciles Google Calendar: creates/updates the linked event when sync
+   * is on with a due date, or deletes it when sync is being toggled off (fixes
+   * source's behavior of orphaning the event on disable — SyncService.unlink
+   * already handles both the Calendar API delete and clearing calendarEventId).
+   */
   async updateTask(taskId: string, updates: UpdateTaskInput): Promise<void> {
     const boardId = this.requireBoardId();
     const existing = (this.tasks() ?? []).find((t) => t.id === taskId);
@@ -192,6 +213,30 @@ export class BoardStore {
       if (entries.length > 0) {
         this.boardService.addTaskHistory(boardId, taskId, entries).catch(() => {});
       }
+    }
+
+    if (existing) {
+      this.reconcileCalendarSync(boardId, existing, updates).catch((err) => {
+        console.error('Calendar sync failed for task update:', err);
+      });
+    }
+  }
+
+  private async reconcileCalendarSync(
+    boardId: string,
+    existing: Task,
+    updates: UpdateTaskInput,
+  ): Promise<void> {
+    const merged: Task = { ...existing, ...updates } as Task;
+    const wasEnabled = existing.calendarSyncEnabled;
+    const isEnabled = merged.calendarSyncEnabled;
+
+    if (wasEnabled && !isEnabled) {
+      await this.syncService.unlinkTaskFromCalendar(boardId, existing);
+      return;
+    }
+    if (isEnabled && merged.dueDate) {
+      await this.syncService.syncTaskToCalendar(boardId, merged);
     }
   }
 
@@ -221,7 +266,9 @@ export class BoardStore {
     const task = (this.tasks() ?? []).find((t) => t.id === taskId);
     const listChanged = !!task && task.listId !== newListId;
 
-    this.taskOverrides.update((m) => new Map(m).set(taskId, { listId: newListId, order: newOrder }));
+    this.taskOverrides.update((m) =>
+      new Map(m).set(taskId, { listId: newListId, order: newOrder }),
+    );
 
     try {
       await this.boardService.moveTask(boardId, taskId, newListId, newOrder);
