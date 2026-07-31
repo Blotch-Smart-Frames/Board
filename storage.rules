@@ -1,0 +1,25 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Mirror the Firestore board-membership check by reading the board doc.
+    function isBoardMember(boardId) {
+      let board = firestore.get(/databases/(default)/documents/boards/$(boardId));
+      return board != null
+        && (board.data.ownerId == request.auth.uid
+            || request.auth.uid in board.data.collaborators);
+    }
+
+    // Board backgrounds and task attachments both live under boards/{boardId}/**
+    // (e.g. boards/{boardId}/background.png and
+    //  boards/{boardId}/tasks/{taskId}/attachments/{id}.png)
+    match /boards/{boardId}/{allPaths=**} {
+      allow read, write: if isAuthenticated() && isBoardMember(boardId);
+    }
+  }
+}
