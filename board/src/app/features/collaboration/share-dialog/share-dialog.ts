@@ -16,7 +16,7 @@ import type { Collaborator } from '../../../shared/types/board';
 /**
  * Invite-by-email + collaborator list. Imperatively opened via `open()`,
  * following the same viewChild(HlmDialog)/saveHandler pattern as
- * board-form-dialog and task-dialog. Inject BoardService/UserService directly
+ * board-form-dialog. Inject BoardService/UserService directly
  * (rather than routing the invite through the parent) since the flow is
  * self-contained: getUserByEmail → shareBoard → clear the field. The transient
  * success banner uses a plain setTimeout for the 3s auto-dismiss; that's fine

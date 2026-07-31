@@ -114,20 +114,20 @@ describe('KanbanBoard', () => {
     expect(store.addTask).toHaveBeenCalledWith('list-1', { title: 'Fresh task' });
   });
 
-  it('opens the task detail view, then the edit dialog, saving an update through the store', async () => {
+  it('opens the task detail view and saves an updated title through the store', async () => {
     const user = userEvent.setup();
     const { store, providers } = setup();
     await render(KanbanBoard, { providers });
 
     await user.click(screen.getByRole('button', { name: /open task existing task/i }));
-    await user.click(await screen.findByRole('button', { name: /^edit$/i }));
+    await user.click(await screen.findByRole('heading', { name: 'Existing task' }));
 
     const title = await screen.findByLabelText('Title');
     await user.clear(title);
     await user.type(title, 'Renamed task');
-    await user.click(screen.getByRole('button', { name: /^save$/i }));
+    await user.tab();
 
-    await waitFor(() => expect(store.updateTask).toHaveBeenCalledWith('t1', expect.objectContaining({ title: 'Renamed task' })));
+    await waitFor(() => expect(store.updateTask).toHaveBeenCalledWith('t1', { title: 'Renamed task' }));
   });
 
   it('reorders a list via the keyboard "Move right" action', async () => {

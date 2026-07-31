@@ -17,7 +17,6 @@ import type { Label, CreateLabelInput } from '../../../shared/types/board';
   template: `
     <div>
       <div class="mb-2 flex items-center justify-between">
-        <span class="text-muted-foreground text-sm">Labels</span>
         <button hlmBtn variant="ghost" size="sm" type="button" (click)="openManagement()">
           <ng-icon name="lucideSettings" class="mr-2" />
           Manage
@@ -33,7 +32,11 @@ import type { Label, CreateLabelInput } from '../../../shared/types/board';
               [class.opacity-60]="!isSelected(label.id)"
               (click)="toggle(label.id)"
             >
-              <hlm-checkbox [checked]="isSelected(label.id)" class="pointer-events-none" [aria-label]="'Toggle label ' + label.name" />
+              <hlm-checkbox
+                [checked]="isSelected(label.id)"
+                class="pointer-events-none"
+                [aria-label]="'Toggle label ' + label.name"
+              />
               <app-label-chip [label]="label" />
             </button>
           }
@@ -61,7 +64,9 @@ export class LabelPicker {
   private readonly editor = viewChild.required<LabelEditor>('editor');
   private readonly management = viewChild.required<LabelManagement>('management');
 
-  protected readonly sorted = computed(() => [...this.labels()].sort((a, b) => compareOrder(a.order, b.order)));
+  protected readonly sorted = computed(() =>
+    [...this.labels()].sort((a, b) => compareOrder(a.order, b.order)),
+  );
 
   protected isSelected(labelId: string): boolean {
     return this.selectedLabelIds().includes(labelId);

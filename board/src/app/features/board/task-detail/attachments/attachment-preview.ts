@@ -10,10 +10,14 @@ import type { Attachment } from '../../../../shared/types/board';
   imports: [NgIcon, HlmAttachmentImports],
   providers: [provideIcons({ lucideFileVideo, lucideTrash2 })],
   template: `
-    <div hlmAttachment class="w-full">
+    <div hlmAttachment class="w-full" orientation="vertical">
       <div hlmAttachmentMedia [variant]="isImage() ? 'image' : 'icon'">
         @if (isImage()) {
-          <img [src]="attachment().downloadUrl" [alt]="attachment().fileName" />
+          <img
+            [src]="attachment().downloadUrl"
+            [alt]="attachment().fileName"
+            class="size-25 object-cover"
+          />
         } @else {
           <ng-icon name="lucideFileVideo" class="text-muted-foreground" />
         }

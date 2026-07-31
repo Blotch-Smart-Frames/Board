@@ -1,32 +1,37 @@
-import { Component, computed, inject, linkedSignal, signal, viewChild } from '@angular/core';
+import { Component, computed, inject, linkedSignal, viewChild } from '@angular/core';
 import { HlmAlert, HlmAlertDescription } from '@spartan-ng/helm/alert';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { TimelineScaleService } from '../data/timeline-scale.service';
-import { computeTimelineItems, computeTimelineRows, type TimelineSpan } from '../data/timeline-data';
+import {
+  computeTimelineItems,
+  computeTimelineRows,
+  type TimelineSpan,
+} from '../data/timeline-data';
 import { TimelineGrid } from '../timeline-grid/timeline-grid';
-import { TaskDialog } from '../../board/task-dialog/task-dialog';
+import { TaskDetailDialog } from '../../board/task-detail/task-detail-dialog';
 import { BoardStore } from '../../board/data/board.store';
-import type { Task, UpdateTaskInput } from '../../../shared/types/board';
+import type { Task } from '../../../shared/types/board';
 
 type MovedEvent = { id: string; span: TimelineSpan; rowId: string | null };
 type ResizedEvent = { id: string; span: TimelineSpan };
 
 /**
  * Top-level Gantt view, swapped in for KanbanBoard by BoardWorkspace's viewMode
- * toggle. Owns its own TaskDialog (source wires the timeline bar's click
- * straight to edit, unlike the Kanban card's click-to-detail-view-first flow —
- * that's an intentional source difference between the two views, not an
- * inconsistency introduced here).
+ * toggle. Clicking a timeline bar opens the merged task detail/edit dialog —
+ * same target as the Kanban card, since the merged dialog handles both viewing
+ * and inline editing in one place.
  */
 @Component({
   selector: 'app-timeline-view',
   providers: [TimelineScaleService],
-  imports: [HlmAlert, HlmAlertDescription, HlmBadge, TimelineGrid, TaskDialog],
+  imports: [HlmAlert, HlmAlertDescription, HlmBadge, TimelineGrid, TaskDetailDialog],
   template: `
     <div class="flex h-full flex-col overflow-hidden">
       @if (rows().length === 0) {
         <div class="flex h-full items-center justify-center p-4">
-          <p class="text-muted-foreground">No lists in this board. Add a list to start using the timeline.</p>
+          <p class="text-muted-foreground">
+            No lists in this board. Add a list to start using the timeline.
+          </p>
         </div>
       } @else {
         @if (hiddenCount() > 0) {
@@ -54,7 +59,7 @@ type ResizedEvent = { id: string; span: TimelineSpan };
             [items]="items()"
             [labels]="store.labels() ?? []"
             [sprints]="store.sprints() ?? []"
-            (viewTask)="openEdit($event)"
+            (viewTask)="openDetail($event)"
             (taskMoved)="onTaskMoved($event)"
             (taskResized)="onTaskResized($event)"
           />
@@ -62,23 +67,13 @@ type ResizedEvent = { id: string; span: TimelineSpan };
       }
     </div>
 
-    <app-task-dialog
-      #taskDialog
-      [saveHandler]="saveHandler"
-      [deleteHandler]="deleteHandler"
-      [boardId]="store.boardId() ?? ''"
-      [labels]="store.labels() ?? []"
-      [collaborators]="store.collaborators()"
-      [board]="store.board() ?? null"
-      [sprints]="store.sprints() ?? []"
-    />
+    <app-task-detail-dialog #detailDialog />
   `,
 })
 export class TimelineView {
   protected readonly store = inject(BoardStore);
 
-  private readonly taskDialog = viewChild.required<TaskDialog>('taskDialog');
-  private readonly editingTask = signal<Task | null>(null);
+  private readonly detailDialog = viewChild.required<TaskDetailDialog>('detailDialog');
 
   protected readonly rows = computed(() => computeTimelineRows(this.store.lists() ?? []));
   private readonly rawItems = computed(() => computeTimelineItems(this.store.tasks() ?? []));
@@ -111,19 +106,8 @@ export class TimelineView {
     });
   });
 
-  protected readonly saveHandler = async (data: UpdateTaskInput): Promise<void> => {
-    const task = this.editingTask();
-    if (task) await this.store.updateTask(task.id, data);
-  };
-
-  protected readonly deleteHandler = async (): Promise<void> => {
-    const task = this.editingTask();
-    if (task) await this.store.deleteTask(task.id);
-  };
-
-  protected openEdit(task: Task): void {
-    this.editingTask.set(task);
-    this.taskDialog().open(task);
+  protected openDetail(task: Task): void {
+    this.detailDialog().open(task);
   }
 
   protected onTaskMoved({ id, span, rowId }: MovedEvent): void {
@@ -144,6 +128,9 @@ export class TimelineView {
   /** List-move then date-update, sequential — matches source, avoids a write race. */
   private async persistMove(id: string, rowId: string, span: TimelineSpan): Promise<void> {
     await this.store.moveTaskToList(id, rowId);
-    await this.store.updateTask(id, { startDate: new Date(span.start), dueDate: new Date(span.end) });
+    await this.store.updateTask(id, {
+      startDate: new Date(span.start),
+      dueDate: new Date(span.end),
+    });
   }
 }

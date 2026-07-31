@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, inject, viewChild } from '@angular/core';
 import { CdkDropList, CdkDrag, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideKanbanSquare } from '@ng-icons/lucide';
@@ -7,12 +7,11 @@ import { HlmEmptyImports } from '@spartan-ng/helm/empty';
 import { BoardBackground } from '../board-background/board-background';
 import { ListColumn } from '../list-column/list-column';
 import { AddListButton } from '../add-list-button/add-list-button';
-import { TaskDialog } from '../task-dialog/task-dialog';
 import { TaskDetailDialog } from '../task-detail/task-detail-dialog';
 import { LabelFilter } from '../label-filter/label-filter';
 import { AssigneeFilter } from '../assignee-filter/assignee-filter';
 import { BoardStore } from '../data/board.store';
-import type { Task, UpdateTaskInput } from '../../../shared/types/board';
+import type { Task } from '../../../shared/types/board';
 
 @Component({
   selector: 'app-kanban-board',
@@ -25,7 +24,6 @@ import type { Task, UpdateTaskInput } from '../../../shared/types/board';
     BoardBackground,
     ListColumn,
     AddListButton,
-    TaskDialog,
     TaskDetailDialog,
     LabelFilter,
     AssigneeFilter,
@@ -97,44 +95,17 @@ import type { Task, UpdateTaskInput } from '../../../shared/types/board';
       </div>
     </app-board-background>
 
-    <app-task-dialog
-      #taskDialog
-      [saveHandler]="saveHandler"
-      [deleteHandler]="deleteHandler"
-      [boardId]="store.boardId() ?? ''"
-      [labels]="store.labels() ?? []"
-      [collaborators]="store.collaborators()"
-      [board]="store.board() ?? null"
-      [sprints]="store.sprints() ?? []"
-    />
-    <app-task-detail-dialog #detailDialog (edit)="openEdit($event)" />
+    <app-task-detail-dialog #detailDialog />
   `,
 })
 export class KanbanBoard {
   protected readonly store = inject(BoardStore);
-  private readonly taskDialog = viewChild.required<TaskDialog>('taskDialog');
   private readonly detailDialog = viewChild.required<TaskDetailDialog>('detailDialog');
-  private readonly editingTask = signal<Task | null>(null);
 
   protected readonly listIds = computed(() => this.store.listsWithTasks().map((l) => l.id));
 
-  protected readonly saveHandler = async (data: UpdateTaskInput): Promise<void> => {
-    const task = this.editingTask();
-    if (task) await this.store.updateTask(task.id, data);
-  };
-
-  protected readonly deleteHandler = async (): Promise<void> => {
-    const task = this.editingTask();
-    if (task) await this.store.deleteTask(task.id);
-  };
-
   protected openDetail(task: Task): void {
     this.detailDialog().open(task);
-  }
-
-  protected openEdit(task: Task): void {
-    this.editingTask.set(task);
-    this.taskDialog().open(task);
   }
 
   protected onTaskDrop(event: CdkDragDrop<Task[]>): void {
