@@ -24,18 +24,23 @@ function fakeSprint(overrides: Partial<Sprint> = {}): Sprint {
   };
 }
 
-function setup(calculateNextSprintDates = vi.fn<() => Promise<Defaults>>().mockResolvedValue({
-  startDate: new Date(2026, 1, 1),
-  endDate: new Date(2026, 1, 14),
-  suggestedName: 'Sprint 2',
-})) {
+function setup(
+  calculateNextSprintDates = vi.fn<() => Promise<Defaults>>().mockResolvedValue({
+    startDate: new Date(2026, 1, 1),
+    endDate: new Date(2026, 1, 14),
+    suggestedName: 'Sprint 2',
+  }),
+) {
   const sprintService = { calculateNextSprintDates };
   return { sprintService, providers: [{ provide: SprintService, useValue: sprintService }] };
 }
 
 async function openWith(sprint: Sprint | null, saveHandler = vi.fn().mockResolvedValue(undefined)) {
   const { sprintService, providers } = setup();
-  const view = await render(SprintDialog, { inputs: { boardId: 'board-1', saveHandler }, providers });
+  const view = await render(SprintDialog, {
+    inputs: { boardId: 'board-1', saveHandler },
+    providers,
+  });
   const opened = view.fixture.componentInstance.open(sprint);
   view.fixture.detectChanges();
   await opened;
@@ -46,12 +51,13 @@ async function openWith(sprint: Sprint | null, saveHandler = vi.fn().mockResolve
 
 describe('SprintDialog', () => {
   it('prefills fields in edit mode without calculating defaults', async () => {
-    const { sprintService } = await openWith(fakeSprint({ name: 'Sprint A' }));
+    const { sprintService, fixture } = await openWith(fakeSprint({ name: 'Sprint A' }));
 
     expect(await screen.findByRole('heading', { name: /edit sprint/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Sprint Name')).toHaveValue('Sprint A');
-    expect(screen.getByLabelText('Start date')).toHaveValue('2026-01-01');
-    expect(screen.getByLabelText('End date')).toHaveValue('2026-01-14');
+    const model = fixture.componentInstance['model']();
+    expect(model.startDate).toEqual(new Date(2026, 0, 1));
+    expect(model.endDate).toEqual(new Date(2026, 0, 14));
     expect(sprintService.calculateNextSprintDates).not.toHaveBeenCalled();
   });
 
@@ -72,14 +78,19 @@ describe('SprintDialog', () => {
     expect(await screen.findByRole('heading', { name: /create sprint/i })).toBeInTheDocument();
     expect(screen.queryByLabelText('Sprint Name')).not.toBeInTheDocument();
 
-    resolveDefaults({ startDate: new Date(2026, 1, 1), endDate: new Date(2026, 1, 14), suggestedName: 'Sprint 2' });
+    resolveDefaults({
+      startDate: new Date(2026, 1, 1),
+      endDate: new Date(2026, 1, 14),
+      suggestedName: 'Sprint 2',
+    });
     await opened;
     view.fixture.detectChanges();
     await view.fixture.whenStable();
 
     expect(screen.getByLabelText('Sprint Name')).toHaveValue('Sprint 2');
-    expect(screen.getByLabelText('Start date')).toHaveValue('2026-02-01');
-    expect(screen.getByLabelText('End date')).toHaveValue('2026-02-14');
+    const model = view.fixture.componentInstance['model']();
+    expect(model.startDate).toEqual(new Date(2026, 1, 1));
+    expect(model.endDate).toEqual(new Date(2026, 1, 14));
   });
 
   it('blocks saving when the name is emptied', async () => {
@@ -95,14 +106,13 @@ describe('SprintDialog', () => {
 
   it('flags an end date earlier than the start date', async () => {
     const user = userEvent.setup();
-    const { saveHandler } = await openWith(fakeSprint());
+    const { saveHandler, fixture } = await openWith(fakeSprint());
 
-    const start = await screen.findByLabelText('Start date');
-    await user.clear(start);
-    await user.type(start, '2026-06-10');
-    const end = screen.getByLabelText('End date');
-    await user.clear(end);
-    await user.type(end, '2026-06-01');
+    const component = fixture.componentInstance;
+    component['onStartDateChange'](new Date(2026, 5, 10));
+    component['onEndDateChange'](new Date(2026, 5, 1));
+    fixture.detectChanges();
+
     await user.click(screen.getByRole('button', { name: /^save$/i }));
 
     expect(screen.getByText(/end date must be on or after the start date/i)).toBeInTheDocument();
@@ -120,7 +130,11 @@ describe('SprintDialog', () => {
 
     await waitFor(() =>
       expect(saveHandler).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'New name', startDate: expect.any(Date), endDate: expect.any(Date) }),
+        expect.objectContaining({
+          name: 'New name',
+          startDate: expect.any(Date),
+          endDate: expect.any(Date),
+        }),
       ),
     );
   });

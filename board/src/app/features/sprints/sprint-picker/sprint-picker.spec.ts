@@ -2,7 +2,6 @@ import type { Timestamp } from 'firebase/firestore';
 import { render, screen } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { SprintPicker } from './sprint-picker';
-import { SprintService } from '../../../core/services/sprint.service';
 import type { Sprint } from '../../../shared/types/board';
 
 // jsdom lacks these; the select's active-descendant key manager and the
@@ -32,25 +31,11 @@ function fakeSprint(overrides: Partial<Sprint> = {}): Sprint {
   };
 }
 
-function setup() {
-  const sprintService = {
-    createSprint: vi.fn().mockResolvedValue({}),
-    calculateNextSprintDates: vi.fn().mockResolvedValue({
-      startDate: new Date(2026, 1, 1),
-      endDate: new Date(2026, 1, 14),
-      suggestedName: 'Sprint 2',
-    }),
-  };
-  return { sprintService, providers: [{ provide: SprintService, useValue: sprintService }] };
-}
-
 describe('SprintPicker', () => {
   it('shows "No sprint (Backlog)" plus each sprint by name', async () => {
     const user = userEvent.setup();
-    const { providers } = setup();
     await render(SprintPicker, {
-      inputs: { boardId: 'board-1', sprints: [fakeSprint({ name: 'Sprint A' })] },
-      providers,
+      inputs: { sprints: [fakeSprint({ name: 'Sprint A' })] },
     });
 
     await user.click(screen.getByRole('combobox', { name: 'Sprint' }));
@@ -64,10 +49,8 @@ describe('SprintPicker', () => {
   it('emits the selected sprint id', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    const { providers } = setup();
     await render(SprintPicker, {
-      inputs: { boardId: 'board-1', sprints: [fakeSprint({ name: 'Sprint A' })] },
-      providers,
+      inputs: { sprints: [fakeSprint({ name: 'Sprint A' })] },
       on: { selectedSprintIdChange: onChange },
     });
 
@@ -75,15 +58,5 @@ describe('SprintPicker', () => {
     await user.click(await screen.findByRole('option', { name: /sprint a/i }));
 
     expect(onChange).toHaveBeenCalledWith('s1');
-  });
-
-  it('opens the nested create-sprint dialog', async () => {
-    const user = userEvent.setup();
-    const { providers } = setup();
-    await render(SprintPicker, { inputs: { boardId: 'board-1', sprints: [] }, providers });
-
-    await user.click(screen.getByRole('button', { name: /create sprint/i }));
-
-    expect(await screen.findByRole('heading', { name: /create sprint/i })).toBeInTheDocument();
   });
 });

@@ -1,21 +1,15 @@
-import { Component, computed, inject, input, output, viewChild } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { format } from 'date-fns';
-import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucidePlus } from '@ng-icons/lucide';
-import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmLabel } from '@spartan-ng/helm/label';
 import { HlmSelectImports } from '@spartan-ng/helm/select';
-import { SprintDialog } from '../sprint-dialog/sprint-dialog';
-import { SprintService } from '../../../core/services/sprint.service';
 import { compareOrder } from '../../../shared/utils/ordering';
-import type { Sprint, CreateSprintInput } from '../../../shared/types/board';
+import type { Sprint } from '../../../shared/types/board';
 
 const NO_SPRINT_VALUE = '';
 
 @Component({
   selector: 'app-sprint-picker',
-  imports: [HlmButton, HlmLabel, HlmSelectImports, NgIcon, SprintDialog],
-  providers: [provideIcons({ lucidePlus })],
+  imports: [HlmLabel, HlmSelectImports],
   template: `
     <div>
       <label hlmLabel for="sprint-picker-trigger" class="text-muted-foreground mb-2 block text-sm"
@@ -42,27 +36,15 @@ const NO_SPRINT_VALUE = '';
           }
         </hlm-select-content>
       </hlm-select>
-
-      <button hlmBtn variant="ghost" size="sm" type="button" class="mt-1" (click)="openCreate()">
-        <ng-icon name="lucidePlus" class="mr-2" />
-        Create sprint
-      </button>
     </div>
-
-    <app-sprint-dialog #sprintDialog [boardId]="boardId()" [saveHandler]="createHandler" />
   `,
 })
 export class SprintPicker {
-  private readonly sprintService = inject(SprintService);
-
-  readonly boardId = input.required<string>();
   readonly sprints = input.required<Sprint[]>();
   readonly selectedSprintId = input<string | null>(null);
   readonly selectedSprintIdChange = output<string | null>();
 
   protected readonly noSprintValue = NO_SPRINT_VALUE;
-
-  private readonly sprintDialog = viewChild.required<SprintDialog>('sprintDialog');
 
   protected readonly sorted = computed(() =>
     [...this.sprints()].sort((a, b) => compareOrder(a.order, b.order)),
@@ -76,13 +58,6 @@ export class SprintPicker {
   protected formatRange(sprint: Sprint): string {
     return `${format(sprint.startDate.toDate(), 'MMM d')} - ${format(sprint.endDate.toDate(), 'MMM d')}`;
   }
-
-  protected openCreate(): void {
-    this.sprintDialog().open(null);
-  }
-
-  protected readonly createHandler = (data: CreateSprintInput): Promise<void> =>
-    this.sprintService.createSprint(this.boardId(), data).then(() => {});
 
   protected readonly sprintIdToLabel = (id: string): string => {
     if (id === NO_SPRINT_VALUE) return 'No sprint (Backlog)';

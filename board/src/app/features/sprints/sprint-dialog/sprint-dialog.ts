@@ -1,23 +1,41 @@
-import { Component, inject, input, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  input,
+  linkedSignal,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { form, submit, required, validate, FormField } from '@angular/forms/signals';
 import { HlmDialogImports, HlmDialog } from '@spartan-ng/helm/dialog';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCalendarRange } from '@spartan-ng/helm/calendar';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
-import { HlmLabel } from '@spartan-ng/helm/label';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { SprintService } from '../../../core/services/sprint.service';
-import { toDateInputValue, parseDateInput } from '../../../shared/utils/date-input';
 import type { Sprint, CreateSprintInput } from '../../../shared/types/board';
+
+const DEFAULT_SPRINT_DURATION_DAYS = 14;
 
 type SprintFormModel = {
   name: string;
-  startDate: string;
-  endDate: string;
+  startDate: Date | null;
+  endDate: Date | null;
 };
 
 @Component({
   selector: 'app-sprint-dialog',
-  imports: [HlmDialogImports, HlmButton, HlmInput, HlmLabel, HlmSpinner, FormField],
+  imports: [
+    HlmDialogImports,
+    HlmButton,
+    HlmCalendarRange,
+    HlmFieldImports,
+    HlmInput,
+    HlmSpinner,
+    FormField,
+  ],
   template: `
     <hlm-dialog #dialog>
       <hlm-dialog-content *hlmDialogPortal class="sm:max-w-md">
@@ -33,40 +51,58 @@ type SprintFormModel = {
             <button hlmBtn variant="outline" type="button" (click)="close()">Cancel</button>
           </hlm-dialog-footer>
         } @else {
-          <form class="flex flex-col gap-4 py-2" (submit)="$event.preventDefault(); save()">
-            <div>
-              <label hlmLabel for="sprint-name">Sprint Name</label>
-              <input hlmInput id="sprint-name" class="w-full" [formField]="sprintForm.name" (keydown.escape)="close()" />
+          <form hlmFieldGroup class="py-2" (submit)="$event.preventDefault(); save()">
+            <div hlmField>
+              <label hlmFieldLabel for="sprint-name">Sprint Name</label>
+              <input
+                hlmInput
+                id="sprint-name"
+                autocomplete="off"
+                data-1p-ignore="true"
+                data-lpignore="true"
+                data-bwignore="true"
+                data-form-type="other"
+                [formField]="sprintForm.name"
+                (keydown.escape)="close()"
+              />
               @for (err of sprintForm.name().errors(); track err.kind) {
-                <p class="text-destructive mt-1 text-sm">{{ err.message }}</p>
+                <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
               }
             </div>
 
-            <div class="flex gap-4">
-              <div class="flex-1">
-                <label hlmLabel for="sprint-start">Start date</label>
-                <input hlmInput id="sprint-start" type="date" class="w-full" [formField]="sprintForm.startDate" />
-                @for (err of sprintForm.startDate().errors(); track err.kind) {
-                  <p class="text-destructive mt-1 text-sm">{{ err.message }}</p>
-                }
+            <div hlmField>
+              <span hlmFieldLabel>Start &amp; end date</span>
+              <div class="flex justify-center">
+                <hlm-calendar-range
+                  [startDate]="model().startDate ?? undefined"
+                  [endDate]="model().endDate ?? undefined"
+                  (startDateChange)="onStartDateChange($event)"
+                  (endDateChange)="onEndDateChange($event)"
+                />
               </div>
-              <div class="flex-1">
-                <label hlmLabel for="sprint-end">End date</label>
-                <input hlmInput id="sprint-end" type="date" class="w-full" [formField]="sprintForm.endDate" />
-                @for (err of sprintForm.endDate().errors(); track err.kind) {
-                  <p class="text-destructive mt-1 text-sm">{{ err.message }}</p>
-                }
-              </div>
+              @for (err of sprintForm.startDate().errors(); track err.kind) {
+                <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
+              }
+              @for (err of sprintForm.endDate().errors(); track err.kind) {
+                <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
+              }
             </div>
 
             @if (error()) {
-              <p class="text-destructive text-sm">{{ error() }}</p>
+              <hlm-field-error forceShow>{{ error() }}</hlm-field-error>
             }
           </form>
 
           <hlm-dialog-footer>
-            <button hlmBtn variant="outline" type="button" [disabled]="saving()" (click)="close()">Cancel</button>
-            <button hlmBtn type="button" [disabled]="sprintForm().invalid() || saving()" (click)="save()">
+            <button hlmBtn variant="outline" type="button" [disabled]="saving()" (click)="close()">
+              Cancel
+            </button>
+            <button
+              hlmBtn
+              type="button"
+              [disabled]="sprintForm().invalid() || saving()"
+              (click)="save()"
+            >
               @if (saving()) {
                 <hlm-spinner class="size-4" />
               } @else {
@@ -92,15 +128,16 @@ export class SprintDialog {
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
 
-  protected readonly model = signal<SprintFormModel>({ name: '', startDate: '', endDate: '' });
+  protected readonly model = signal<SprintFormModel>({ name: '', startDate: null, endDate: null });
 
   protected readonly sprintForm = form(this.model, (path) => {
     required(path.name, { message: 'Name is required' });
     required(path.startDate, { message: 'Start date is required' });
     required(path.endDate, { message: 'End date is required' });
     validate(path.endDate, ({ value, valueOf }) => {
+      const end = value();
       const start = valueOf(path.startDate);
-      if (value() && start && value() < start) {
+      if (end && start && end < start) {
         return { kind: 'dateOrder', message: 'End date must be on or after the start date' };
       }
       return undefined;
@@ -114,23 +151,23 @@ export class SprintDialog {
     if (sprint) {
       this.model.set({
         name: sprint.name,
-        startDate: toDateInputValue(sprint.startDate.toDate()),
-        endDate: toDateInputValue(sprint.endDate.toDate()),
+        startDate: sprint.startDate.toDate(),
+        endDate: sprint.endDate.toDate(),
       });
       this.loadingDefaults.set(false);
       this.dialog().open();
       return;
     }
 
-    this.model.set({ name: '', startDate: '', endDate: '' });
+    this.model.set({ name: '', startDate: null, endDate: null });
     this.loadingDefaults.set(true);
     this.dialog().open();
     try {
       const defaults = await this.sprintService.calculateNextSprintDates(this.boardId());
       this.model.set({
         name: defaults.suggestedName,
-        startDate: toDateInputValue(defaults.startDate),
-        endDate: toDateInputValue(defaults.endDate),
+        startDate: defaults.startDate,
+        endDate: defaults.endDate,
       });
     } catch (err) {
       console.error('Failed to calculate sprint defaults:', err);
@@ -144,17 +181,23 @@ export class SprintDialog {
     this.saving.set(false);
   }
 
+  protected onStartDateChange(date: Date | undefined): void {
+    this.model.update((m) => ({ ...m, startDate: date ?? null }));
+  }
+
+  protected onEndDateChange(date: Date | undefined): void {
+    this.model.update((m) => ({ ...m, endDate: date ?? null }));
+  }
+
   protected async save(): Promise<void> {
     await submit(this.sprintForm, async () => {
       const v = this.model();
-      const startDate = parseDateInput(v.startDate);
-      const endDate = parseDateInput(v.endDate);
-      if (!startDate || !endDate) return;
+      if (!v.startDate || !v.endDate) return;
 
       const data: CreateSprintInput = {
         name: v.name.trim(),
-        startDate,
-        endDate,
+        startDate: v.startDate,
+        endDate: v.endDate,
       };
 
       this.error.set(null);
