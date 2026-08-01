@@ -30,15 +30,20 @@ function setup(
     endDate: new Date(2026, 1, 14),
     suggestedName: 'Sprint 2',
   }),
+  updateSprintConfig = vi.fn().mockResolvedValue(undefined),
 ) {
-  const sprintService = { calculateNextSprintDates };
+  const sprintService = { calculateNextSprintDates, updateSprintConfig };
   return { sprintService, providers: [{ provide: SprintService, useValue: sprintService }] };
 }
 
-async function openWith(sprint: Sprint | null, saveHandler = vi.fn().mockResolvedValue(undefined)) {
+async function openWith(
+  sprint: Sprint | null,
+  saveHandler = vi.fn().mockResolvedValue(undefined),
+  configuredDurationDays?: number,
+) {
   const { sprintService, providers } = setup();
   const view = await render(SprintDialog, {
-    inputs: { boardId: 'board-1', saveHandler },
+    inputs: { boardId: 'board-1', saveHandler, configuredDurationDays },
     providers,
   });
   const opened = view.fixture.componentInstance.open(sprint);
@@ -137,5 +142,40 @@ describe('SprintDialog', () => {
         }),
       ),
     );
+  });
+
+  it('seeds the duration input from the configured value and disables Save until it changes', async () => {
+    const user = userEvent.setup();
+    const { sprintService } = await openWith(null, undefined, 14);
+
+    const saveButton = await screen.findByRole('button', { name: /^save$/i });
+    expect(saveButton).toBeDisabled();
+
+    const input = screen.getByLabelText('Default sprint duration');
+    expect(input).toHaveValue(14);
+
+    await user.clear(input);
+    await user.type(input, '21');
+    expect(saveButton).not.toBeDisabled();
+
+    await user.click(saveButton);
+
+    await waitFor(() =>
+      expect(sprintService.updateSprintConfig).toHaveBeenCalledWith('board-1', {
+        durationDays: 21,
+      }),
+    );
+  });
+
+  it('defaults the duration input to 14 days when no configured duration is provided', async () => {
+    await openWith(null);
+
+    expect(await screen.findByLabelText('Default sprint duration')).toHaveValue(14);
+  });
+
+  it('does not render the duration input in edit mode', async () => {
+    await openWith(fakeSprint(), undefined, 14);
+
+    expect(screen.queryByLabelText('Default sprint duration')).not.toBeInTheDocument();
   });
 });

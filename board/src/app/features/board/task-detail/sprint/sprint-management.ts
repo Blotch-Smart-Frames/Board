@@ -1,55 +1,20 @@
-import { Component, computed, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
-import { format } from 'date-fns';
+import { Component, computed, inject, input, signal, viewChild } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucidePencil, lucidePlus, lucideTrash2 } from '@ng-icons/lucide';
+import { lucidePlus } from '@ng-icons/lucide';
 import { HlmAlert, HlmAlertDescription } from '@spartan-ng/helm/alert';
 import { HlmButton } from '@spartan-ng/helm/button';
-import { HlmInput } from '@spartan-ng/helm/input';
-import { HlmLabel } from '@spartan-ng/helm/label';
 import { SprintService } from '../../../../core/services/sprint.service';
 import { compareOrder } from '../../../../shared/utils/ordering';
 import { SprintDialog } from '../../../sprints/sprint-dialog/sprint-dialog';
+import { SprintListItem } from './sprint-list-item';
 import type { CreateSprintInput, Sprint } from '../../../../shared/types/board';
-
-const DEFAULT_SPRINT_DURATION_DAYS = 14;
 
 @Component({
   selector: 'app-sprint-management',
-  imports: [HlmAlert, HlmAlertDescription, HlmButton, HlmInput, HlmLabel, NgIcon, SprintDialog],
-  providers: [provideIcons({ lucidePencil, lucidePlus, lucideTrash2 })],
+  imports: [HlmAlert, HlmAlertDescription, HlmButton, NgIcon, SprintDialog, SprintListItem],
+  providers: [provideIcons({ lucidePlus })],
   template: `
     <div class="flex min-w-0 flex-1 flex-col gap-4">
-      <div>
-        <span hlmLabel>Default sprint duration</span>
-        <div class="mt-1 flex items-center gap-2">
-          <input
-            hlmInput
-            type="number"
-            min="1"
-            max="365"
-            class="w-24"
-            aria-label="Default sprint duration in days"
-            [value]="durationDays()"
-            (input)="durationDays.set($any($event.target).value)"
-          />
-          <span class="text-sm">days</span>
-          <button
-            hlmBtn
-            variant="outline"
-            size="sm"
-            [disabled]="savingConfig() || durationUnchanged()"
-            (click)="saveConfig()"
-          >
-            {{ savingConfig() ? 'Saving...' : 'Save' }}
-          </button>
-        </div>
-        <p class="text-muted-foreground mt-1 text-xs">
-          Used when auto-calculating dates for new sprints
-        </p>
-      </div>
-
-      <hr class="border-border" />
-
       <div>
         <div class="mb-2 flex items-center justify-between">
           <span class="text-muted-foreground text-sm">Sprints</span>
@@ -70,40 +35,24 @@ const DEFAULT_SPRINT_DURATION_DAYS = 14;
         } @else {
           <div class="flex flex-col gap-2">
             @for (sprint of sortedSprints(); track sprint.id) {
-              <div class="flex items-center justify-between gap-2 rounded-md border p-2">
-                <div class="min-w-0">
-                  <p class="truncate text-sm font-medium">{{ sprint.name }}</p>
-                  <p class="text-muted-foreground text-xs">{{ formatDates(sprint) }}</p>
-                </div>
-                <span class="flex shrink-0 gap-1">
-                  <button
-                    hlmBtn
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Edit sprint"
-                    (click)="openEdit(sprint)"
-                  >
-                    <ng-icon name="lucidePencil" />
-                  </button>
-                  <button
-                    hlmBtn
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Delete sprint"
-                    [disabled]="deletingId() === sprint.id"
-                    (click)="remove(sprint)"
-                  >
-                    <ng-icon name="lucideTrash2" />
-                  </button>
-                </span>
-              </div>
+              <app-sprint-list-item
+                [sprint]="sprint"
+                [deleting]="deletingId() === sprint.id"
+                (edit)="openEdit(sprint)"
+                (remove)="remove(sprint)"
+              />
             }
           </div>
         }
       </div>
     </div>
 
-    <app-sprint-dialog #sprintDialog [boardId]="boardId()" [saveHandler]="saveHandler" />
+    <app-sprint-dialog
+      #sprintDialog
+      [boardId]="boardId()"
+      [saveHandler]="saveHandler"
+      [configuredDurationDays]="configuredDurationDays()"
+    />
   `,
 })
 export class SprintManagement {
@@ -115,12 +64,6 @@ export class SprintManagement {
 
   private readonly sprintDialog = viewChild.required<SprintDialog>('sprintDialog');
 
-  // linkedSignal so the local input tracks the persisted config when it changes
-  // (e.g. after a successful save), while still allowing the user to type freely.
-  protected readonly durationDays = linkedSignal(() =>
-    String(this.configuredDurationDays() ?? DEFAULT_SPRINT_DURATION_DAYS),
-  );
-  protected readonly savingConfig = signal(false);
   protected readonly deletingId = signal<string | null>(null);
   protected readonly deleteError = signal<string | null>(null);
   private readonly editingSprint = signal<Sprint | null>(null);
@@ -128,21 +71,6 @@ export class SprintManagement {
   protected readonly sortedSprints = computed(() =>
     [...this.sprints()].sort((a, b) => compareOrder(a.order, b.order)),
   );
-
-  protected readonly durationUnchanged = computed(
-    () =>
-      this.durationDays() === String(this.configuredDurationDays() ?? DEFAULT_SPRINT_DURATION_DAYS),
-  );
-
-  protected saveConfig(): void {
-    const days = parseInt(this.durationDays(), 10);
-    if (isNaN(days) || days < 1) return;
-    this.savingConfig.set(true);
-    this.sprintService
-      .updateSprintConfig(this.boardId(), { durationDays: days })
-      .catch((err) => console.error('Failed to save sprint config:', err))
-      .finally(() => this.savingConfig.set(false));
-  }
 
   protected openCreate(): void {
     this.editingSprint.set(null);
@@ -182,9 +110,5 @@ export class SprintManagement {
     } finally {
       this.deletingId.set(null);
     }
-  }
-
-  protected formatDates(sprint: Sprint): string {
-    return `${format(sprint.startDate.toDate(), 'MMM d, yyyy')} - ${format(sprint.endDate.toDate(), 'MMM d, yyyy')}`;
   }
 }

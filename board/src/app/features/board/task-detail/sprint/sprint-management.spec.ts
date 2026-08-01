@@ -85,43 +85,6 @@ describe('SprintManagement', () => {
     expect(names).toEqual(['Sprint A', 'Sprint B']);
   });
 
-  it('seeds the duration input from the configured value and disables Save until it changes', async () => {
-    const user = userEvent.setup();
-    const { providers, sprintService } = setup();
-    await render(SprintManagement, {
-      providers,
-      inputs: { boardId: 'board-1', configuredDurationDays: 14 },
-    });
-
-    const saveButton = screen.getByRole('button', { name: /^save$/i });
-    expect(saveButton).toBeDisabled();
-
-    const input = screen.getByLabelText('Default sprint duration in days');
-    expect(input).toHaveValue(14);
-
-    await user.clear(input);
-    await user.type(input, '21');
-    expect(saveButton).not.toBeDisabled();
-
-    await user.click(saveButton);
-
-    await waitFor(() =>
-      expect(sprintService.updateSprintConfig).toHaveBeenCalledWith('board-1', {
-        durationDays: 21,
-      }),
-    );
-  });
-
-  it('defaults to 14 days when no configured duration is provided', async () => {
-    const { providers } = setup();
-    await render(SprintManagement, {
-      providers,
-      inputs: { boardId: 'board-1' },
-    });
-
-    expect(screen.getByLabelText('Default sprint duration in days')).toHaveValue(14);
-  });
-
   it('opens the sprint dialog in edit mode and saves updates through updateSprint', async () => {
     const user = userEvent.setup();
     const { providers, sprintService } = setup();

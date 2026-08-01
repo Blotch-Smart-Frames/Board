@@ -1,12 +1,4 @@
-import {
-  Component,
-  computed,
-  inject,
-  input,
-  linkedSignal,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
 import { form, submit, required, validate, FormField } from '@angular/forms/signals';
 import { HlmDialogImports, HlmDialog } from '@spartan-ng/helm/dialog';
 import { HlmButton } from '@spartan-ng/helm/button';
@@ -38,7 +30,7 @@ type SprintFormModel = {
   ],
   template: `
     <hlm-dialog #dialog>
-      <hlm-dialog-content *hlmDialogPortal class="sm:max-w-md">
+      <hlm-dialog-content *hlmDialogPortal class="w-100">
         <hlm-dialog-header>
           <h3 hlmDialogTitle>{{ editing() ? 'Edit Sprint' : 'Create Sprint' }}</h3>
         </hlm-dialog-header>
@@ -51,47 +43,81 @@ type SprintFormModel = {
             <button hlmBtn variant="outline" type="button" (click)="close()">Cancel</button>
           </hlm-dialog-footer>
         } @else {
-          <form hlmFieldGroup class="py-2" (submit)="$event.preventDefault(); save()">
-            <div hlmField>
-              <label hlmFieldLabel for="sprint-name">Sprint Name</label>
-              <input
-                hlmInput
-                id="sprint-name"
-                autocomplete="off"
-                data-1p-ignore="true"
-                data-lpignore="true"
-                data-bwignore="true"
-                data-form-type="other"
-                [formField]="sprintForm.name"
-                (keydown.escape)="close()"
-              />
-              @for (err of sprintForm.name().errors(); track err.kind) {
-                <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
-              }
-            </div>
-
-            <div hlmField>
-              <span hlmFieldLabel>Start &amp; end date</span>
-              <div class="flex justify-center">
-                <hlm-calendar-range
-                  [startDate]="model().startDate ?? undefined"
-                  [endDate]="model().endDate ?? undefined"
-                  (startDateChange)="onStartDateChange($event)"
-                  (endDateChange)="onEndDateChange($event)"
-                />
+          <div class="flex flex-col gap-4 py-2">
+            @if (!editing()) {
+              <div hlmField>
+                <label hlmFieldLabel for="sprint-duration">Default sprint duration</label>
+                <div class="flex items-center gap-2">
+                  <input
+                    hlmInput
+                    id="sprint-duration"
+                    type="number"
+                    min="1"
+                    max="365"
+                    class="w-24"
+                    [value]="durationDays()"
+                    (input)="durationDays.set($any($event.target).value)"
+                  />
+                  <span class="text-sm">days</span>
+                  <button
+                    hlmBtn
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    [disabled]="savingConfig() || durationUnchanged()"
+                    (click)="saveConfig()"
+                  >
+                    {{ savingConfig() ? 'Saving...' : 'Save' }}
+                  </button>
+                </div>
+                <p hlmFieldDescription>Used when auto-calculating dates for new sprints</p>
               </div>
-              @for (err of sprintForm.startDate().errors(); track err.kind) {
-                <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
-              }
-              @for (err of sprintForm.endDate().errors(); track err.kind) {
-                <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
-              }
-            </div>
 
-            @if (error()) {
-              <hlm-field-error forceShow>{{ error() }}</hlm-field-error>
+              <hr class="border-border" />
             }
-          </form>
+
+            <form hlmFieldGroup (submit)="$event.preventDefault(); save()">
+              <div hlmField>
+                <label hlmFieldLabel for="sprint-name">Sprint Name</label>
+                <input
+                  hlmInput
+                  id="sprint-name"
+                  autocomplete="off"
+                  data-1p-ignore="true"
+                  data-lpignore="true"
+                  data-bwignore="true"
+                  data-form-type="other"
+                  [formField]="sprintForm.name"
+                  (keydown.escape)="close()"
+                />
+                @for (err of sprintForm.name().errors(); track err.kind) {
+                  <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
+                }
+              </div>
+
+              <div hlmField>
+                <span hlmFieldLabel>Start &amp; end date</span>
+                <div class="flex">
+                  <hlm-calendar-range
+                    [startDate]="model().startDate ?? undefined"
+                    [endDate]="model().endDate ?? undefined"
+                    (startDateChange)="onStartDateChange($event)"
+                    (endDateChange)="onEndDateChange($event)"
+                  />
+                </div>
+                @for (err of sprintForm.startDate().errors(); track err.kind) {
+                  <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
+                }
+                @for (err of sprintForm.endDate().errors(); track err.kind) {
+                  <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
+                }
+              </div>
+
+              @if (error()) {
+                <hlm-field-error forceShow>{{ error() }}</hlm-field-error>
+              }
+            </form>
+          </div>
 
           <hlm-dialog-footer>
             <button hlmBtn variant="outline" type="button" [disabled]="saving()" (click)="close()">
@@ -120,6 +146,7 @@ export class SprintDialog {
 
   readonly boardId = input.required<string>();
   readonly saveHandler = input.required<(data: CreateSprintInput) => Promise<void>>();
+  readonly configuredDurationDays = input<number | undefined>(undefined);
 
   private readonly dialog = viewChild.required<HlmDialog>('dialog');
 
@@ -127,6 +154,17 @@ export class SprintDialog {
   protected readonly loadingDefaults = signal(false);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
+
+  // linkedSignal so the local input tracks the persisted config when it changes
+  // (e.g. after a successful save), while still allowing the user to type freely.
+  protected readonly durationDays = linkedSignal(() =>
+    String(this.configuredDurationDays() ?? DEFAULT_SPRINT_DURATION_DAYS),
+  );
+  protected readonly savingConfig = signal(false);
+  protected readonly durationUnchanged = computed(
+    () =>
+      this.durationDays() === String(this.configuredDurationDays() ?? DEFAULT_SPRINT_DURATION_DAYS),
+  );
 
   protected readonly model = signal<SprintFormModel>({ name: '', startDate: null, endDate: null });
 
@@ -179,6 +217,16 @@ export class SprintDialog {
   close(): void {
     this.dialog().close(undefined);
     this.saving.set(false);
+  }
+
+  protected saveConfig(): void {
+    const days = parseInt(this.durationDays(), 10);
+    if (isNaN(days) || days < 1) return;
+    this.savingConfig.set(true);
+    this.sprintService
+      .updateSprintConfig(this.boardId(), { durationDays: days })
+      .catch((err) => console.error('Failed to save sprint config:', err))
+      .finally(() => this.savingConfig.set(false));
   }
 
   protected onStartDateChange(date: Date | undefined): void {
