@@ -308,6 +308,32 @@ export class BoardStore {
   }
 
   /**
+   * Migrates a task (with its comments/history) to a list on a different
+   * board. Returns the new task id in the target board. The caller supplies the
+   * target board's title so the recorded history entry stays intact even if
+   * that board is later renamed or deleted.
+   */
+  async migrateTaskToBoard(
+    taskId: string,
+    targetBoardId: string,
+    targetListId: string,
+    targetBoardTitle: string,
+  ): Promise<string> {
+    const sourceBoardId = this.requireBoardId();
+    const userId = this.authStore.user()?.uid;
+    if (!userId) throw new Error('Not authenticated');
+    const fromBoardName = this.board()?.title ?? '';
+    return this.boardService.migrateTaskToBoard(
+      sourceBoardId,
+      taskId,
+      targetBoardId,
+      targetListId,
+      userId,
+      { fromBoardName, toBoardName: targetBoardTitle },
+    );
+  }
+
+  /**
    * Computes the fractional order key for dropping a task at `targetIndex`
    * within `destListId` (CDK gives an index, not neighbor ids), then moves it.
    * Works for both same-list reorder and cross-list moves.

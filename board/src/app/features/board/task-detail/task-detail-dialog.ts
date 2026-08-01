@@ -24,6 +24,7 @@ import { TaskAssignees } from '../task-assignees/task-assignees';
 import { AttachmentSection } from './attachments/attachment-section';
 import { CommentsSection } from './comments/comments-section';
 import { HistorySection } from './history/history-section';
+import { TaskMigrateForm } from './migrate/task-migrate-form';
 import { BoardStore } from '../data/board.store';
 import { SprintService } from '../../../core/services/sprint.service';
 import { compareOrder } from '../../../shared/utils/ordering';
@@ -63,6 +64,7 @@ const DEFAULT_SPRINT_DURATION_DAYS = 14;
     AttachmentSection,
     CommentsSection,
     HistorySection,
+    TaskMigrateForm,
   ],
   providers: [provideIcons({ lucideTrash2, lucidePencil, lucidePlus })],
   template: `
@@ -117,6 +119,7 @@ const DEFAULT_SPRINT_DURATION_DAYS = 14;
               <button hlmTabsTrigger="details">Details</button>
               <button hlmTabsTrigger="sprint">Sprint</button>
               <button hlmTabsTrigger="history">History</button>
+              <button hlmTabsTrigger="advanced">Advanced</button>
             </hlm-tabs-list>
 
             <div hlmTabsContent="details" class="flex flex-col gap-5 overflow-y-auto py-3">
@@ -428,6 +431,16 @@ const DEFAULT_SPRINT_DURATION_DAYS = 14;
                 />
               }
             </div>
+
+            <div hlmTabsContent="advanced" class="overflow-y-auto py-2">
+              @if (activeTab() === 'advanced') {
+                <app-task-migrate-form
+                  [taskId]="task.id"
+                  [sourceBoardId]="boardId()"
+                  (migrated)="close()"
+                />
+              }
+            </div>
           </hlm-tabs>
 
           <hlm-dialog-footer class="justify-between">
@@ -453,7 +466,7 @@ export class TaskDetailDialog {
   private readonly titleInput = viewChild<ElementRef<HTMLInputElement>>('titleInput');
 
   private readonly taskId = signal<string | null>(null);
-  protected readonly activeTab = signal<'details' | 'sprint' | 'history'>('details');
+  protected readonly activeTab = signal<'details' | 'sprint' | 'history' | 'advanced'>('details');
   protected readonly titleEditing = signal(false);
   protected readonly assigneesExpanded = signal(false);
   protected readonly labelsExpanded = signal(false);

@@ -12,7 +12,10 @@ import { UserBoardsStore } from '../../features/boards/data/user-boards.store';
 import { BoardWorkspace } from './board-workspace';
 
 vi.mock('firebase/firestore', () => ({
-  collection: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'collection', path: segments.join('/') })),
+  collection: vi.fn((_db: unknown, ...segments: string[]) => ({
+    type: 'collection',
+    path: segments.join('/'),
+  })),
   doc: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'doc', path: segments.join('/') })),
   query: vi.fn((ref: unknown, ...constraints: unknown[]) => ({ type: 'query', ref, constraints })),
   orderBy: vi.fn((field: string) => ({ orderBy: field })),
@@ -37,12 +40,21 @@ function commonProviders(boardId: string | null) {
   return [
     provideRouter([]),
     { provide: FIRESTORE_DB, useValue: {} },
-    { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap(boardId ? { boardId } : {})) } },
+    {
+      provide: ActivatedRoute,
+      useValue: { paramMap: of(convertToParamMap(boardId ? { boardId } : {})) },
+    },
     { provide: AuthStore, useValue: { user: signal({ uid: 'u1' }) } },
     { provide: ThemeService, useValue: { mode: signal('system'), setMode: vi.fn() } },
     {
       provide: UserBoardsStore,
-      useValue: { boards: signal([]), isLoading: signal(false), createBoard: vi.fn(), renameBoard: vi.fn(), deleteBoard: vi.fn() },
+      useValue: {
+        boards: signal([]),
+        isLoading: signal(false),
+        createBoard: vi.fn(),
+        renameBoard: vi.fn(),
+        deleteBoard: vi.fn(),
+      },
     },
   ];
 }
@@ -84,8 +96,7 @@ describe('BoardWorkspace', () => {
     stubMatchMedia();
     const callbacks = new Map<string, (snapshot: unknown) => void>();
     vi.mocked(onSnapshot).mockImplementation((ref: unknown, onNext: unknown) => {
-      const path =
-        (ref as { path?: string }).path ?? (ref as { ref: { path: string } }).ref.path;
+      const path = (ref as { path?: string }).path ?? (ref as { ref: { path: string } }).ref.path;
       callbacks.set(path, onNext as (snapshot: unknown) => void);
       return vi.fn();
     });
@@ -103,7 +114,11 @@ describe('BoardWorkspace', () => {
       data: () => ({ title: 'My Board', ownerId: 'u1', collaborators: [] }),
     });
 
-    expect(await screen.findByRole('button', { name: /add another list/i })).toBeInTheDocument();
+    // With no lists loaded, KanbanBoard shows its "No lists yet" empty state
+    // (whose Create-list button replaced the always-visible "Add another list"
+    // control). That empty-state heading is enough to prove the kanban view is
+    // the default before we switch to the timeline.
+    expect(await screen.findByText(/no lists yet/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /timeline view/i }));
 

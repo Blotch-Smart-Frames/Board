@@ -10,6 +10,7 @@ import { AuthStore } from '../../../core/auth/auth.store';
 import { BoardService } from '../../../core/services/board.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { SprintService } from '../../../core/services/sprint.service';
+import { UserBoardsStore } from '../../boards/data/user-boards.store';
 import type { Board, Collaborator, Label, List, Sprint, Task } from '../../../shared/types/board';
 
 // CommentsSection/HistorySection subscribe via collectionSignal, which calls the
@@ -121,6 +122,7 @@ function setup(task: Task, opts: SetupOpts = {}) {
       { provide: BoardService, useValue: {} },
       { provide: StorageService, useValue: {} },
       { provide: SprintService, useValue: sprintService },
+      { provide: UserBoardsStore, useValue: { boards: signal([]) } },
       provideMarkdown(),
     ],
   };
@@ -229,6 +231,12 @@ describe('TaskDetailDialog', () => {
       sprints: [fakeSprint({ name: 'Sprint A' })],
     });
 
+    // The sprint picker was moved onto the Sprint tab as part of the sprint
+    // management consolidation; hlm-tabs sets `hidden` on inactive tabpanels
+    // which hides them from the accessibility tree, so role queries can't reach
+    // the picker until we activate the tab.
+    await user.click(screen.getByRole('tab', { name: 'Sprint' }));
+
     await user.click(await screen.findByRole('combobox', { name: 'Sprint' }));
     await user.click(await screen.findByRole('option', { name: /sprint a/i }));
 
@@ -257,8 +265,16 @@ describe('TaskDetailDialog', () => {
   });
 
   describe('calendar sync toggle', () => {
+    // The sync toggle lives on the Sprint tab alongside the due date controls.
+    // hlm-tabs sets `hidden` on inactive tabpanels, which excludes them from the
+    // accessibility tree — role queries can't see the switch until we activate
+    // the tab. `getByText` still finds the hint because it walks the DOM
+    // directly, which is why the hint test doesn't need to switch tabs.
     it('is disabled when there is no due date', async () => {
+      const user = userEvent.setup();
       await openWith(fakeTask({ dueDate: undefined }));
+
+      await user.click(screen.getByRole('tab', { name: 'Sprint' }));
 
       const toggle = await screen.findByRole('switch', { name: /sync with google calendar/i });
       expect(toggle).toHaveAttribute('data-disabled', 'true');
@@ -273,6 +289,8 @@ describe('TaskDetailDialog', () => {
     it('saves calendarSyncEnabled: true when toggled on with a due date set', async () => {
       const user = userEvent.setup();
       const { store } = await openWith(fakeTask({ dueDate: ts(new Date(2026, 5, 1)) }));
+
+      await user.click(screen.getByRole('tab', { name: 'Sprint' }));
 
       await user.click(await screen.findByRole('switch', { name: /sync with google calendar/i }));
 
@@ -366,6 +384,20 @@ describe('TaskDetailDialog', () => {
       await user.click(screen.getByRole('button', { name: 'Delete sprint' }));
 
       await waitFor(() => expect(sprintService.deleteSprint).toHaveBeenCalledWith('board-1', 's1'));
+    });
+  });
+
+  describe('advanced tab', () => {
+    it('exposes an Advanced tab with the migrate form', async () => {
+      const user = userEvent.setup();
+      await openWith(fakeTask());
+
+      await user.click(screen.getByRole('tab', { name: 'Advanced' }));
+
+      expect(
+        await screen.findByRole('heading', { name: /move to another board/i }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /move task/i })).toBeDisabled();
     });
   });
 });

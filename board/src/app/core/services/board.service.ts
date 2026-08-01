@@ -298,6 +298,103 @@ export class BoardService {
     });
   }
 
+  /**
+   * Moves a task (with its comments and history) from one board to another.
+   * The source and target boards may have different labels/sprints, so those
+   * per-board references are dropped rather than carried over. Attachments keep
+   * their storage path (which encodes the source boardId) — the user is
+   * assumed to remain a member of the source board's storage bucket.
+   *
+   * A `board_migrated` history entry is appended so the target task's timeline
+   * records where it came from.
+   */
+  async migrateTaskToBoard(
+    sourceBoardId: string,
+    taskId: string,
+    targetBoardId: string,
+    targetListId: string,
+    userId: string,
+    metadata: { fromBoardName: string; toBoardName: string },
+  ): Promise<string> {
+    if (sourceBoardId === targetBoardId) {
+      throw new Error('Cannot migrate task to the same board');
+    }
+
+    const [taskSnap, commentsSnap, historySnap, targetTasksSnap] = await Promise.all([
+      getDoc(this.taskRef(sourceBoardId, taskId)),
+      getDocs(this.commentsCollection(sourceBoardId, taskId)),
+      getDocs(this.historyCollection(sourceBoardId, taskId)),
+      getDocs(query(this.tasksCollection(targetBoardId), where('listId', '==', targetListId))),
+    ]);
+
+    if (!taskSnap.exists()) {
+      throw new Error('Task not found');
+    }
+
+    const source = taskSnap.data() as Task;
+    const newOrder = getOrderAtEnd(targetTasksSnap.docs.map((d) => d.data() as Task));
+    const newTaskRef = doc(this.tasksCollection(targetBoardId));
+
+    // Split into two batches: writes (new task + copied subcollections + migration history) then deletes.
+    // Comments and history document limits stay under 500 in practice; if a task
+    // has thousands of entries this would need chunking, but that's not the
+    // shape we see today.
+    const writeBatchRef = writeBatch(this.db);
+    writeBatchRef.set(newTaskRef, {
+      listId: targetListId,
+      title: source.title,
+      description: source.description ?? '',
+      order: newOrder,
+      startDate: source.startDate ?? null,
+      dueDate: source.dueDate ?? null,
+      calendarEventId: source.calendarEventId ?? null,
+      calendarSyncEnabled: source.calendarSyncEnabled ?? false,
+      createdBy: source.createdBy,
+      assignedTo: source.assignedTo ?? [],
+      // Labels and sprints belong to the source board's collections — dropped.
+      labelIds: [],
+      sprintId: null,
+      color: source.color ?? null,
+      attachments: source.attachments ?? [],
+      commentCount: source.commentCount ?? 0,
+      completedAt: source.completedAt ?? null,
+      createdAt: source.createdAt,
+      updatedAt: serverTimestamp(),
+    });
+
+    for (const commentDoc of commentsSnap.docs) {
+      writeBatchRef.set(
+        doc(this.commentsCollection(targetBoardId, newTaskRef.id), commentDoc.id),
+        commentDoc.data(),
+      );
+    }
+
+    for (const historyDoc of historySnap.docs) {
+      writeBatchRef.set(
+        doc(this.historyCollection(targetBoardId, newTaskRef.id), historyDoc.id),
+        historyDoc.data(),
+      );
+    }
+
+    writeBatchRef.set(doc(this.historyCollection(targetBoardId, newTaskRef.id)), {
+      action: 'board_migrated',
+      userId,
+      metadata,
+      createdAt: serverTimestamp(),
+    });
+
+    await writeBatchRef.commit();
+
+    const deleteRefs: DocumentReference[] = [
+      ...commentsSnap.docs.map((d) => d.ref),
+      ...historySnap.docs.map((d) => d.ref),
+      this.taskRef(sourceBoardId, taskId),
+    ];
+    await this.commitInChunks(deleteRefs);
+
+    return newTaskRef.id;
+  }
+
   // --- Comments ---
 
   async addComment(

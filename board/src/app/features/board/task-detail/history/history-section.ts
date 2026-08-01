@@ -39,6 +39,8 @@ function describe(entry: HistoryEntry, collaborators: Collaborator[]): string {
       return `${user} removed attachment ${meta?.fileName ?? ''}`;
     case 'moved':
       return `${user} moved from ${meta?.fromListName ?? ''} to ${meta?.toListName ?? ''}`;
+    case 'board_migrated':
+      return `${user} migrated this task from ${meta?.fromBoardName ?? ''} to ${meta?.toBoardName ?? ''}`;
     case 'completed':
       return `${user} marked as complete`;
     case 'reopened':
@@ -95,7 +97,11 @@ export class HistorySection {
     const createdAt = this.createdAt();
     if (createdAt) {
       const creator = collaborators.find((c) => c.id === this.createdBy())?.name ?? 'Someone';
-      rows.push({ id: '__created__', description: `${creator} created this task`, when: formatRelativeTime(createdAt) });
+      rows.push({
+        id: '__created__',
+        description: `${creator} created this task`,
+        when: formatRelativeTime(createdAt),
+      });
     }
     return rows;
   });

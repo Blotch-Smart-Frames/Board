@@ -20,3 +20,18 @@ if (typeof globalThis.matchMedia === 'undefined') {
     }),
   });
 }
+
+// jsdom doesn't implement ResizeObserver; Spartan primitives (select overlays,
+// tabs pagination) rely on a shared observer that's constructed lazily on first
+// afterRender, so the missing global crashes any spec that opens a select or
+// switches views. A minimal stub matches the surface those primitives touch.
+class ResizeObserverStub {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
+
+// jsdom stubs scrollIntoView as a no-op on newer versions but not on older ones;
+// the CDK active-descendant key manager and select overlays call it eagerly.
+Element.prototype.scrollIntoView ??= function scrollIntoViewPolyfill(): void {};

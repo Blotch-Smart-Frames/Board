@@ -43,6 +43,7 @@ describe('BoardStore', () => {
     updateTask: ReturnType<typeof vi.fn>;
     deleteTask: ReturnType<typeof vi.fn>;
     moveTask: ReturnType<typeof vi.fn>;
+    migrateTaskToBoard: ReturnType<typeof vi.fn>;
     addTaskHistory: ReturnType<typeof vi.fn>;
   };
   let syncService: {
@@ -63,6 +64,7 @@ describe('BoardStore', () => {
       updateTask: vi.fn().mockResolvedValue(undefined),
       deleteTask: vi.fn().mockResolvedValue(undefined),
       moveTask: vi.fn().mockResolvedValue(undefined),
+      migrateTaskToBoard: vi.fn().mockResolvedValue('task-new-id'),
       addTaskHistory: vi.fn().mockResolvedValue(undefined),
     };
     syncService = {
@@ -358,6 +360,26 @@ describe('BoardStore', () => {
       await store.moveTaskToList('t1', 'list-1');
 
       expect(boardService.moveTask).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('migrateTaskToBoard', () => {
+    it('forwards the migration to BoardService with the source board title in metadata', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      onSnapshotCallbacks.get('boards/board-1')!(docSnapshot('board-1', { title: 'Source Board' }));
+
+      const newId = await store.migrateTaskToBoard('t1', 'board-2', 'list-x', 'Target Board');
+
+      expect(newId).toBe('task-new-id');
+      expect(boardService.migrateTaskToBoard).toHaveBeenCalledWith(
+        'board-1',
+        't1',
+        'board-2',
+        'list-x',
+        'u1',
+        { fromBoardName: 'Source Board', toBoardName: 'Target Board' },
+      );
     });
   });
 

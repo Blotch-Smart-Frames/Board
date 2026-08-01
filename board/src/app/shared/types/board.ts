@@ -178,6 +178,7 @@ export type HistoryAction =
   | 'attachment_added'
   | 'attachment_removed'
   | 'moved'
+  | 'board_migrated'
   | 'completed'
   | 'reopened'
   | 'field_changed';
@@ -193,6 +194,8 @@ export type HistoryEntry = {
     userName?: string;
     fromListName?: string;
     toListName?: string;
+    fromBoardName?: string;
+    toBoardName?: string;
     fileName?: string;
     oldValue?: string;
     newValue?: string;

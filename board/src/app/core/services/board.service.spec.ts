@@ -4,6 +4,7 @@ import {
   arrayRemove,
   arrayUnion,
   deleteDoc,
+  doc,
   getDoc,
   getDocs,
   increment,
@@ -17,7 +18,12 @@ import { StorageService } from './storage.service';
 import { BoardService } from './board.service';
 
 function fakeBatch() {
-  return { set: vi.fn(), update: vi.fn(), delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) };
+  return {
+    set: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    commit: vi.fn().mockResolvedValue(undefined),
+  };
 }
 
 function collectionRef(path: string) {
@@ -32,7 +38,10 @@ vi.mock('firebase/firestore', () => ({
   addDoc: vi.fn(),
   updateDoc: vi.fn(),
   deleteDoc: vi.fn(),
-  query: vi.fn((collectionRef: unknown, ...constraints: unknown[]) => ({ collectionRef, constraints })),
+  query: vi.fn((collectionRef: unknown, ...constraints: unknown[]) => ({
+    collectionRef,
+    constraints,
+  })),
   where: vi.fn((field: string, op: string, value: unknown) => ({ field, op, value })),
   serverTimestamp: vi.fn(() => 'SERVER_TIMESTAMP'),
   writeBatch: vi.fn(),
@@ -101,7 +110,12 @@ describe('BoardService', () => {
       vi.mocked(getDoc).mockResolvedValueOnce({
         exists: () => true,
         id: 'board-1',
-        data: () => ({ title: 'B', ownerId: 'u1', collaborators: [], backgroundImageUrl: 'bg.png' }),
+        data: () => ({
+          title: 'B',
+          ownerId: 'u1',
+          collaborators: [],
+          backgroundImageUrl: 'bg.png',
+        }),
       } as never);
 
       vi.mocked(getDocs).mockImplementation((ref: unknown) => {
@@ -117,7 +131,10 @@ describe('BoardService', () => {
             ],
           } as never);
         }
-        if (path === 'boards/board-1/tasks/task-1/comments' || path === 'boards/board-1/tasks/task-1/history') {
+        if (
+          path === 'boards/board-1/tasks/task-1/comments' ||
+          path === 'boards/board-1/tasks/task-1/history'
+        ) {
           return Promise.resolve({ docs: [] } as never);
         }
         return Promise.resolve({ docs: [] } as never); // lists, labels, sprints
@@ -129,7 +146,9 @@ describe('BoardService', () => {
       await service.deleteBoard('board-1');
 
       // The board doc itself must be included in the deleted refs.
-      expect(batch.delete).toHaveBeenCalledWith(expect.objectContaining({ path: 'boards/board-1' }));
+      expect(batch.delete).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'boards/board-1' }),
+      );
       // Background image cleanup must fire, proving the pre-delete board data was captured.
       expect(storageService.deleteBoardBackground).toHaveBeenCalledWith('board-1');
       expect(storageService.deleteTaskAttachment).toHaveBeenCalledWith('att-1');
@@ -196,7 +215,9 @@ describe('BoardService', () => {
       await service.shareBoard('board-1', 'u2');
 
       expect(arrayUnion).toHaveBeenCalledWith('u2');
-      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { collaborators: { __arrayUnion: 'u2' } });
+      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
+        collaborators: { __arrayUnion: 'u2' },
+      });
     });
 
     it('does not write again if the user is already a collaborator', async () => {
@@ -302,7 +323,9 @@ describe('BoardService', () => {
         expect.objectContaining({ text: 'Hi', authorId: 'u1' }),
       );
       expect(increment).toHaveBeenCalledWith(1);
-      expect(batch.update).toHaveBeenCalledWith(expect.anything(), { commentCount: { __increment: 1 } });
+      expect(batch.update).toHaveBeenCalledWith(expect.anything(), {
+        commentCount: { __increment: 1 },
+      });
       expect(batch.commit).toHaveBeenCalledTimes(1);
     });
 
@@ -336,6 +359,113 @@ describe('BoardService', () => {
 
       expect(batch.set).toHaveBeenCalledTimes(2);
       expect(batch.commit).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('migrateTaskToBoard', () => {
+    it('rejects a migration to the same board without touching Firestore', async () => {
+      await expect(
+        service.migrateTaskToBoard('board-1', 'task-1', 'board-1', 'list-x', 'u1', {
+          fromBoardName: 'A',
+          toBoardName: 'A',
+        }),
+      ).rejects.toThrow(/same board/i);
+
+      expect(getDoc).not.toHaveBeenCalled();
+      expect(writeBatch).not.toHaveBeenCalled();
+    });
+
+    it('copies the task, its comments and history, appends a board_migrated entry, and deletes the source', async () => {
+      const batch = fakeBatch();
+      vi.mocked(writeBatch).mockReturnValue(batch as never);
+      // The real `doc(collection)` call generates an auto-id we later read via
+      // `.id`; the shared mock only returns `{ path }`, so extend it for this
+      // scope to include an id.
+      let autoIdCounter = 0;
+      vi.mocked(doc).mockImplementation((_ref: unknown, ...segments: string[]) => {
+        const id = segments.length > 0 ? segments[segments.length - 1] : `auto-${autoIdCounter++}`;
+        return { path: segments.join('/'), id } as never;
+      });
+      // Source task read.
+      vi.mocked(getDoc).mockResolvedValue({
+        exists: () => true,
+        data: () => ({
+          listId: 'list-src',
+          title: 'Move me',
+          description: 'D',
+          order: 'a0',
+          startDate: null,
+          dueDate: null,
+          calendarSyncEnabled: false,
+          createdBy: 'u1',
+          assignedTo: ['u2'],
+          labelIds: ['l1'],
+          sprintId: 's1',
+          color: '#fff',
+          attachments: [],
+          commentCount: 1,
+          createdAt: { seconds: 1 },
+          updatedAt: { seconds: 2 },
+        }),
+      } as never);
+      // Comments, history, target-list tasks reads.
+      vi.mocked(getDocs)
+        .mockResolvedValueOnce({
+          docs: [{ id: 'c1', data: () => ({ text: 'Hi' }), ref: { path: 'c1' } }],
+        } as never)
+        .mockResolvedValueOnce({
+          docs: [{ id: 'h1', data: () => ({ action: 'completed' }), ref: { path: 'h1' } }],
+        } as never)
+        .mockResolvedValueOnce({ docs: [] } as never);
+
+      const newId = await service.migrateTaskToBoard(
+        'board-1',
+        'task-1',
+        'board-2',
+        'list-dst',
+        'u1',
+        { fromBoardName: 'Source', toBoardName: 'Target' },
+      );
+
+      expect(typeof newId).toBe('string');
+
+      // The new task, the copied comment, the copied history entry, and the
+      // migration entry all go through the first batch.set.
+      expect(batch.set).toHaveBeenCalledTimes(4);
+      // Target task is written with dropped labels/sprint and inherited assignees.
+      const firstSetPayload = batch.set.mock.calls[0][1];
+      expect(firstSetPayload).toMatchObject({
+        listId: 'list-dst',
+        title: 'Move me',
+        assignedTo: ['u2'],
+        labelIds: [],
+        sprintId: null,
+      });
+      // Migration history entry is one of the batch.set calls.
+      const migrationEntry = batch.set.mock.calls.find(
+        (c) => (c[1] as { action?: string }).action === 'board_migrated',
+      );
+      expect(migrationEntry).toBeDefined();
+      expect(migrationEntry![1]).toMatchObject({
+        action: 'board_migrated',
+        userId: 'u1',
+        metadata: { fromBoardName: 'Source', toBoardName: 'Target' },
+      });
+
+      // Two batches commit: one for writes, one for the source-side deletes.
+      expect(batch.commit).toHaveBeenCalledTimes(2);
+    });
+
+    it('throws when the source task no longer exists', async () => {
+      vi.mocked(getDoc).mockResolvedValue({ exists: () => false } as never);
+      vi.mocked(getDocs).mockResolvedValue({ docs: [] } as never);
+
+      await expect(
+        service.migrateTaskToBoard('board-1', 'gone', 'board-2', 'list', 'u1', {
+          fromBoardName: 'A',
+          toBoardName: 'B',
+        }),
+      ).rejects.toThrow(/task not found/i);
     });
   });
 });
