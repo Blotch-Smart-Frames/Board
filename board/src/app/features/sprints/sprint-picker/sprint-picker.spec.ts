@@ -55,7 +55,9 @@ describe('SprintPicker', () => {
 
     await user.click(screen.getByRole('combobox', { name: 'Sprint' }));
 
-    expect(await screen.findByRole('option', { name: /no sprint \(backlog\)/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('option', { name: /no sprint \(backlog\)/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('option', { name: /sprint a/i })).toBeInTheDocument();
   });
 
@@ -83,15 +85,5 @@ describe('SprintPicker', () => {
     await user.click(screen.getByRole('button', { name: /create sprint/i }));
 
     expect(await screen.findByRole('heading', { name: /create sprint/i })).toBeInTheDocument();
-  });
-
-  it('opens the nested sprint-management dialog', async () => {
-    const user = userEvent.setup();
-    const { providers } = setup();
-    await render(SprintPicker, { inputs: { boardId: 'board-1', sprints: [] }, providers });
-
-    await user.click(screen.getByRole('button', { name: /manage/i }));
-
-    expect(await screen.findByRole('heading', { name: 'Sprint Management' })).toBeInTheDocument();
   });
 });

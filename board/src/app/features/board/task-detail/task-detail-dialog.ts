@@ -1,11 +1,15 @@
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
-import { FormField, form, required, validate } from '@angular/forms/signals';
+import { FormField, form, required } from '@angular/forms/signals';
+import { format } from 'date-fns';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideTrash2 } from '@ng-icons/lucide';
+import { lucidePencil, lucidePlus, lucideTrash2 } from '@ng-icons/lucide';
 import { HlmDialogImports, HlmDialog } from '@spartan-ng/helm/dialog';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmLabel } from '@spartan-ng/helm/label';
+import { HlmAlert, HlmAlertDescription } from '@spartan-ng/helm/alert';
 import { HlmSwitch } from '@spartan-ng/helm/switch';
+import { HlmCalendarImports } from '@spartan-ng/helm/calendar';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmTabsImports } from '@spartan-ng/helm/tabs';
 import { HlmSelectImports } from '@spartan-ng/helm/select';
@@ -14,20 +18,22 @@ import { ColorPicker } from '../../../shared/components/color-picker/color-picke
 import { LabelPicker } from '../label-picker/label-picker';
 import { AssigneePicker } from '../assignee-picker/assignee-picker';
 import { SprintPicker } from '../../sprints/sprint-picker/sprint-picker';
+import { SprintDialog } from '../../sprints/sprint-dialog/sprint-dialog';
 import { TaskAssignees } from '../task-assignees/task-assignees';
 import { AttachmentSection } from './attachments/attachment-section';
 import { CommentsSection } from './comments/comments-section';
 import { HistorySection } from './history/history-section';
 import { BoardStore } from '../data/board.store';
-import { parseDateInput, toDateInputValue } from '../../../shared/utils/date-input';
-import type { Attachment, Task } from '../../../shared/types/board';
+import { SprintService } from '../../../core/services/sprint.service';
+import { compareOrder } from '../../../shared/utils/ordering';
+import type { Attachment, CreateSprintInput, Sprint, Task } from '../../../shared/types/board';
 
 type TaskFormModel = {
   title: string;
   description: string;
-  startDate: string;
-  dueDate: string;
 };
+
+const DEFAULT_SPRINT_DURATION_DAYS = 14;
 
 @Component({
   selector: 'app-task-detail-dialog',
@@ -35,7 +41,11 @@ type TaskFormModel = {
     HlmDialogImports,
     HlmButton,
     HlmInput,
+    HlmLabel,
+    HlmAlert,
+    HlmAlertDescription,
     HlmSwitch,
+    HlmCalendarImports,
     HlmFieldImports,
     HlmTabsImports,
     HlmSelectImports,
@@ -46,12 +56,13 @@ type TaskFormModel = {
     LabelPicker,
     AssigneePicker,
     SprintPicker,
+    SprintDialog,
     TaskAssignees,
     AttachmentSection,
     CommentsSection,
     HistorySection,
   ],
-  providers: [provideIcons({ lucideTrash2 })],
+  providers: [provideIcons({ lucideTrash2, lucidePencil, lucidePlus })],
   template: `
     <hlm-dialog #dialog>
       <hlm-dialog-content
@@ -237,39 +248,119 @@ type TaskFormModel = {
             </div>
 
             <div hlmTabsContent="sprint" class="flex flex-col gap-5 overflow-y-auto py-3">
-              <div hlmFieldGroup class="grid grid-cols-2 gap-4">
-                <div hlmField>
-                  <label hlmFieldLabel for="task-start">Start date</label>
-                  <input
-                    hlmInput
-                    id="task-start"
-                    type="date"
-                    autocomplete="off"
-                    data-1p-ignore="true"
-                    data-lpignore="true"
-                    data-bwignore="true"
-                    data-form-type="other"
-                    [formField]="taskForm.startDate"
-                    (blur)="saveStartDate()"
-                  />
-                </div>
-                <div hlmField>
-                  <label hlmFieldLabel for="task-due">Due date</label>
-                  <input
-                    hlmInput
-                    id="task-due"
-                    type="date"
-                    autocomplete="off"
-                    data-1p-ignore="true"
-                    data-lpignore="true"
-                    data-bwignore="true"
-                    data-form-type="other"
-                    [formField]="taskForm.dueDate"
-                    (blur)="saveDueDate()"
-                  />
-                  @for (err of taskForm.dueDate().errors(); track err.kind) {
-                    <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
+              <div hlmField>
+                <div class="flex items-center justify-between">
+                  <span hlmFieldLabel>Start &amp; due date</span>
+                  @if (task.startDate || task.dueDate) {
+                    <button hlmBtn variant="ghost" size="sm" type="button" (click)="clearDates()">
+                      Clear
+                    </button>
                   }
+                </div>
+
+                <div class="flex gap-2">
+                  <hlm-calendar-range
+                    class="mx-auto"
+                    [startDate]="taskStartDate()"
+                    [endDate]="taskDueDate()"
+                    (startDateChange)="onStartDateChange($event)"
+                    (endDateChange)="onEndDateChange($event)"
+                  />
+
+                  <div class="flex min-w-0 flex-1 flex-col gap-4">
+                    <div>
+                      <span hlmLabel>Default sprint duration</span>
+                      <div class="mt-1 flex items-center gap-2">
+                        <input
+                          hlmInput
+                          type="number"
+                          min="1"
+                          max="365"
+                          class="w-24"
+                          aria-label="Default sprint duration in days"
+                          [value]="sprintDurationDays()"
+                          (input)="sprintDurationDays.set($any($event.target).value)"
+                        />
+                        <span class="text-sm">days</span>
+                        <button
+                          hlmBtn
+                          variant="outline"
+                          size="sm"
+                          [disabled]="savingSprintConfig() || sprintConfigUnchanged()"
+                          (click)="saveSprintConfig()"
+                        >
+                          {{ savingSprintConfig() ? 'Saving...' : 'Save' }}
+                        </button>
+                      </div>
+                      <p class="text-muted-foreground mt-1 text-xs">
+                        Used when auto-calculating dates for new sprints
+                      </p>
+                    </div>
+
+                    <hr class="border-border" />
+
+                    <div>
+                      <div class="mb-2 flex items-center justify-between">
+                        <span class="text-muted-foreground text-sm">Sprints</span>
+                        <button
+                          hlmBtn
+                          variant="ghost"
+                          size="sm"
+                          type="button"
+                          (click)="openCreateSprint()"
+                        >
+                          <ng-icon name="lucidePlus" class="mr-2" />
+                          Create Sprint
+                        </button>
+                      </div>
+
+                      @if (sprintDeleteError()) {
+                        <div hlmAlert variant="destructive" class="mb-2">
+                          <p hlmAlertDescription>{{ sprintDeleteError() }}</p>
+                        </div>
+                      }
+
+                      @if (sortedSprints().length === 0) {
+                        <p class="text-muted-foreground text-sm">No sprints created yet</p>
+                      } @else {
+                        <div class="flex flex-col gap-2">
+                          @for (sprint of sortedSprints(); track sprint.id) {
+                            <div
+                              class="flex items-center justify-between gap-2 rounded-md border p-2"
+                            >
+                              <div class="min-w-0">
+                                <p class="truncate text-sm font-medium">{{ sprint.name }}</p>
+                                <p class="text-muted-foreground text-xs">
+                                  {{ formatSprintDates(sprint) }}
+                                </p>
+                              </div>
+                              <span class="flex shrink-0 gap-1">
+                                <button
+                                  hlmBtn
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label="Edit sprint"
+                                  (click)="openEditSprint(sprint)"
+                                >
+                                  <ng-icon name="lucidePencil" />
+                                </button>
+                                <button
+                                  hlmBtn
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label="Delete sprint"
+                                  [disabled]="deletingSprintId() === sprint.id"
+                                  (click)="removeSprint(sprint)"
+                                >
+                                  <ng-icon name="lucideTrash2" />
+                                </button>
+                              </span>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -290,7 +381,6 @@ type TaskFormModel = {
 
               <app-sprint-picker
                 [boardId]="boardId()"
-                [board]="store.board() ?? null"
                 [sprints]="store.sprints() ?? []"
                 [selectedSprintId]="task.sprintId ?? null"
                 (selectedSprintIdChange)="onSprintChange($event)"
@@ -320,12 +410,16 @@ type TaskFormModel = {
         }
       </hlm-dialog-content>
     </hlm-dialog>
+
+    <app-sprint-dialog #sprintDialog [boardId]="boardId()" [saveHandler]="saveSprintHandler" />
   `,
 })
 export class TaskDetailDialog {
   protected readonly store = inject(BoardStore);
+  private readonly sprintService = inject(SprintService);
 
   private readonly dialog = viewChild.required<HlmDialog>('dialog');
+  private readonly sprintDialog = viewChild.required<SprintDialog>('sprintDialog');
   private readonly titleInput = viewChild<ElementRef<HTMLInputElement>>('titleInput');
 
   private readonly taskId = signal<string | null>(null);
@@ -333,6 +427,12 @@ export class TaskDetailDialog {
   protected readonly titleEditing = signal(false);
   protected readonly assigneesExpanded = signal(false);
   protected readonly labelsExpanded = signal(false);
+
+  protected readonly sprintDurationDays = signal(String(DEFAULT_SPRINT_DURATION_DAYS));
+  protected readonly savingSprintConfig = signal(false);
+  protected readonly deletingSprintId = signal<string | null>(null);
+  protected readonly sprintDeleteError = signal<string | null>(null);
+  private readonly editingSprint = signal<Sprint | null>(null);
 
   protected readonly task = computed(() =>
     (this.store.tasks() ?? []).find((t) => t.id === this.taskId()),
@@ -352,20 +452,24 @@ export class TaskDetailDialog {
   protected readonly model = signal<TaskFormModel>({
     title: '',
     description: '',
-    startDate: '',
-    dueDate: '',
   });
 
   protected readonly taskForm = form(this.model, (path) => {
     required(path.title, { message: 'A title is required' });
-    validate(path.dueDate, ({ value, valueOf }) => {
-      const start = valueOf(path.startDate);
-      if (value() && start && value() < start) {
-        return { kind: 'dateOrder', message: 'Due date must be on or after the start date' };
-      }
-      return undefined;
-    });
   });
+
+  protected readonly taskStartDate = computed(() => this.task()?.startDate?.toDate());
+  protected readonly taskDueDate = computed(() => this.task()?.dueDate?.toDate());
+
+  protected readonly sortedSprints = computed(() =>
+    [...(this.store.sprints() ?? [])].sort((a, b) => compareOrder(a.order, b.order)),
+  );
+
+  protected readonly sprintConfigUnchanged = computed(
+    () =>
+      this.sprintDurationDays() ===
+      String(this.store.board()?.sprintConfig?.durationDays ?? DEFAULT_SPRINT_DURATION_DAYS),
+  );
 
   open(task: Task): void {
     this.taskId.set(task.id);
@@ -373,11 +477,14 @@ export class TaskDetailDialog {
     this.titleEditing.set(false);
     this.assigneesExpanded.set(false);
     this.labelsExpanded.set(false);
+    this.sprintDeleteError.set(null);
+    this.editingSprint.set(null);
+    this.sprintDurationDays.set(
+      String(this.store.board()?.sprintConfig?.durationDays ?? DEFAULT_SPRINT_DURATION_DAYS),
+    );
     this.model.set({
       title: task.title,
       description: task.description ?? '',
-      startDate: task.startDate ? toDateInputValue(task.startDate.toDate()) : '',
-      dueDate: task.dueDate ? toDateInputValue(task.dueDate.toDate()) : '',
     });
     this.dialog().open();
   }
@@ -437,24 +544,28 @@ export class TaskDetailDialog {
     }
   }
 
-  protected saveStartDate(): void {
+  protected onStartDateChange(date: Date | undefined): void {
     const task = this.task();
-    if (!task || this.taskForm.dueDate().invalid()) return;
-    const value = this.model().startDate;
-    const current = task.startDate ? toDateInputValue(task.startDate.toDate()) : '';
-    if (value !== current) {
-      this.store.updateTask(task.id, { startDate: parseDateInput(value) });
+    if (!task) return;
+    const current = task.startDate?.toDate().getTime();
+    if (date?.getTime() !== current) {
+      this.store.updateTask(task.id, { startDate: date ?? null });
     }
   }
 
-  protected saveDueDate(): void {
+  protected onEndDateChange(date: Date | undefined): void {
     const task = this.task();
-    if (!task || this.taskForm.dueDate().invalid()) return;
-    const value = this.model().dueDate;
-    const current = task.dueDate ? toDateInputValue(task.dueDate.toDate()) : '';
-    if (value !== current) {
-      this.store.updateTask(task.id, { dueDate: parseDateInput(value) });
+    if (!task) return;
+    const current = task.dueDate?.toDate().getTime();
+    if (date?.getTime() !== current) {
+      this.store.updateTask(task.id, { dueDate: date ?? null });
     }
+  }
+
+  protected clearDates(): void {
+    const task = this.task();
+    if (!task) return;
+    this.store.updateTask(task.id, { startDate: null, dueDate: null });
   }
 
   protected onLabelsChange(labelIds: string[]): void {
@@ -511,4 +622,58 @@ export class TaskDetailDialog {
 
   protected readonly listIdToTitle = (id: string): string =>
     this.store.listsWithTasks().find((l) => l.id === id)?.title ?? '';
+
+  protected saveSprintConfig(): void {
+    const days = parseInt(this.sprintDurationDays(), 10);
+    if (isNaN(days) || days < 1) return;
+    this.savingSprintConfig.set(true);
+    this.sprintService
+      .updateSprintConfig(this.boardId(), { durationDays: days })
+      .catch((err) => console.error('Failed to save sprint config:', err))
+      .finally(() => this.savingSprintConfig.set(false));
+  }
+
+  protected openCreateSprint(): void {
+    this.editingSprint.set(null);
+    this.sprintDialog().open(null);
+  }
+
+  protected openEditSprint(sprint: Sprint): void {
+    this.editingSprint.set(sprint);
+    this.sprintDialog().open(sprint);
+  }
+
+  protected readonly saveSprintHandler = (data: CreateSprintInput): Promise<void> => {
+    const editing = this.editingSprint();
+    return editing
+      ? this.sprintService.updateSprint(this.boardId(), editing.id, data)
+      : this.sprintService.createSprint(this.boardId(), data).then(() => {});
+  };
+
+  protected async removeSprint(sprint: Sprint): Promise<void> {
+    this.sprintDeleteError.set(null);
+    this.deletingSprintId.set(sprint.id);
+    try {
+      const { canDelete, taskCount } = await this.sprintService.canDeleteSprint(
+        this.boardId(),
+        sprint.id,
+      );
+      if (!canDelete) {
+        const noun = taskCount === 1 ? 'task is' : 'tasks are';
+        this.sprintDeleteError.set(
+          `Cannot delete: ${taskCount} ${noun} assigned to this sprint. Remove tasks from the sprint first.`,
+        );
+        return;
+      }
+      await this.sprintService.deleteSprint(this.boardId(), sprint.id);
+    } catch (err) {
+      this.sprintDeleteError.set(err instanceof Error ? err.message : 'Failed to delete sprint');
+    } finally {
+      this.deletingSprintId.set(null);
+    }
+  }
+
+  protected formatSprintDates(sprint: Sprint): string {
+    return `${format(sprint.startDate.toDate(), 'MMM d, yyyy')} - ${format(sprint.endDate.toDate(), 'MMM d, yyyy')}`;
+  }
 }

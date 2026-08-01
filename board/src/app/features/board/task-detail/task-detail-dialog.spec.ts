@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import type { Timestamp } from 'firebase/firestore';
-import { render, screen, waitFor } from '@testing-library/angular';
+import { render, screen, waitFor, within } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { provideMarkdown } from 'ngx-markdown';
 import { TaskDetailDialog } from './task-detail-dialog';
@@ -9,21 +9,18 @@ import { FIRESTORE_DB } from '../../../core/firebase/firebase.config';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { BoardService } from '../../../core/services/board.service';
 import { StorageService } from '../../../core/services/storage.service';
-import type {
-  Board,
-  Collaborator,
-  Label,
-  List,
-  Sprint,
-  Task,
-} from '../../../shared/types/board';
+import { SprintService } from '../../../core/services/sprint.service';
+import type { Board, Collaborator, Label, List, Sprint, Task } from '../../../shared/types/board';
 
 // CommentsSection/HistorySection subscribe via collectionSignal, which calls the
 // real onSnapshot unless the SDK is mocked. Stub it so it never fires — both
 // sections already render an empty state ("No comments yet" / gated behind the
 // History tab) in that case.
 vi.mock('firebase/firestore', () => ({
-  collection: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'collection', path: segments.join('/') })),
+  collection: vi.fn((_db: unknown, ...segments: string[]) => ({
+    type: 'collection',
+    path: segments.join('/'),
+  })),
   doc: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'doc', path: segments.join('/') })),
   query: vi.fn((ref: unknown, ...constraints: unknown[]) => ({ type: 'query', ref, constraints })),
   orderBy: vi.fn((field: string) => ({ orderBy: field })),
@@ -95,40 +92,55 @@ function setup(task: Task, opts: SetupOpts = {}) {
     collaborators: signal<Collaborator[]>(opts.collaborators ?? []),
     sprints: signal<Sprint[]>(opts.sprints ?? []),
     board: signal<Board | null>(opts.board ?? null),
-    listsWithTasks: signal((opts.lists ?? [fakeList('list-1', 'To Do', 'a0')]).map((l) => ({ ...l, tasks: [] }))),
+    listsWithTasks: signal(
+      (opts.lists ?? [fakeList('list-1', 'To Do', 'a0')]).map((l) => ({ ...l, tasks: [] })),
+    ),
     updateTask: vi.fn().mockResolvedValue(undefined),
     moveTaskToList: vi.fn().mockResolvedValue(undefined),
     deleteTask: vi.fn().mockResolvedValue(undefined),
   };
+  const sprintService = {
+    calculateNextSprintDates: vi.fn().mockResolvedValue({
+      startDate: new Date(2026, 1, 1),
+      endDate: new Date(2026, 1, 14),
+      suggestedName: 'Sprint 2',
+    }),
+    createSprint: vi.fn().mockResolvedValue({}),
+    updateSprint: vi.fn().mockResolvedValue(undefined),
+    canDeleteSprint: vi.fn().mockResolvedValue({ canDelete: true, taskCount: 0 }),
+    deleteSprint: vi.fn().mockResolvedValue(undefined),
+    updateSprintConfig: vi.fn().mockResolvedValue(undefined),
+  };
   return {
     store,
+    sprintService,
     providers: [
       { provide: BoardStore, useValue: store },
       { provide: FIRESTORE_DB, useValue: {} },
       { provide: AuthStore, useValue: { user: signal({ uid: 'u1' }) } },
       { provide: BoardService, useValue: {} },
       { provide: StorageService, useValue: {} },
+      { provide: SprintService, useValue: sprintService },
       provideMarkdown(),
     ],
   };
 }
 
 async function openWith(task: Task, opts: SetupOpts = {}) {
-  const { store, providers } = setup(task, opts);
+  const { store, sprintService, providers } = setup(task, opts);
   const view = await render(TaskDetailDialog, { providers });
   view.fixture.componentInstance.open(task);
   view.fixture.detectChanges();
   await view.fixture.whenStable();
-  return { ...view, store };
+  return { ...view, store, sprintService };
 }
 
 describe('TaskDetailDialog', () => {
-  it('shows the task title, description, and due date', async () => {
+  it('shows the task title and description', async () => {
     await openWith(fakeTask({ description: 'Some notes', dueDate: ts(new Date(2026, 5, 1)) }));
 
     expect(await screen.findByRole('heading', { name: 'Existing task' })).toBeInTheDocument();
     expect(screen.getByLabelText('Description')).toHaveValue('Some notes');
-    expect(screen.getByLabelText('Due date')).toHaveValue('2026-06-01');
   });
 
   it('shows resolved labels for the task', async () => {
@@ -211,22 +223,6 @@ describe('TaskDetailDialog', () => {
     );
   });
 
-  it('flags a due date earlier than the start date', async () => {
-    const user = userEvent.setup();
-    const { store } = await openWith(fakeTask());
-
-    await user.type(screen.getByLabelText('Start date'), '2026-06-10');
-    await user.tab();
-    await user.type(screen.getByLabelText('Due date'), '2026-06-01');
-    await user.tab();
-
-    expect(screen.getByText(/due date must be on or after the start date/i)).toBeInTheDocument();
-    expect(store.updateTask).not.toHaveBeenCalledWith(
-      't1',
-      expect.objectContaining({ dueDate: expect.anything() }),
-    );
-  });
-
   it('saves the selected sprint through the sprint picker', async () => {
     const user = userEvent.setup();
     const { store } = await openWith(fakeTask(), {
@@ -236,9 +232,7 @@ describe('TaskDetailDialog', () => {
     await user.click(await screen.findByRole('combobox', { name: 'Sprint' }));
     await user.click(await screen.findByRole('option', { name: /sprint a/i }));
 
-    await waitFor(() =>
-      expect(store.updateTask).toHaveBeenCalledWith('t1', { sprintId: 's1' }),
-    );
+    await waitFor(() => expect(store.updateTask).toHaveBeenCalledWith('t1', { sprintId: 's1' }));
   });
 
   it('deletes the task and closes the dialog when Delete is clicked', async () => {
@@ -285,6 +279,93 @@ describe('TaskDetailDialog', () => {
       await waitFor(() =>
         expect(store.updateTask).toHaveBeenCalledWith('t1', { calendarSyncEnabled: true }),
       );
+    });
+  });
+
+  describe('inlined sprint management', () => {
+    function fakeBoard(overrides: Partial<Board> = {}): Board {
+      return {
+        id: 'board-1',
+        title: 'My board',
+        ownerId: 'u1',
+        collaborators: [],
+        createdAt: ts(new Date()),
+        updatedAt: ts(new Date()),
+        ...overrides,
+      };
+    }
+
+    async function openSprintTab(opts: SetupOpts = {}) {
+      const user = userEvent.setup();
+      const result = await openWith(fakeTask(), opts);
+      await user.click(screen.getByRole('tab', { name: 'Sprint' }));
+      return { user, ...result };
+    }
+
+    it('disables Save until the duration changes, then persists it', async () => {
+      const { user, sprintService } = await openSprintTab({
+        board: fakeBoard({ sprintConfig: { durationDays: 14 } }),
+      });
+
+      const saveButton = screen.getByRole('button', { name: /^save$/i });
+      expect(saveButton).toBeDisabled();
+
+      const input = screen.getByLabelText('Default sprint duration in days');
+      await user.clear(input);
+      await user.type(input, '21');
+      await user.click(saveButton);
+
+      await waitFor(() =>
+        expect(sprintService.updateSprintConfig).toHaveBeenCalledWith('board-1', {
+          durationDays: 21,
+        }),
+      );
+    });
+
+    it('shows an empty state when there are no sprints', async () => {
+      await openSprintTab();
+
+      expect(await screen.findByText('No sprints created yet')).toBeInTheDocument();
+    });
+
+    it('edits a sprint through the nested dialog', async () => {
+      const sprint = fakeSprint({ name: 'Sprint A' });
+      const { user, sprintService } = await openSprintTab({ sprints: [sprint] });
+
+      await user.click(screen.getByRole('button', { name: 'Edit sprint' }));
+      const editDialog = await screen.findByRole('dialog', { name: /edit sprint/i });
+      const name = within(editDialog).getByLabelText('Sprint Name');
+      await user.clear(name);
+      await user.type(name, 'Sprint A renamed');
+      await user.click(within(editDialog).getByRole('button', { name: /^save$/i }));
+
+      await waitFor(() =>
+        expect(sprintService.updateSprint).toHaveBeenCalledWith(
+          'board-1',
+          's1',
+          expect.objectContaining({ name: 'Sprint A renamed' }),
+        ),
+      );
+    });
+
+    it('surfaces an error and does not delete when tasks are assigned', async () => {
+      const sprint = fakeSprint();
+      const { user, sprintService } = await openSprintTab({ sprints: [sprint] });
+      sprintService.canDeleteSprint.mockResolvedValue({ canDelete: false, taskCount: 2 });
+
+      await user.click(screen.getByRole('button', { name: 'Delete sprint' }));
+
+      expect(await screen.findByText(/cannot delete: 2 tasks are assigned/i)).toBeInTheDocument();
+      expect(sprintService.deleteSprint).not.toHaveBeenCalled();
+    });
+
+    it('deletes a sprint when no tasks are assigned', async () => {
+      const sprint = fakeSprint();
+      const { user, sprintService } = await openSprintTab({ sprints: [sprint] });
+
+      await user.click(screen.getByRole('button', { name: 'Delete sprint' }));
+
+      await waitFor(() => expect(sprintService.deleteSprint).toHaveBeenCalledWith('board-1', 's1'));
     });
   });
 });

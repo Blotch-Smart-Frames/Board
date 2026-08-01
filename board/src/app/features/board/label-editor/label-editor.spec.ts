@@ -1,9 +1,19 @@
 import type { Timestamp } from 'firebase/firestore';
-import { fireEvent, render, screen, waitFor } from '@testing-library/angular';
+import { render, screen, waitFor } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { LabelEditor } from './label-editor';
 import { labelColors } from '../../../core/config/default-labels';
 import type { Label } from '../../../shared/types/board';
+
+// jsdom lacks these; the popover overlay used by the emoji picker touches them
+// during positioning and teardown.
+class ResizeObserverStub {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
+Element.prototype.scrollIntoView ??= function scrollIntoViewPolyfill(): void {};
 
 function fakeLabel(overrides: Partial<Label> = {}): Label {
   return {
@@ -38,7 +48,7 @@ describe('LabelEditor', () => {
 
     expect(await screen.findByRole('heading', { name: /edit label/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Bug');
-    expect(screen.getByLabelText(/emoji/i)).toHaveValue('🐛');
+    expect(screen.getByRole('button', { name: /change emoji/i })).toHaveTextContent('🐛');
   });
 
   it('saves a trimmed name with no emoji when created', async () => {
@@ -49,7 +59,11 @@ describe('LabelEditor', () => {
     await user.click(screen.getByRole('button', { name: /^create$/i }));
 
     await waitFor(() =>
-      expect(saveHandler).toHaveBeenCalledWith({ name: 'Bug', color: labelColors[0], emoji: undefined }),
+      expect(saveHandler).toHaveBeenCalledWith({
+        name: 'Bug',
+        color: labelColors[0],
+        emoji: undefined,
+      }),
     );
   });
 
@@ -60,20 +74,18 @@ describe('LabelEditor', () => {
     expect(saveHandler).not.toHaveBeenCalled();
   });
 
-  it('shows a validation error and blocks saving when the emoji exceeds 4 characters', async () => {
-    const { saveHandler, fixture } = await openWith(fakeLabel());
+  it('saves the emoji picked from the emoji picker', async () => {
+    const user = userEvent.setup();
+    const { saveHandler } = await openWith(null);
 
-    // The native `maxlength` attribute (auto-applied from the maxLength() validator) blocks
-    // keystrokes past 4 chars, so a real paste/IME-composed overflow is simulated by setting
-    // the value directly rather than via userEvent.type.
-    const emoji = await screen.findByLabelText(/emoji/i);
-    fireEvent.input(emoji, { target: { value: 'toolong' } });
-    fixture.detectChanges();
-    await fixture.whenStable();
+    await user.type(await screen.findByLabelText('Name'), 'Bug');
+    await user.click(screen.getByRole('button', { name: /pick an emoji/i }));
+    await user.click(await screen.findByRole('option', { name: /^bug$/i }));
+    await user.click(screen.getByRole('button', { name: /^create$/i }));
 
-    expect(screen.getByText(/emoji must be 4 characters or fewer/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^save$/i })).toBeDisabled();
-    expect(saveHandler).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(saveHandler).toHaveBeenCalledWith({ name: 'Bug', color: labelColors[0], emoji: '🐛' }),
+    );
   });
 
   it('saves the picked color when a swatch is clicked', async () => {
@@ -85,7 +97,11 @@ describe('LabelEditor', () => {
     await user.click(screen.getByRole('button', { name: /^create$/i }));
 
     await waitFor(() =>
-      expect(saveHandler).toHaveBeenCalledWith({ name: 'Bug', color: labelColors[3], emoji: undefined }),
+      expect(saveHandler).toHaveBeenCalledWith({
+        name: 'Bug',
+        color: labelColors[3],
+        emoji: undefined,
+      }),
     );
   });
 });

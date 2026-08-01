@@ -9,7 +9,11 @@ import { getContrastColor } from '../../utils/color-utils';
   imports: [NgIcon],
   providers: [provideIcons({ lucideCheck })],
   template: `
-    <div class="grid grid-cols-8 gap-1" role="radiogroup" aria-label="Card color">
+    <div
+      class="grid w-fit grid-cols-[repeat(8,1.75rem)] gap-1"
+      role="radiogroup"
+      aria-label="Card color"
+    >
       @for (color of colors; track color) {
         <button
           type="button"

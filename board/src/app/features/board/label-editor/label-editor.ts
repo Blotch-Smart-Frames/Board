@@ -1,11 +1,12 @@
 import { Component, computed, input, signal, viewChild } from '@angular/core';
-import { form, submit, required, maxLength, FormField } from '@angular/forms/signals';
+import { form, submit, required, FormField } from '@angular/forms/signals';
 import { HlmDialogImports, HlmDialog } from '@spartan-ng/helm/dialog';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
-import { HlmLabel } from '@spartan-ng/helm/label';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { ColorPicker } from '../../../shared/components/color-picker/color-picker';
+import { EmojiPicker } from '../../../shared/components/emoji-picker/emoji-picker';
 import { LabelChip, type LabelChipInput } from '../../../shared/components/label-chip/label-chip';
 import { labelColors } from '../../../core/config/default-labels';
 import type { Label, CreateLabelInput } from '../../../shared/types/board';
@@ -18,48 +19,71 @@ type LabelFormModel = {
 
 @Component({
   selector: 'app-label-editor',
-  imports: [HlmDialogImports, HlmButton, HlmInput, HlmLabel, HlmSpinner, ColorPicker, LabelChip, FormField],
+  imports: [
+    HlmDialogImports,
+    HlmFieldImports,
+    HlmButton,
+    HlmInput,
+    HlmSpinner,
+    ColorPicker,
+    EmojiPicker,
+    LabelChip,
+    FormField,
+  ],
   template: `
     <hlm-dialog #dialog>
-      <hlm-dialog-content *hlmDialogPortal class="sm:max-w-sm">
+      <hlm-dialog-content *hlmDialogPortal class="min-w-sm sm:max-w-sm">
         <hlm-dialog-header>
           <h3 hlmDialogTitle>{{ editing() ? 'Edit Label' : 'Create Label' }}</h3>
         </hlm-dialog-header>
 
-        <form class="flex flex-col gap-4 py-2" (submit)="$event.preventDefault(); save()">
+        <form hlmFieldGroup class="py-2" (submit)="$event.preventDefault(); save()">
           <div class="flex justify-center">
             <app-label-chip [label]="previewLabel()" />
           </div>
 
-          <div>
-            <label hlmLabel for="label-name">Name</label>
-            <input hlmInput id="label-name" class="w-full" [formField]="labelForm.name" (keydown.escape)="close()" />
+          <div hlmField>
+            <label hlmFieldLabel for="label-name">Name</label>
+            <input
+              hlmInput
+              id="label-name"
+              [formField]="labelForm.name"
+              (keydown.escape)="close()"
+            />
             @for (err of labelForm.name().errors(); track err.kind) {
-              <p class="text-destructive mt-1 text-sm">{{ err.message }}</p>
+              <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
             }
           </div>
 
-          <div>
-            <label hlmLabel for="label-emoji">Emoji (optional)</label>
-            <input hlmInput id="label-emoji" class="w-full" placeholder="Paste or type an emoji" [formField]="labelForm.emoji" />
-            @for (err of labelForm.emoji().errors(); track err.kind) {
-              <p class="text-destructive mt-1 text-sm">{{ err.message }}</p>
-            }
+          <div hlmField>
+            <label hlmFieldLabel for="label-emoji">Emoji (optional)</label>
+            <app-emoji-picker
+              buttonId="label-emoji"
+              [value]="model().emoji"
+              (valueChange)="setEmoji($event)"
+            />
           </div>
 
-          <div>
-            <span hlmLabel>Color</span>
+          <div hlmField>
+            <span hlmFieldLabel>Color</span>
             <app-color-picker [value]="model().color" (valueChange)="setColor($event)" />
           </div>
 
           @if (error()) {
-            <p class="text-destructive text-sm">{{ error() }}</p>
+            <hlm-field-error forceShow>{{ error() }}</hlm-field-error>
           }
         </form>
 
         <hlm-dialog-footer>
-          <button hlmBtn variant="outline" type="button" [disabled]="saving()" (click)="close()">Cancel</button>
-          <button hlmBtn type="button" [disabled]="labelForm().invalid() || saving()" (click)="save()">
+          <button hlmBtn variant="outline" type="button" [disabled]="saving()" (click)="close()">
+            Cancel
+          </button>
+          <button
+            hlmBtn
+            type="button"
+            [disabled]="labelForm().invalid() || saving()"
+            (click)="save()"
+          >
             @if (saving()) {
               <hlm-spinner class="size-4" />
             } @else {
@@ -88,7 +112,6 @@ export class LabelEditor {
 
   protected readonly labelForm = form(this.model, (path) => {
     required(path.name, { message: 'Name is required' });
-    maxLength(path.emoji, 4, { message: 'Emoji must be 4 characters or fewer' });
   });
 
   protected readonly previewLabel = computed<LabelChipInput>(() => ({
@@ -115,6 +138,10 @@ export class LabelEditor {
 
   protected setColor(color: string): void {
     this.model.update((m) => ({ ...m, color }));
+  }
+
+  protected setEmoji(emoji: string): void {
+    this.model.update((m) => ({ ...m, emoji }));
   }
 
   protected async save(): Promise<void> {

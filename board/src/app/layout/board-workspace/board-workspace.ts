@@ -7,6 +7,7 @@ import { BoardStore } from '../../features/board/data/board.store';
 import { BoardsSidebar } from '../../features/boards/boards-sidebar/boards-sidebar';
 import { KanbanBoard } from '../../features/board/kanban-board/kanban-board';
 import { TimelineView } from '../../features/timeline/timeline-view/timeline-view';
+import { BackgroundImageUpload } from '../../features/board/background-image-upload/background-image-upload';
 import { ShareDialog } from '../../features/collaboration/share-dialog/share-dialog';
 import { isMobileSignal } from '../../core/interop/breakpoint-signal';
 import { AppBar, type ViewMode } from '../app-bar/app-bar';
@@ -23,6 +24,7 @@ import { AppBar, type ViewMode } from '../app-bar/app-bar';
     BoardsSidebar,
     KanbanBoard,
     TimelineView,
+    BackgroundImageUpload,
     ShareDialog,
   ],
   template: `
@@ -81,6 +83,11 @@ import { AppBar, type ViewMode } from '../app-bar/app-bar';
     </div>
 
     @if (store.board(); as board) {
+      <app-background-image-upload
+        [boardId]="store.boardId()!"
+        [hasBackground]="!!board.backgroundImageUrl"
+      />
+
       <app-share-dialog
         #shareDialog
         [boardId]="store.boardId()!"
