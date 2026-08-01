@@ -15,6 +15,7 @@ import { HlmTabsImports } from '@spartan-ng/helm/tabs';
 import { HlmSelectImports } from '@spartan-ng/helm/select';
 import { LabelChip } from '../../../shared/components/label-chip/label-chip';
 import { ColorPicker } from '../../../shared/components/color-picker/color-picker';
+import { UserAvatar } from '../../../shared/components/user-avatar/user-avatar';
 import { LabelPicker } from '../label-picker/label-picker';
 import { AssigneePicker } from '../assignee-picker/assignee-picker';
 import { SprintPicker } from '../../sprints/sprint-picker/sprint-picker';
@@ -53,6 +54,7 @@ const DEFAULT_SPRINT_DURATION_DAYS = 14;
     FormField,
     LabelChip,
     ColorPicker,
+    UserAvatar,
     LabelPicker,
     AssigneePicker,
     SprintPicker,
@@ -185,25 +187,53 @@ const DEFAULT_SPRINT_DURATION_DAYS = 14;
                     }
                   </div>
 
-                  <div hlmField>
-                    <button
-                      type="button"
-                      class="text-muted-foreground hover:text-foreground w-fit text-left text-sm font-medium"
-                      (click)="toggleAssignees()"
-                    >
-                      Assignees
-                    </button>
-                    @if (assigneesExpanded()) {
-                      <app-assignee-picker
-                        [collaborators]="store.collaborators()"
-                        [selectedUserIds]="task.assignedTo ?? []"
-                        (selectedUserIdsChange)="onAssigneesChange($event)"
-                      />
-                    } @else if (assignedUsers().length > 0) {
-                      <app-task-assignees [assignedUsers]="assignedUsers()" />
-                    } @else {
-                      <p class="text-muted-foreground text-sm">No assignees</p>
-                    }
+                  <div class="flex flex-row gap-4">
+                    <div hlmField class="flex-1">
+                      <button
+                        type="button"
+                        class="text-muted-foreground hover:text-foreground w-fit text-left text-sm font-medium"
+                        (click)="toggleAssignees()"
+                      >
+                        Assignees
+                      </button>
+                      @if (assigneesExpanded()) {
+                        <app-assignee-picker
+                          [collaborators]="store.collaborators()"
+                          [selectedUserIds]="task.assignedTo ?? []"
+                          (selectedUserIdsChange)="onAssigneesChange($event)"
+                        />
+                      } @else if (assignedUsers().length > 0) {
+                        <app-task-assignees [assignedUsers]="assignedUsers()" />
+                      } @else {
+                        <p class="text-muted-foreground text-sm">No assignees</p>
+                      }
+                    </div>
+
+                    <div hlmField class="flex-1">
+                      <span class="text-muted-foreground w-fit text-left text-sm font-medium">
+                        Creator
+                      </span>
+                      @if (creator(); as creator) {
+                        <div class="flex items-center gap-2">
+                          <app-user-avatar
+                            [name]="creator.name"
+                            [photoURL]="creator.photoURL"
+                            size="small"
+                          />
+                          <button
+                            hlmBtn
+                            variant="outline"
+                            size="sm"
+                            type="button"
+                            (click)="handBackToCreator()"
+                          >
+                            Hand back
+                          </button>
+                        </div>
+                      } @else {
+                        <p class="text-muted-foreground text-sm">Unknown</p>
+                      }
+                    </div>
                   </div>
 
                   <div hlmField>
@@ -449,6 +479,12 @@ export class TaskDetailDialog {
     return this.store.collaborators().filter((c) => ids.includes(c.id));
   });
 
+  protected readonly creator = computed(() => {
+    const id = this.task()?.createdBy;
+    if (!id) return null;
+    return this.store.collaborators().find((c) => c.id === id) ?? null;
+  });
+
   protected readonly model = signal<TaskFormModel>({
     title: '',
     description: '',
@@ -576,6 +612,13 @@ export class TaskDetailDialog {
   protected onAssigneesChange(userIds: string[]): void {
     const task = this.task();
     if (task) this.store.updateTask(task.id, { assignedTo: userIds });
+  }
+
+  protected handBackToCreator(): void {
+    const task = this.task();
+    const creator = this.creator();
+    if (!task || !creator) return;
+    this.store.updateTask(task.id, { assignedTo: [creator.id] });
   }
 
   protected onSprintChange(sprintId: string | null): void {
