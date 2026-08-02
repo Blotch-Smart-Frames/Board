@@ -8,6 +8,7 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { ColorPicker } from '../../../shared/components/color-picker/color-picker';
 import { EmojiPicker } from '../../../shared/components/emoji-picker/emoji-picker';
 import { LabelChip, type LabelChipInput } from '../../../shared/components/label-chip/label-chip';
+import { PreviewBackdrop } from '../../../shared/components/preview-backdrop/preview-backdrop';
 import { labelColors } from '../../../core/config/default-labels';
 import type { Label, CreateLabelInput } from '../../../shared/types/board';
 
@@ -28,6 +29,7 @@ type LabelFormModel = {
     ColorPicker,
     EmojiPicker,
     LabelChip,
+    PreviewBackdrop,
     FormField,
   ],
   template: `
@@ -38,15 +40,20 @@ type LabelFormModel = {
         </hlm-dialog-header>
 
         <form hlmFieldGroup class="py-2" (submit)="$event.preventDefault(); save()">
-          <div class="flex justify-center">
+          <app-preview-backdrop>
             <app-label-chip [label]="previewLabel()" />
-          </div>
+          </app-preview-backdrop>
 
           <div hlmField>
             <label hlmFieldLabel for="label-name">Name</label>
             <input
               hlmInput
               id="label-name"
+              autocomplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-bwignore="true"
+              data-form-type="other"
               [formField]="labelForm.name"
               (keydown.escape)="close()"
             />

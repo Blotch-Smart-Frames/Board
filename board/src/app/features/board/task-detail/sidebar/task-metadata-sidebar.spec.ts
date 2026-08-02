@@ -25,7 +25,7 @@ function fakeCollaborator(overrides: Partial<Collaborator> = {}): Collaborator {
   return { id: 'u1', email: 'u1@example.com', name: 'Alice', isOwner: false, ...overrides };
 }
 
-// LabelPicker/LabelEditor/LabelManagement all pull in LabelService via inject().
+// LabelPicker pulls in LabelService via inject().
 const providers = [{ provide: LabelService, useValue: {} }];
 
 describe('TaskMetadataSidebar', () => {
