@@ -90,7 +90,6 @@ export type Task = {
   assignedTo?: string[];
   labelIds?: string[];
   color?: string;
-  sprintId?: string;
   attachments?: Attachment[];
   commentCount?: number;
   createdAt: Timestamp;
@@ -127,7 +126,6 @@ export type CreateTaskInput = {
   assignedTo?: string[];
   labelIds?: string[];
   color?: string;
-  sprintId?: string;
   attachments?: Attachment[];
 };
 
@@ -141,7 +139,6 @@ export type UpdateTaskInput = {
   assignedTo?: string[];
   labelIds?: string[];
   color?: string | null;
-  sprintId?: string | null;
   completedAt?: Date | null;
   attachments?: Attachment[];
 };

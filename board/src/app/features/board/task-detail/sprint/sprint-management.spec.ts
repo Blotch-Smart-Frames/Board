@@ -26,7 +26,6 @@ function fakeSprint(overrides: Partial<Sprint> = {}): Sprint {
 type SprintServiceStub = {
   createSprint: ReturnType<typeof vi.fn>;
   updateSprint: ReturnType<typeof vi.fn>;
-  canDeleteSprint: ReturnType<typeof vi.fn>;
   deleteSprint: ReturnType<typeof vi.fn>;
   updateSprintConfig: ReturnType<typeof vi.fn>;
   calculateNextSprintDates: ReturnType<typeof vi.fn>;
@@ -39,8 +38,6 @@ function setup(overrides: Partial<SprintServiceStub> = {}): {
   const sprintService: SprintServiceStub = {
     createSprint: overrides.createSprint ?? vi.fn().mockResolvedValue({}),
     updateSprint: overrides.updateSprint ?? vi.fn().mockResolvedValue(undefined),
-    canDeleteSprint:
-      overrides.canDeleteSprint ?? vi.fn().mockResolvedValue({ canDelete: true, taskCount: 0 }),
     deleteSprint: overrides.deleteSprint ?? vi.fn().mockResolvedValue(undefined),
     updateSprintConfig: overrides.updateSprintConfig ?? vi.fn().mockResolvedValue(undefined),
     calculateNextSprintDates:
@@ -112,10 +109,10 @@ describe('SprintManagement', () => {
     );
   });
 
-  it('shows an error and does not call deleteSprint when tasks are assigned', async () => {
+  it('shows an error when the delete operation itself fails', async () => {
     const user = userEvent.setup();
     const { providers, sprintService } = setup({
-      canDeleteSprint: vi.fn().mockResolvedValue({ canDelete: false, taskCount: 2 }),
+      deleteSprint: vi.fn().mockRejectedValue(new Error('Network error')),
     });
     await render(SprintManagement, {
       providers,
@@ -127,8 +124,8 @@ describe('SprintManagement', () => {
 
     await user.click(screen.getByRole('button', { name: 'Delete sprint' }));
 
-    expect(await screen.findByText(/cannot delete: 2 tasks are assigned/i)).toBeInTheDocument();
-    expect(sprintService.deleteSprint).not.toHaveBeenCalled();
+    expect(await screen.findByText(/network error/i)).toBeInTheDocument();
+    expect(sprintService.deleteSprint).toHaveBeenCalledWith('board-1', 's1');
   });
 
   it('deletes a sprint through the service when no tasks are assigned', async () => {

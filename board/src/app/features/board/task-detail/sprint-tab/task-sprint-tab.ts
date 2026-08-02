@@ -3,21 +3,13 @@ import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmCalendarImports } from '@spartan-ng/helm/calendar';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmSwitch } from '@spartan-ng/helm/switch';
-import { SprintPicker } from '../../../sprints/sprint-picker/sprint-picker';
 import { SprintManagement } from '../sprint/sprint-management';
 import { BoardStore } from '../../data/board.store';
 import type { Task } from '../../../../shared/types/board';
 
 @Component({
   selector: 'app-task-sprint-tab',
-  imports: [
-    HlmButton,
-    HlmCalendarImports,
-    HlmFieldImports,
-    HlmSwitch,
-    SprintPicker,
-    SprintManagement,
-  ],
+  imports: [HlmButton, HlmCalendarImports, HlmFieldImports, HlmSwitch, SprintManagement],
   template: `
     <div hlmField>
       <div class="flex items-center justify-between">
@@ -64,12 +56,6 @@ import type { Task } from '../../../../shared/types/board';
         }
       </div>
     </div>
-
-    <app-sprint-picker
-      [sprints]="store.sprints() ?? []"
-      [selectedSprintId]="task().sprintId ?? null"
-      (selectedSprintIdChange)="onSprintChange($event)"
-    />
   `,
 })
 export class TaskSprintTab {
@@ -109,10 +95,6 @@ export class TaskSprintTab {
     endDate: Date;
   }): void {
     this.store.updateTask(this.task().id, { startDate, dueDate: endDate });
-  }
-
-  protected onSprintChange(sprintId: string | null): void {
-    this.store.updateTask(this.task().id, { sprintId });
   }
 
   protected onCalendarSyncChange(enabled: boolean): void {

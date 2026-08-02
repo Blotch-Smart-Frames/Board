@@ -123,17 +123,6 @@ export class SprintManagement {
     this.deleteError.set(null);
     this.deletingId.set(sprint.id);
     try {
-      const { canDelete, taskCount } = await this.sprintService.canDeleteSprint(
-        this.boardId(),
-        sprint.id,
-      );
-      if (!canDelete) {
-        const noun = taskCount === 1 ? 'task is' : 'tasks are';
-        this.deleteError.set(
-          `Cannot delete: ${taskCount} ${noun} assigned to this sprint. Remove tasks from the sprint first.`,
-        );
-        return;
-      }
       await this.sprintService.deleteSprint(this.boardId(), sprint.id);
     } catch (err) {
       this.deleteError.set(err instanceof Error ? err.message : 'Failed to delete sprint');

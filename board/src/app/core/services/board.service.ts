@@ -246,7 +246,6 @@ export class BoardService {
       assignedTo: input.assignedTo ?? [],
       labelIds: input.labelIds ?? [],
       color: input.color ?? null,
-      sprintId: input.sprintId ?? null,
       attachments: input.attachments ?? [],
       commentCount: 0,
       createdAt: serverTimestamp(),
@@ -351,9 +350,8 @@ export class BoardService {
       calendarSyncEnabled: source.calendarSyncEnabled ?? false,
       createdBy: source.createdBy,
       assignedTo: source.assignedTo ?? [],
-      // Labels and sprints belong to the source board's collections — dropped.
+      // Labels belong to the source board's collections — dropped.
       labelIds: [],
-      sprintId: null,
       color: source.color ?? null,
       attachments: source.attachments ?? [],
       commentCount: source.commentCount ?? 0,

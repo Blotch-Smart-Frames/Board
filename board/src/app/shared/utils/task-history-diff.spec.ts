@@ -63,7 +63,6 @@ function fakeContext(overrides: Partial<DiffContext> = {}): DiffContext {
     labels: [],
     collaborators: [],
     lists: [],
-    sprints: [],
     ...overrides,
   };
 }
@@ -77,7 +76,11 @@ describe('diffTaskChanges', () => {
     const entries = diffTaskChanges(oldTask, { labelIds: ['l1'] }, context);
 
     expect(entries).toEqual([
-      { action: 'label_added', userId: 'u1', metadata: { labelName: 'Urgent', labelColor: '#EF4444' } },
+      {
+        action: 'label_added',
+        userId: 'u1',
+        metadata: { labelName: 'Urgent', labelColor: '#EF4444' },
+      },
     ]);
   });
 
@@ -89,7 +92,11 @@ describe('diffTaskChanges', () => {
     const entries = diffTaskChanges(oldTask, { labelIds: [] }, context);
 
     expect(entries).toEqual([
-      { action: 'label_removed', userId: 'u1', metadata: { labelName: 'Urgent', labelColor: '#EF4444' } },
+      {
+        action: 'label_removed',
+        userId: 'u1',
+        metadata: { labelName: 'Urgent', labelColor: '#EF4444' },
+      },
     ]);
   });
 
@@ -100,7 +107,9 @@ describe('diffTaskChanges', () => {
 
     const entries = diffTaskChanges(oldTask, { assignedTo: ['u2'] }, context);
 
-    expect(entries).toEqual([{ action: 'assignee_added', userId: 'u1', metadata: { userName: 'Jane Doe' } }]);
+    expect(entries).toEqual([
+      { action: 'assignee_added', userId: 'u1', metadata: { userName: 'Jane Doe' } },
+    ]);
   });
 
   it('produces an assignee_removed entry when an assignee is removed', () => {
@@ -110,7 +119,9 @@ describe('diffTaskChanges', () => {
 
     const entries = diffTaskChanges(oldTask, { assignedTo: [] }, context);
 
-    expect(entries).toEqual([{ action: 'assignee_removed', userId: 'u1', metadata: { userName: 'Jane Doe' } }]);
+    expect(entries).toEqual([
+      { action: 'assignee_removed', userId: 'u1', metadata: { userName: 'Jane Doe' } },
+    ]);
   });
 
   it('produces an attachment_added entry when an attachment is added', () => {
@@ -120,7 +131,9 @@ describe('diffTaskChanges', () => {
 
     const entries = diffTaskChanges(oldTask, { attachments: [attachment] }, context);
 
-    expect(entries).toEqual([{ action: 'attachment_added', userId: 'u1', metadata: { fileName: 'report.pdf' } }]);
+    expect(entries).toEqual([
+      { action: 'attachment_added', userId: 'u1', metadata: { fileName: 'report.pdf' } },
+    ]);
   });
 
   it('produces an attachment_removed entry when an attachment is removed', () => {

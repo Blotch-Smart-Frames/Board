@@ -208,7 +208,6 @@ export class BoardStore {
         labels: this.labels() ?? [],
         collaborators: this.collaborators(),
         lists: this.lists() ?? [],
-        sprints: this.sprints() ?? [],
       });
       if (entries.length > 0) {
         this.boardService.addTaskHistory(boardId, taskId, entries).catch(() => {});

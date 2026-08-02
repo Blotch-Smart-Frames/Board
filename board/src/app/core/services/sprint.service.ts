@@ -8,7 +8,6 @@ import {
   updateDoc,
   deleteDoc,
   query,
-  where,
   orderBy,
   serverTimestamp,
   Timestamp,
@@ -41,10 +40,6 @@ export class SprintService {
     return doc(this.db, 'boards', boardId);
   }
 
-  private tasksCollection(boardId: string) {
-    return collection(this.db, 'boards', boardId, 'tasks');
-  }
-
   async createSprint(boardId: string, input: CreateSprintInput): Promise<Sprint> {
     const existing = await this.getBoardSprints(boardId);
     const order = getOrderAtEnd(existing);
@@ -60,11 +55,7 @@ export class SprintService {
     return { id: snapshot.id, ...snapshot.data() } as Sprint;
   }
 
-  async updateSprint(
-    boardId: string,
-    sprintId: string,
-    updates: UpdateSprintInput,
-  ): Promise<void> {
+  async updateSprint(boardId: string, sprintId: string, updates: UpdateSprintInput): Promise<void> {
     const payload: Record<string, unknown> = { updatedAt: serverTimestamp() };
     if (updates.name !== undefined) payload['name'] = updates.name;
     if (updates.startDate !== undefined) {
@@ -76,22 +67,7 @@ export class SprintService {
     await updateDoc(this.sprintRef(boardId, sprintId), payload);
   }
 
-  async canDeleteSprint(
-    boardId: string,
-    sprintId: string,
-  ): Promise<{ canDelete: boolean; taskCount: number }> {
-    const snapshot = await getDocs(
-      query(this.tasksCollection(boardId), where('sprintId', '==', sprintId)),
-    );
-    return { canDelete: snapshot.size === 0, taskCount: snapshot.size };
-  }
-
   async deleteSprint(boardId: string, sprintId: string): Promise<void> {
-    const { canDelete, taskCount } = await this.canDeleteSprint(boardId, sprintId);
-    if (!canDelete) {
-      const noun = taskCount === 1 ? 'task is' : 'tasks are';
-      throw new Error(`Cannot delete sprint: ${taskCount} ${noun} still assigned to it.`);
-    }
     await deleteDoc(this.sprintRef(boardId, sprintId));
   }
 

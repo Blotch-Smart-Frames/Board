@@ -27,8 +27,8 @@ import type { List } from '../../../../shared/types/board';
       <div>
         <h3 class="text-sm font-medium">Move to another board</h3>
         <p class="text-muted-foreground text-xs">
-          Comments and history come along; labels and sprints are dropped because they belong to the
-          source board.
+          Comments and history come along; labels are dropped because they belong to the source
+          board.
         </p>
       </div>
 

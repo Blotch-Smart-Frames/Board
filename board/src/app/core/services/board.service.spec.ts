@@ -266,7 +266,6 @@ describe('BoardService', () => {
         assignedTo: [],
         labelIds: [],
         color: null,
-        sprintId: null,
         attachments: [],
         commentCount: 0,
       });
@@ -400,7 +399,6 @@ describe('BoardService', () => {
           createdBy: 'u1',
           assignedTo: ['u2'],
           labelIds: ['l1'],
-          sprintId: 's1',
           color: '#fff',
           attachments: [],
           commentCount: 1,
@@ -432,15 +430,15 @@ describe('BoardService', () => {
       // The new task, the copied comment, the copied history entry, and the
       // migration entry all go through the first batch.set.
       expect(batch.set).toHaveBeenCalledTimes(4);
-      // Target task is written with dropped labels/sprint and inherited assignees.
+      // Target task is written without labels (source-board scoped) and inherits assignees.
       const firstSetPayload = batch.set.mock.calls[0][1];
       expect(firstSetPayload).toMatchObject({
         listId: 'list-dst',
         title: 'Move me',
         assignedTo: ['u2'],
         labelIds: [],
-        sprintId: null,
       });
+      expect(firstSetPayload).not.toHaveProperty('sprintId');
       // Migration history entry is one of the batch.set calls.
       const migrationEntry = batch.set.mock.calls.find(
         (c) => (c[1] as { action?: string }).action === 'board_migrated',

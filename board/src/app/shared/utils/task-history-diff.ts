@@ -1,18 +1,10 @@
-import type {
-  Task,
-  UpdateTaskInput,
-  HistoryEntry,
-  Label,
-  Sprint,
-  Collaborator,
-} from '../types/board';
+import type { Task, UpdateTaskInput, HistoryEntry, Label, Collaborator } from '../types/board';
 
 type DiffContext = {
   userId: string;
   labels: Label[];
   collaborators: Collaborator[];
   lists: { id: string; title: string }[];
-  sprints: Sprint[];
 };
 
 type HistoryEntryInput = Omit<HistoryEntry, 'id' | 'createdAt'>;
@@ -23,7 +15,7 @@ export const diffTaskChanges = (
   context: DiffContext,
 ): HistoryEntryInput[] => {
   const entries: HistoryEntryInput[] = [];
-  const { userId, labels, collaborators, sprints } = context;
+  const { userId, labels, collaborators } = context;
 
   // Label changes
   if (updates.labelIds !== undefined) {
@@ -133,25 +125,14 @@ export const diffTaskChanges = (
     {
       key: 'startDate',
       field: 'startDate',
-      format: (val) =>
-        val instanceof Date ? val.toLocaleDateString() : String(val ?? ''),
+      format: (val) => (val instanceof Date ? val.toLocaleDateString() : String(val ?? '')),
     },
     {
       key: 'dueDate',
       field: 'dueDate',
-      format: (val) =>
-        val instanceof Date ? val.toLocaleDateString() : String(val ?? ''),
+      format: (val) => (val instanceof Date ? val.toLocaleDateString() : String(val ?? '')),
     },
     { key: 'color', field: 'color' },
-    {
-      key: 'sprintId',
-      field: 'sprint',
-      format: (val) => {
-        if (!val) return 'None';
-        const sprint = sprints.find((s) => s.id === val);
-        return sprint?.name ?? String(val);
-      },
-    },
   ];
 
   for (const { key, field, format } of fieldChecks) {

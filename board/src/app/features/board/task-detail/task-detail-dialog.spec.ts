@@ -108,7 +108,6 @@ function setup(task: Task, opts: SetupOpts = {}) {
     }),
     createSprint: vi.fn().mockResolvedValue({}),
     updateSprint: vi.fn().mockResolvedValue(undefined),
-    canDeleteSprint: vi.fn().mockResolvedValue({ canDelete: true, taskCount: 0 }),
     deleteSprint: vi.fn().mockResolvedValue(undefined),
     updateSprintConfig: vi.fn().mockResolvedValue(undefined),
   };
@@ -225,22 +224,24 @@ describe('TaskDetailDialog', () => {
     );
   });
 
-  it('saves the selected sprint through the sprint picker', async () => {
+  it('sets the task start and due dates when a sprint is clicked on the Sprint tab', async () => {
     const user = userEvent.setup();
     const { store } = await openWith(fakeTask(), {
       sprints: [fakeSprint({ name: 'Sprint A' })],
     });
 
-    // The sprint picker was moved onto the Sprint tab as part of the sprint
-    // management consolidation; hlm-tabs sets `hidden` on inactive tabpanels
-    // which hides them from the accessibility tree, so role queries can't reach
-    // the picker until we activate the tab.
     await user.click(screen.getByRole('tab', { name: 'Sprint' }));
 
-    await user.click(await screen.findByRole('combobox', { name: 'Sprint' }));
-    await user.click(await screen.findByRole('option', { name: /sprint a/i }));
+    // Click the sprint entry in the sprint-management list; that sets the task's
+    // start & due dates from the sprint's range.
+    await user.click(await screen.findByRole('button', { name: /sprint a/i }));
 
-    await waitFor(() => expect(store.updateTask).toHaveBeenCalledWith('t1', { sprintId: 's1' }));
+    await waitFor(() =>
+      expect(store.updateTask).toHaveBeenCalledWith(
+        't1',
+        expect.objectContaining({ startDate: expect.any(Date), dueDate: expect.any(Date) }),
+      ),
+    );
   });
 
   it('deletes the task and closes the dialog when Delete is clicked', async () => {
@@ -366,15 +367,15 @@ describe('TaskDetailDialog', () => {
       );
     });
 
-    it('surfaces an error and does not delete when tasks are assigned', async () => {
+    it('surfaces an error when the delete operation fails', async () => {
       const sprint = fakeSprint();
       const { user, sprintService } = await openSprintTab({ sprints: [sprint] });
-      sprintService.canDeleteSprint.mockResolvedValue({ canDelete: false, taskCount: 2 });
+      sprintService.deleteSprint.mockRejectedValueOnce(new Error('Network error'));
 
       await user.click(screen.getByRole('button', { name: 'Delete sprint' }));
 
-      expect(await screen.findByText(/cannot delete: 2 tasks are assigned/i)).toBeInTheDocument();
-      expect(sprintService.deleteSprint).not.toHaveBeenCalled();
+      expect(await screen.findByText(/network error/i)).toBeInTheDocument();
+      expect(sprintService.deleteSprint).toHaveBeenCalledWith('board-1', 's1');
     });
 
     it('deletes a sprint when no tasks are assigned', async () => {

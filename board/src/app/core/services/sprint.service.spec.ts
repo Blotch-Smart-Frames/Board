@@ -11,7 +11,10 @@ vi.mock('firebase/firestore', () => ({
   addDoc: vi.fn(),
   updateDoc: vi.fn(),
   deleteDoc: vi.fn(),
-  query: vi.fn((collectionRef: unknown, ...constraints: unknown[]) => ({ collectionRef, constraints })),
+  query: vi.fn((collectionRef: unknown, ...constraints: unknown[]) => ({
+    collectionRef,
+    constraints,
+  })),
   where: vi.fn((field: string, op: string, value: unknown) => ({ field, op, value })),
   orderBy: vi.fn((field: string) => ({ orderBy: field })),
   serverTimestamp: vi.fn(() => 'SERVER_TIMESTAMP'),
@@ -66,36 +69,8 @@ describe('SprintService', () => {
     });
   });
 
-  describe('canDeleteSprint / deleteSprint', () => {
-    it('reports how many tasks still reference the sprint', async () => {
-      vi.mocked(getDocs).mockResolvedValue({ size: 3, docs: [] } as never);
-
-      expect(await service.canDeleteSprint('board-1', 'sprint-1')).toEqual({
-        canDelete: false,
-        taskCount: 3,
-      });
-    });
-
-    it('blocks deletion with a pluralized error when tasks are assigned', async () => {
-      vi.mocked(getDocs).mockResolvedValue({ size: 2, docs: [] } as never);
-
-      await expect(service.deleteSprint('board-1', 'sprint-1')).rejects.toThrow(
-        'Cannot delete sprint: 2 tasks are still assigned to it.',
-      );
-      expect(deleteDoc).not.toHaveBeenCalled();
-    });
-
-    it('uses singular phrasing for exactly one assigned task', async () => {
-      vi.mocked(getDocs).mockResolvedValue({ size: 1, docs: [] } as never);
-
-      await expect(service.deleteSprint('board-1', 'sprint-1')).rejects.toThrow(
-        'Cannot delete sprint: 1 task is still assigned to it.',
-      );
-    });
-
-    it('deletes when no tasks reference the sprint', async () => {
-      vi.mocked(getDocs).mockResolvedValue({ size: 0, docs: [] } as never);
-
+  describe('deleteSprint', () => {
+    it('deletes the sprint document', async () => {
       await service.deleteSprint('board-1', 'sprint-1');
 
       expect(deleteDoc).toHaveBeenCalledTimes(1);
@@ -121,7 +96,12 @@ describe('SprintService', () => {
         data: () => ({ sprintConfig: { durationDays: 7 } }),
       } as never);
       vi.mocked(getDocs).mockResolvedValue({
-        docs: [{ id: 's1', data: () => ({ order: 'a0', endDate: fakeTimestamp(new Date('2026-03-10')) }) }],
+        docs: [
+          {
+            id: 's1',
+            data: () => ({ order: 'a0', endDate: fakeTimestamp(new Date('2026-03-10')) }),
+          },
+        ],
       } as never);
 
       const result = await service.calculateNextSprintDates('board-1');
