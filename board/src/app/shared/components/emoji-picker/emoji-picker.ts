@@ -63,7 +63,7 @@ interface EmojiGroup {
             @for (group of grouped(); track group.category) {
               <div class="mb-3 last:mb-0">
                 <p
-                  class="text-muted-foreground bg-popover sticky top-0 z-10 mb-1 py-0.5 text-xs font-medium"
+                  class="text-muted-foreground bg-popover sticky -top-2 z-10 mb-1 py-0.5 text-xs font-medium"
                 >
                   {{ group.label }}
                 </p>

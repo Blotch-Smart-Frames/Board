@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
 import { form, submit, required, validate, FormField } from '@angular/forms/signals';
+import { Timestamp } from 'firebase/firestore';
 import { HlmDialogImports, HlmDialog } from '@spartan-ng/helm/dialog';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmCalendarRange } from '@spartan-ng/helm/calendar';
@@ -7,6 +8,8 @@ import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { SprintService } from '../../../core/services/sprint.service';
+import { PreviewBackdrop } from '../../../shared/components/preview-backdrop/preview-backdrop';
+import { SprintListItem } from '../../board/task-detail/sprint/sprint-list-item';
 import type { Sprint, CreateSprintInput } from '../../../shared/types/board';
 
 const DEFAULT_SPRINT_DURATION_DAYS = 14;
@@ -27,6 +30,8 @@ type SprintFormModel = {
     HlmInput,
     HlmSpinner,
     FormField,
+    PreviewBackdrop,
+    SprintListItem,
   ],
   template: `
     <hlm-dialog #dialog>
@@ -74,6 +79,14 @@ type SprintFormModel = {
               </div>
 
               <hr class="border-border" />
+            }
+
+            @if (previewSprint(); as sprint) {
+              <app-preview-backdrop label="Preview">
+                <div class="pointer-events-none" inert>
+                  <app-sprint-list-item [sprint]="sprint" />
+                </div>
+              </app-preview-backdrop>
             }
 
             <form hlmFieldGroup (submit)="$event.preventDefault(); save()">
@@ -167,6 +180,22 @@ export class SprintDialog {
   );
 
   protected readonly model = signal<SprintFormModel>({ name: '', startDate: null, endDate: null });
+
+  protected readonly previewSprint = computed<Sprint | null>(() => {
+    const v = this.model();
+    const name = v.name.trim();
+    if (!name || !v.startDate || !v.endDate) return null;
+    const now = Timestamp.now();
+    return {
+      id: '__preview__',
+      name,
+      startDate: Timestamp.fromDate(v.startDate),
+      endDate: Timestamp.fromDate(v.endDate),
+      order: '',
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
 
   protected readonly sprintForm = form(this.model, (path) => {
     required(path.name, { message: 'Name is required' });

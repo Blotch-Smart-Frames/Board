@@ -10,7 +10,7 @@ import type { Sprint } from '../../../../shared/types/board';
   imports: [HlmButton, NgIcon],
   providers: [provideIcons({ lucidePencil, lucideTrash2 })],
   template: `
-    <div class="flex items-center justify-between gap-2 rounded-md border p-2">
+    <div class="flex items-center justify-between gap-2 rounded-md border p-2 bg-background">
       <div class="min-w-0">
         <p class="truncate text-sm font-medium">{{ sprint().name }}</p>
         <p class="text-muted-foreground text-xs">{{ formattedDates() }}</p>
