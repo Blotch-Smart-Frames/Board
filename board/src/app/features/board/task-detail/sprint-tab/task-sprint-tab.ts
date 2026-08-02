@@ -43,6 +43,9 @@ import type { Task } from '../../../../shared/types/board';
           [boardId]="boardId()"
           [sprints]="store.sprints() ?? []"
           [configuredDurationDays]="store.board()?.sprintConfig?.durationDays"
+          [selectedStartDate]="startDate()"
+          [selectedEndDate]="dueDate()"
+          (selectDates)="onSprintDatesSelected($event)"
         />
       </div>
     </div>
@@ -96,6 +99,16 @@ export class TaskSprintTab {
 
   protected clearDates(): void {
     this.store.updateTask(this.task().id, { startDate: null, dueDate: null });
+  }
+
+  protected onSprintDatesSelected({
+    startDate,
+    endDate,
+  }: {
+    startDate: Date;
+    endDate: Date;
+  }): void {
+    this.store.updateTask(this.task().id, { startDate, dueDate: endDate });
   }
 
   protected onSprintChange(sprintId: string | null): void {

@@ -166,4 +166,163 @@ describe('SprintManagement', () => {
       ),
     );
   });
+
+  describe('sprint overlap highlighting', () => {
+    const sprintA = fakeSprint({
+      id: 's-a',
+      name: 'Sprint A',
+      order: 'a0',
+      startDate: ts(new Date(2026, 0, 1)),
+      endDate: ts(new Date(2026, 0, 14)),
+    });
+    const sprintB = fakeSprint({
+      id: 's-b',
+      name: 'Sprint B',
+      order: 'a1',
+      startDate: ts(new Date(2026, 0, 15)),
+      endDate: ts(new Date(2026, 0, 28)),
+    });
+    const sprintC = fakeSprint({
+      id: 's-c',
+      name: 'Sprint C',
+      order: 'a2',
+      startDate: ts(new Date(2026, 1, 1)),
+      endDate: ts(new Date(2026, 1, 14)),
+    });
+
+    it('shows no overlap indicators when no dates are selected', async () => {
+      const { providers } = setup();
+      await render(SprintManagement, {
+        providers,
+        inputs: {
+          boardId: 'board-1',
+          sprints: [sprintA, sprintB, sprintC],
+        },
+      });
+
+      expect(screen.queryAllByTestId('sprint-overlap-indicator')).toHaveLength(0);
+    });
+
+    it('highlights only sprints whose range intersects the selected date range', async () => {
+      const { providers } = setup();
+      await render(SprintManagement, {
+        providers,
+        inputs: {
+          boardId: 'board-1',
+          sprints: [sprintA, sprintB, sprintC],
+          selectedStartDate: new Date(2026, 0, 10),
+          selectedEndDate: new Date(2026, 0, 20),
+        },
+      });
+
+      const highlightedNames = screen
+        .getAllByTestId('sprint-overlap-indicator')
+        .map((el) => el.closest('div')?.textContent?.trim());
+      expect(highlightedNames).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('Sprint A'),
+          expect.stringContaining('Sprint B'),
+        ]),
+      );
+      expect(highlightedNames).toHaveLength(2);
+    });
+
+    it('highlights a sprint when only a start date is selected and it falls within the sprint', async () => {
+      const { providers } = setup();
+      await render(SprintManagement, {
+        providers,
+        inputs: {
+          boardId: 'board-1',
+          sprints: [sprintA, sprintB],
+          selectedStartDate: new Date(2026, 0, 5),
+        },
+      });
+
+      const indicators = screen.getAllByTestId('sprint-overlap-indicator');
+      expect(indicators).toHaveLength(1);
+      expect(indicators[0].closest('div')?.textContent).toContain('Sprint A');
+    });
+
+    it('highlights a sprint when only an end date is selected and it falls within the sprint', async () => {
+      const { providers } = setup();
+      await render(SprintManagement, {
+        providers,
+        inputs: {
+          boardId: 'board-1',
+          sprints: [sprintA, sprintB],
+          selectedEndDate: new Date(2026, 0, 20),
+        },
+      });
+
+      const indicators = screen.getAllByTestId('sprint-overlap-indicator');
+      expect(indicators).toHaveLength(1);
+      expect(indicators[0].closest('div')?.textContent).toContain('Sprint B');
+    });
+
+    it('does not highlight sprints when the selected range falls entirely outside every sprint', async () => {
+      const { providers } = setup();
+      await render(SprintManagement, {
+        providers,
+        inputs: {
+          boardId: 'board-1',
+          sprints: [sprintA, sprintB],
+          selectedStartDate: new Date(2026, 5, 1),
+          selectedEndDate: new Date(2026, 5, 10),
+        },
+      });
+
+      expect(screen.queryAllByTestId('sprint-overlap-indicator')).toHaveLength(0);
+    });
+  });
+
+  describe('selecting a sprint', () => {
+    it('emits selectDates with the sprint start and end dates when a sprint is clicked', async () => {
+      const user = userEvent.setup();
+      const { providers } = setup();
+      const onSelectDates = vi.fn();
+      const startDate = new Date(2026, 0, 1);
+      const endDate = new Date(2026, 0, 14);
+
+      await render(SprintManagement, {
+        providers,
+        inputs: {
+          boardId: 'board-1',
+          sprints: [
+            fakeSprint({
+              name: 'Sprint A',
+              startDate: ts(startDate),
+              endDate: ts(endDate),
+            }),
+          ],
+        },
+        on: { selectDates: onSelectDates },
+      });
+
+      await user.click(screen.getByRole('button', { name: /Sprint A/i }));
+
+      expect(onSelectDates).toHaveBeenCalledWith({ startDate, endDate });
+    });
+
+    it('does not emit selectDates when the edit or delete button is clicked', async () => {
+      const user = userEvent.setup();
+      const { providers } = setup();
+      const onSelectDates = vi.fn();
+
+      await render(SprintManagement, {
+        providers,
+        inputs: {
+          boardId: 'board-1',
+          sprints: [fakeSprint({ name: 'Sprint A' })],
+        },
+        on: { selectDates: onSelectDates },
+      });
+
+      await user.click(screen.getByRole('button', { name: 'Edit sprint' }));
+      // The edit dialog opens; close it before clicking delete to avoid focus-trap issues.
+      await user.keyboard('{Escape}');
+      await user.click(screen.getByRole('button', { name: 'Delete sprint' }));
+
+      expect(onSelectDates).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, signal, viewChild } from '@angular/core';
+import { Component, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucidePlus } from '@ng-icons/lucide';
 import { HlmAlert, HlmAlertDescription } from '@spartan-ng/helm/alert';
@@ -38,8 +38,10 @@ import type { CreateSprintInput, Sprint } from '../../../../shared/types/board';
               <app-sprint-list-item
                 [sprint]="sprint"
                 [deleting]="deletingId() === sprint.id"
+                [highlighted]="highlightedSprintIds().has(sprint.id)"
                 (edit)="openEdit(sprint)"
                 (remove)="remove(sprint)"
+                (selectDates)="emitSelectDates(sprint)"
               />
             }
           </div>
@@ -61,6 +63,9 @@ export class SprintManagement {
   readonly boardId = input.required<string>();
   readonly sprints = input<Sprint[]>([]);
   readonly configuredDurationDays = input<number | undefined>(undefined);
+  readonly selectedStartDate = input<Date | undefined>(undefined);
+  readonly selectedEndDate = input<Date | undefined>(undefined);
+  readonly selectDates = output<{ startDate: Date; endDate: Date }>();
 
   private readonly sprintDialog = viewChild.required<SprintDialog>('sprintDialog');
 
@@ -71,6 +76,31 @@ export class SprintManagement {
   protected readonly sortedSprints = computed(() =>
     [...this.sprints()].sort((a, b) => compareOrder(a.order, b.order)),
   );
+
+  protected readonly highlightedSprintIds = computed(() => {
+    const start = this.selectedStartDate();
+    const end = this.selectedEndDate();
+    if (!start && !end) return new Set<string>();
+    const times = [start, end].filter((d): d is Date => d instanceof Date).map((d) => d.getTime());
+    const rangeStart = Math.min(...times);
+    const rangeEnd = Math.max(...times);
+    const ids = new Set<string>();
+    for (const sprint of this.sprints()) {
+      const sprintStart = sprint.startDate.toDate().getTime();
+      const sprintEnd = sprint.endDate.toDate().getTime();
+      if (sprintEnd >= rangeStart && sprintStart <= rangeEnd) {
+        ids.add(sprint.id);
+      }
+    }
+    return ids;
+  });
+
+  protected emitSelectDates(sprint: Sprint): void {
+    this.selectDates.emit({
+      startDate: sprint.startDate.toDate(),
+      endDate: sprint.endDate.toDate(),
+    });
+  }
 
   protected openCreate(): void {
     this.editingSprint.set(null);

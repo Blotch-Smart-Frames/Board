@@ -2,10 +2,12 @@
   "version": "0.2",
   "language": "en",
   "words": [
+    "bwignore",
     "dmiu",
     "eslint",
     "firestore",
     "kanban",
+    "lpignore",
     "Millis",
     "myaccount",
     "prettierrc",
