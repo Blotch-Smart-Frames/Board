@@ -1,7 +1,10 @@
 import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideLayoutDashboard } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmEmptyImports } from '@spartan-ng/helm/empty';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { BoardStore } from '../../features/board/data/board.store';
 import { BoardsSidebar } from '../../features/boards/boards-sidebar/boards-sidebar';
@@ -14,11 +17,13 @@ import { AppBar, type ViewMode } from '../app-bar/app-bar';
 
 @Component({
   selector: 'app-board-workspace',
-  providers: [BoardStore],
+  providers: [BoardStore, provideIcons({ lucideLayoutDashboard })],
   imports: [
     NgTemplateOutlet,
     RouterLink,
+    NgIcon,
     HlmButton,
+    HlmEmptyImports,
     HlmSpinner,
     AppBar,
     BoardsSidebar,
@@ -28,7 +33,7 @@ import { AppBar, type ViewMode } from '../app-bar/app-bar';
     ShareDialog,
   ],
   template: `
-    <div class="flex h-dvh flex-col">
+    <div class="flex h-full flex-col">
       <app-app-bar
         [title]="title()"
         [showMenuButton]="true"
@@ -58,8 +63,18 @@ import { AppBar, type ViewMode } from '../app-bar/app-bar';
 
         <main class="flex-1 overflow-hidden">
           @if (!store.boardId()) {
-            <div class="text-muted-foreground flex h-full items-center justify-center">
-              Select a board or create a new one to get started
+            <div class="flex h-full items-center justify-center p-4">
+              <hlm-empty class="w-96">
+                <hlm-empty-header>
+                  <hlm-empty-media variant="icon">
+                    <ng-icon name="lucideLayoutDashboard" />
+                  </hlm-empty-media>
+                  <div hlmEmptyTitle>No board selected</div>
+                  <div hlmEmptyDescription>
+                    Select a board from the sidebar or create a new one to get started.
+                  </div>
+                </hlm-empty-header>
+              </hlm-empty>
             </div>
           } @else if (store.isLoading()) {
             <div class="flex h-full items-center justify-center">

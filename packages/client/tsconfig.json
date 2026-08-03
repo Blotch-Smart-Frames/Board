@@ -43,7 +43,8 @@
       "@spartan-ng/helm/field": ["./src/app/shared/ui/field/src/index.ts"],
       "@spartan-ng/helm/label": ["./src/app/shared/ui/label/src/index.ts"],
       "@spartan-ng/helm/sheet": ["./src/app/shared/ui/sheet/src/index.ts"],
-      "@spartan-ng/helm/empty": ["./src/app/shared/ui/empty/src/index.ts"]
+      "@spartan-ng/helm/empty": ["./src/app/shared/ui/empty/src/index.ts"],
+      "@spartan-ng/helm/navigation-menu": ["./src/app/shared/ui/navigation-menu/src/index.ts"]
     }
   },
   "angularCompilerOptions": {

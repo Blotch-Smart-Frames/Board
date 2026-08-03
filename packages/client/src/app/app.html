@@ -5,7 +5,12 @@
 } @else if (!authStore.isAuthenticated()) {
   <app-sign-in-page />
 } @else {
-  <router-outlet />
+  <div class="flex h-dvh flex-col">
+    <app-main-nav />
+    <main class="min-h-0 flex-1">
+      <router-outlet />
+    </main>
+  </div>
 }
 
 <hlm-toaster richColors closeButton />

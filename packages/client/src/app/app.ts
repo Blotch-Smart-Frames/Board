@@ -6,11 +6,12 @@ import { toast } from '@spartan-ng/brain/sonner';
 import { AuthStore } from './core/auth/auth.store';
 import { ThemeService } from './core/theme/theme.service';
 import { VersionCheckService } from './core/version/version-check.service';
+import { MainNav } from './layout/main-nav/main-nav';
 import { SignInPage } from './layout/sign-in-page/sign-in-page';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, HlmSpinner, HlmToaster, SignInPage],
+  imports: [RouterOutlet, HlmSpinner, HlmToaster, MainNav, SignInPage],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })

@@ -16,7 +16,14 @@ const MODE_OPTIONS: { value: ThemeMode; label: string; icon: string }[] = [
   imports: [NgIcon, HlmButton, HlmDropdownMenuImports],
   providers: [provideIcons({ lucideSun, lucideMoon, lucideMonitor, lucideCheck })],
   template: `
-    <button hlmBtn variant="ghost" size="icon" [hlmDropdownMenuTrigger]="menu" aria-label="Theme">
+    <button
+      hlmBtn
+      variant="ghost"
+      size="icon"
+      [hlmDropdownMenuTrigger]="menu"
+      aria-label="Theme"
+      align="end"
+    >
       <ng-icon [name]="currentIcon()" />
     </button>
 
