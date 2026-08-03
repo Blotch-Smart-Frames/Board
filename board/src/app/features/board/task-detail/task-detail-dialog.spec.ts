@@ -17,16 +17,42 @@ import type { Board, Collaborator, Label, List, Sprint, Task } from '../../../sh
 // real onSnapshot unless the SDK is mocked. Stub it so it never fires — both
 // sections already render an empty state ("No comments yet" / gated behind the
 // History tab) in that case.
-vi.mock('firebase/firestore', () => ({
-  collection: vi.fn((_db: unknown, ...segments: string[]) => ({
-    type: 'collection',
-    path: segments.join('/'),
-  })),
-  doc: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'doc', path: segments.join('/') })),
-  query: vi.fn((ref: unknown, ...constraints: unknown[]) => ({ type: 'query', ref, constraints })),
-  orderBy: vi.fn((field: string) => ({ orderBy: field })),
-  onSnapshot: vi.fn(() => vi.fn()),
-}));
+vi.mock('firebase/firestore', () => {
+  // SprintDialog's previewSprint uses Timestamp.now()/fromDate() when rendering.
+  class MockTimestamp {
+    constructor(private readonly date: Date) {}
+    static now(): MockTimestamp {
+      return new MockTimestamp(new Date());
+    }
+    static fromDate(date: Date): MockTimestamp {
+      return new MockTimestamp(date);
+    }
+    toDate(): Date {
+      return this.date;
+    }
+    toMillis(): number {
+      return this.date.getTime();
+    }
+  }
+  return {
+    collection: vi.fn((_db: unknown, ...segments: string[]) => ({
+      type: 'collection',
+      path: segments.join('/'),
+    })),
+    doc: vi.fn((_db: unknown, ...segments: string[]) => ({
+      type: 'doc',
+      path: segments.join('/'),
+    })),
+    query: vi.fn((ref: unknown, ...constraints: unknown[]) => ({
+      type: 'query',
+      ref,
+      constraints,
+    })),
+    orderBy: vi.fn((field: string) => ({ orderBy: field })),
+    onSnapshot: vi.fn(() => vi.fn()),
+    Timestamp: MockTimestamp,
+  };
+});
 
 // jsdom doesn't implement these; the select's active-descendant key manager and
 // the popover overlay's size tracking both touch them as soon as an option list opens.
@@ -326,10 +352,14 @@ describe('TaskDetailDialog', () => {
         board: fakeBoard({ sprintConfig: { durationDays: 14 } }),
       });
 
-      const saveButton = screen.getByRole('button', { name: /^save$/i });
+      // The duration input + its Save button live inside the create-sprint
+      // dialog, which is opened by the "Create Sprint" button on the tab.
+      await user.click(screen.getByRole('button', { name: /create sprint/i }));
+
+      const saveButton = await screen.findByRole('button', { name: /^save$/i });
       expect(saveButton).toBeDisabled();
 
-      const input = screen.getByLabelText('Default sprint duration in days');
+      const input = screen.getByLabelText('Default sprint duration');
       await user.clear(input);
       await user.type(input, '21');
       await user.click(saveButton);

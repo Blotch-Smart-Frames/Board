@@ -79,16 +79,17 @@ describe('LabelPicker', () => {
     expect(onChange).toHaveBeenCalledWith([]);
   });
 
-  it('opens the label management dialog when Manage is clicked', async () => {
+  it('opens the label-editor dialog in edit mode when Edit is clicked on a label row', async () => {
     const user = userEvent.setup();
     await render(LabelPicker, {
-      inputs: { boardId: 'board-1', labels: [fakeLabel()] },
+      inputs: { boardId: 'board-1', labels: [fakeLabel({ id: 'l1', name: 'Bug' })] },
       providers: [{ provide: LabelService, useValue: fakeLabelService() }],
     });
 
-    await user.click(screen.getByRole('button', { name: /^manage$/i }));
+    await user.click(screen.getByRole('button', { name: 'Edit label' }));
 
-    expect(await screen.findByRole('heading', { name: /manage labels/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /edit label/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveValue('Bug');
   });
 
   it('opens the label-editor dialog in create mode when Create label is clicked', async () => {
@@ -103,20 +104,20 @@ describe('LabelPicker', () => {
     expect(await screen.findByRole('heading', { name: /create label/i })).toBeInTheDocument();
   });
 
-  it('shows an empty state in the manage dialog when there are no labels', async () => {
-    const user = userEvent.setup();
+  it('renders only the Create label affordance when there are no labels', async () => {
     await render(LabelPicker, {
       inputs: { boardId: 'board-1', labels: [] },
       providers: [{ provide: LabelService, useValue: fakeLabelService() }],
     });
 
-    await user.click(screen.getByRole('button', { name: /^manage$/i }));
-
-    expect(await screen.findByRole('heading', { name: /manage labels/i })).toBeInTheDocument();
-    expect(screen.getByText(/no labels yet/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create label/i })).toBeInTheDocument();
+    // No per-label controls exist without any labels.
+    expect(screen.queryByRole('button', { name: 'Edit label' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete label' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
-  it('edits a label from the manage dialog and saves via updateLabel', async () => {
+  it('edits a label inline and saves via updateLabel', async () => {
     const user = userEvent.setup();
     const labelService = fakeLabelService();
     const label = fakeLabel({ id: 'l1', name: 'Bug' });
@@ -125,8 +126,7 @@ describe('LabelPicker', () => {
       providers: [{ provide: LabelService, useValue: labelService }],
     });
 
-    await user.click(screen.getByRole('button', { name: /^manage$/i }));
-    await user.click(await screen.findByRole('button', { name: 'Edit label' }));
+    await user.click(screen.getByRole('button', { name: 'Edit label' }));
 
     expect(await screen.findByRole('heading', { name: /edit label/i })).toBeInTheDocument();
     const nameInput = screen.getByLabelText('Name');
@@ -154,13 +154,12 @@ describe('LabelPicker', () => {
       providers: [{ provide: LabelService, useValue: labelService }],
     });
 
-    await user.click(screen.getByRole('button', { name: /^manage$/i }));
-    await user.click(await screen.findByRole('button', { name: 'Delete label' }));
+    await user.click(screen.getByRole('button', { name: 'Delete label' }));
 
     await waitFor(() => expect(labelService.deleteLabel).toHaveBeenCalledWith('board-1', 'l1'));
   });
 
-  it('creates a label from the manage dialog via createLabel', async () => {
+  it('creates a new label via createLabel', async () => {
     const user = userEvent.setup();
     const labelService = fakeLabelService();
     await render(LabelPicker, {
@@ -168,8 +167,7 @@ describe('LabelPicker', () => {
       providers: [{ provide: LabelService, useValue: labelService }],
     });
 
-    await user.click(screen.getByRole('button', { name: /^manage$/i }));
-    await user.click(await screen.findByRole('button', { name: /create new label/i }));
+    await user.click(screen.getByRole('button', { name: /create label/i }));
 
     expect(await screen.findByRole('heading', { name: /create label/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('');
