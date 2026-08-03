@@ -82,3 +82,41 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Angular CDK drag & drop — global classes applied to the preview clone (in the CDK
+ * overlay under document.body), the in-place placeholder, and settling animations.
+ * Kept unlayered so they win over Tailwind's utility layer without needing !important. */
+.cdk-drag-preview {
+  box-sizing: border-box;
+  border-radius: var(--radius);
+  box-shadow:
+    0 2px 8px -2px rgb(0 0 0 / 0.06),
+    0 12px 32px -8px rgb(0 0 0 / 0.1),
+    0 24px 56px -16px rgb(0 0 0 / 0.08);
+  cursor: grabbing;
+  /* Animation (not transition) is required — the preview is freshly inserted, no prior state. */
+  animation: cdk-drag-preview-in 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Layer count matches the base rule so each shadow layer interpolates independently. */
+@keyframes cdk-drag-preview-in {
+  from {
+    box-shadow:
+      0 0 0 0 rgb(0 0 0 / 0),
+      0 0 0 0 rgb(0 0 0 / 0),
+      0 0 0 0 rgb(0 0 0 / 0);
+  }
+}
+
+.cdk-drag-placeholder {
+  opacity: 0;
+}
+
+.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Smoothly shift siblings out of the way while an item is being dragged over the list. */
+.cdk-drop-list-dragging .cdk-drag:not(.cdk-drag-placeholder) {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
