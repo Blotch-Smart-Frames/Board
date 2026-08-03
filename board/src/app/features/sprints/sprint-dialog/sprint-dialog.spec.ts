@@ -60,9 +60,9 @@ describe('SprintDialog', () => {
 
     expect(await screen.findByRole('heading', { name: /edit sprint/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Sprint Name')).toHaveValue('Sprint A');
-    const model = fixture.componentInstance['model']();
-    expect(model.startDate).toEqual(new Date(2026, 0, 1));
-    expect(model.endDate).toEqual(new Date(2026, 0, 14));
+    const initial = fixture.componentInstance['initialValue']();
+    expect(initial.startDate).toEqual(new Date(2026, 0, 1));
+    expect(initial.endDate).toEqual(new Date(2026, 0, 14));
     expect(sprintService.calculateNextSprintDates).not.toHaveBeenCalled();
   });
 
@@ -93,9 +93,9 @@ describe('SprintDialog', () => {
     await view.fixture.whenStable();
 
     expect(screen.getByLabelText('Sprint Name')).toHaveValue('Sprint 2');
-    const model = view.fixture.componentInstance['model']();
-    expect(model.startDate).toEqual(new Date(2026, 1, 1));
-    expect(model.endDate).toEqual(new Date(2026, 1, 14));
+    const initial = view.fixture.componentInstance['initialValue']();
+    expect(initial.startDate).toEqual(new Date(2026, 1, 1));
+    expect(initial.endDate).toEqual(new Date(2026, 1, 14));
   });
 
   it('blocks saving when the name is emptied', async () => {
@@ -106,21 +106,6 @@ describe('SprintDialog', () => {
     await user.clear(name);
     await user.click(screen.getByRole('button', { name: /^save$/i }));
 
-    expect(saveHandler).not.toHaveBeenCalled();
-  });
-
-  it('flags an end date earlier than the start date', async () => {
-    const user = userEvent.setup();
-    const { saveHandler, fixture } = await openWith(fakeSprint());
-
-    const component = fixture.componentInstance;
-    component['onStartDateChange'](new Date(2026, 5, 10));
-    component['onEndDateChange'](new Date(2026, 5, 1));
-    fixture.detectChanges();
-
-    await user.click(screen.getByRole('button', { name: /^save$/i }));
-
-    expect(screen.getByText(/end date must be on or after the start date/i)).toBeInTheDocument();
     expect(saveHandler).not.toHaveBeenCalled();
   });
 

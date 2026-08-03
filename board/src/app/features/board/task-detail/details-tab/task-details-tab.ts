@@ -1,68 +1,39 @@
-import { Component, computed, inject, input, linkedSignal } from '@angular/core';
-import { FormField, form } from '@angular/forms/signals';
+import { Component, computed, inject, input } from '@angular/core';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
-import { HlmInput } from '@spartan-ng/helm/input';
-import { HlmSelectImports } from '@spartan-ng/helm/select';
 import { AttachmentSection } from '../attachments/attachment-section';
 import { CommentsSection } from '../comments/comments-section';
 import { TaskMetadataSidebar } from '../sidebar/task-metadata-sidebar';
+import { TaskDescriptionEditor } from './task-description-editor/task-description-editor';
+import { TaskListSelect } from './task-list-select/task-list-select';
 import { BoardStore } from '../../data/board.store';
 import type { Attachment, Task } from '../../../../shared/types/board';
-
-type DescriptionFormModel = {
-  description: string;
-};
 
 @Component({
   selector: 'app-task-details-tab',
   imports: [
     HlmFieldImports,
-    HlmInput,
-    HlmSelectImports,
-    FormField,
     AttachmentSection,
     CommentsSection,
+    TaskDescriptionEditor,
+    TaskListSelect,
     TaskMetadataSidebar,
   ],
   template: `
     <div class="flex flex-col gap-5 sm:flex-row">
       <div class="flex flex-1 flex-col gap-5">
         @if (store.listsWithTasks().length > 0) {
-          <div hlmField>
-            <label hlmFieldLabel for="detail-list-trigger">List</label>
-            <hlm-select
-              [value]="task().listId"
-              [itemToString]="listIdToTitle"
-              (valueChange)="onMoveToList($event)"
-            >
-              <hlm-select-trigger [buttonId]="'detail-list-trigger'" class="w-full">
-                <hlm-select-value />
-              </hlm-select-trigger>
-              <hlm-select-content *hlmSelectPortal>
-                @for (list of store.listsWithTasks(); track list.id) {
-                  <hlm-select-item [value]="list.id">{{ list.title }}</hlm-select-item>
-                }
-              </hlm-select-content>
-            </hlm-select>
-          </div>
+          <app-task-list-select
+            [value]="task().listId"
+            [lists]="store.listsWithTasks()"
+            (listMove)="onMoveToList($event)"
+          />
         }
 
-        <div hlmField>
-          <label hlmFieldLabel for="task-description">Description</label>
-          <textarea
-            hlmInput
-            id="task-description"
-            class="min-h-20 resize-y"
-            placeholder="Add a description…"
-            autocomplete="off"
-            data-1p-ignore="true"
-            data-lpignore="true"
-            data-bwignore="true"
-            data-form-type="other"
-            [formField]="descriptionForm.description"
-            (blur)="saveDescription()"
-          ></textarea>
-        </div>
+        <app-task-description-editor
+          [taskKey]="task().id"
+          [initialDescription]="task().description ?? ''"
+          (descriptionChange)="onDescriptionChange($event)"
+        />
       </div>
 
       <app-task-metadata-sidebar
@@ -111,21 +82,8 @@ export class TaskDetailsTab {
     return this.store.collaborators().find((c) => c.id === id) ?? null;
   });
 
-  // Reset the description model only when a different task is opened; keep
-  // in-progress edits intact if the same task is updated from elsewhere.
-  protected readonly descriptionModel = linkedSignal<string, DescriptionFormModel>({
-    source: () => this.task().id,
-    computation: () => ({ description: this.task().description ?? '' }),
-  });
-  protected readonly descriptionForm = form(this.descriptionModel);
-
-  protected saveDescription(): void {
-    const task = this.task();
-    const value = this.descriptionModel().description.trim();
-    const current = task.description ?? '';
-    if (value !== current) {
-      this.store.updateTask(task.id, { description: value || undefined });
-    }
+  protected onDescriptionChange(description: string | undefined): void {
+    this.store.updateTask(this.task().id, { description });
   }
 
   protected onLabelsChange(labelIds: string[]): void {
@@ -154,11 +112,7 @@ export class TaskDetailsTab {
     this.store.updateTask(this.task().id, { attachments });
   }
 
-  protected onMoveToList(value: unknown): void {
-    if (typeof value !== 'string' || !value) return;
-    this.store.moveTaskToList(this.task().id, value);
+  protected onMoveToList(listId: string): void {
+    this.store.moveTaskToList(this.task().id, listId);
   }
-
-  protected readonly listIdToTitle = (id: string): string =>
-    this.store.listsWithTasks().find((l) => l.id === id)?.title ?? '';
 }

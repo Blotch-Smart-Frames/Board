@@ -2,7 +2,6 @@ import {
   Component,
   ElementRef,
   afterNextRender,
-  computed,
   effect,
   inject,
   input,
@@ -11,16 +10,10 @@ import {
   viewChild,
 } from '@angular/core';
 import { TimelineScaleService } from '../data/timeline-scale.service';
-import { TimelineHeader, type ScrollState } from '../timeline-header/timeline-header';
-import { TimelineRow } from '../timeline-row/timeline-row';
-import { TimelineItem } from '../timeline-item/timeline-item';
-import { CurrentTimeLine } from '../current-time-line/current-time-line';
-import { SprintOverlays } from '../sprint-overlays/sprint-overlays';
-import type {
-  TimelineItemData,
-  TimelineRow as TimelineRowData,
-  TimelineSpan,
-} from '../data/timeline-data';
+import { type ScrollState } from '../timeline-header/timeline-header';
+import { TimelineContent } from './timeline-content/timeline-content';
+import { TimelineSidebar } from './timeline-sidebar/timeline-sidebar';
+import type { TimelineItemData, TimelineRow, TimelineSpan } from '../data/timeline-data';
 import type { Label, Sprint, Task } from '../../../shared/types/board';
 
 const ROW_HEIGHT_PX = 48;
@@ -37,7 +30,7 @@ const EDGE_THRESHOLD_PX = 200;
  */
 @Component({
   selector: 'app-timeline-grid',
-  imports: [TimelineHeader, TimelineRow, TimelineItem, CurrentTimeLine, SprintOverlays],
+  imports: [TimelineContent, TimelineSidebar],
   template: `
     <div
       #scrollContainer
@@ -45,50 +38,25 @@ const EDGE_THRESHOLD_PX = 200;
       (scroll)="onScroll()"
     >
       <div class="flex w-fit min-w-full">
-        <div class="shrink-0" [style.width.px]="sidebarWidth">
-          <div
-            class="bg-muted flex items-center border-e border-b px-4"
-            [style.height.px]="headerHeight"
-          >
-            <span class="text-sm font-semibold">Lists</span>
-          </div>
-          @for (row of rows(); track row.id) {
-            <div
-              class="border-border flex items-center border-e border-b px-4"
-              [style.height.px]="rowHeight"
-            >
-              <span class="truncate text-sm font-medium">{{ row.title }}</span>
-            </div>
-          }
-        </div>
+        <app-timeline-sidebar
+          [rows]="rows()"
+          [widthPx]="sidebarWidth"
+          [rowHeightPx]="rowHeight"
+          [headerHeightPx]="headerHeight"
+        />
 
-        <div class="relative flex-1" [style.width.px]="scale.totalWidthPx()">
-          <app-sprint-overlays
-            [sprints]="sprints()"
-            [rowCount]="rows().length"
-            [rowHeightPx]="rowHeight"
-            [headerHeightPx]="headerHeight"
-          />
-          <app-timeline-current-time-line />
-
-          <div class="bg-muted border-border border-b-2" [style.height.px]="headerHeight">
-            <app-timeline-header [scrollState]="scrollState()" />
-          </div>
-
-          @for (row of rows(); track row.id) {
-            <app-timeline-row [row]="row">
-              @for (item of itemsByRow().get(row.id) ?? []; track item.id) {
-                <app-timeline-item
-                  [item]="item"
-                  [labels]="labels()"
-                  (view)="viewTask.emit($event)"
-                  (moved)="taskMoved.emit({ id: item.id, span: $event.span, rowId: $event.rowId })"
-                  (resized)="taskResized.emit({ id: item.id, span: $event })"
-                />
-              }
-            </app-timeline-row>
-          }
-        </div>
+        <app-timeline-content
+          [rows]="rows()"
+          [items]="items()"
+          [labels]="labels()"
+          [sprints]="sprints()"
+          [scrollState]="scrollState()"
+          [rowHeightPx]="rowHeight"
+          [headerHeightPx]="headerHeight"
+          (viewTask)="viewTask.emit($event)"
+          (taskMoved)="taskMoved.emit($event)"
+          (taskResized)="taskResized.emit($event)"
+        />
       </div>
     </div>
   `,
@@ -96,7 +64,7 @@ const EDGE_THRESHOLD_PX = 200;
 export class TimelineGrid {
   protected readonly scale = inject(TimelineScaleService);
 
-  readonly rows = input.required<TimelineRowData[]>();
+  readonly rows = input.required<TimelineRow[]>();
   readonly items = input.required<TimelineItemData[]>();
   readonly labels = input<Label[]>([]);
   readonly sprints = input<Sprint[]>([]);
@@ -108,16 +76,6 @@ export class TimelineGrid {
   protected readonly sidebarWidth = SIDEBAR_WIDTH_PX;
   protected readonly rowHeight = ROW_HEIGHT_PX;
   protected readonly headerHeight = HEADER_HEIGHT_PX;
-
-  protected readonly itemsByRow = computed(() => {
-    const map = new Map<string, TimelineItemData[]>();
-    for (const item of this.items()) {
-      const list = map.get(item.rowId) ?? [];
-      list.push(item);
-      map.set(item.rowId, list);
-    }
-    return map;
-  });
 
   private readonly scrollContainer =
     viewChild.required<ElementRef<HTMLDivElement>>('scrollContainer');

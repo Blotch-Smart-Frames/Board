@@ -1,18 +1,9 @@
-import {
-  Component,
-  ElementRef,
-  computed,
-  effect,
-  input,
-  output,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { CdkDropList, CdkDrag, CdkDragHandle, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucidePlus, lucideGripVertical } from '@ng-icons/lucide';
+import { lucideGripVertical } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
-import { HlmInput } from '@spartan-ng/helm/input';
+import { AddTaskForm } from './add-task-form/add-task-form';
 import { ListHeader } from '../list-header/list-header';
 import { TaskCard } from '../task-card/task-card';
 import type { List, Task, Label } from '../../../shared/types/board';
@@ -21,8 +12,17 @@ export type ListWithTasks = List & { tasks: Task[] };
 
 @Component({
   selector: 'app-list-column',
-  imports: [CdkDropList, CdkDrag, CdkDragHandle, NgIcon, HlmButton, HlmInput, ListHeader, TaskCard],
-  providers: [provideIcons({ lucidePlus, lucideGripVertical })],
+  imports: [
+    CdkDropList,
+    CdkDrag,
+    CdkDragHandle,
+    NgIcon,
+    HlmButton,
+    AddTaskForm,
+    ListHeader,
+    TaskCard,
+  ],
+  providers: [provideIcons({ lucideGripVertical })],
   template: `
     <div class="bg-muted/60 flex max-h-[calc(100dvh-160px)] w-72 shrink-0 flex-col rounded-lg">
       <div class="flex items-center">
@@ -80,51 +80,7 @@ export type ListWithTasks = List & { tasks: Task[] };
         </details>
       }
 
-      <div class="border-t p-2">
-        @if (addingTask()) {
-          <textarea
-            #taskInput
-            hlmInput
-            class="min-h-16 w-full resize-none"
-            placeholder="Enter task title..."
-            [value]="draft()"
-            (input)="draft.set($any($event.target).value)"
-            (keydown.enter)="$event.preventDefault(); submitTask()"
-            (keydown.escape)="cancelAdd()"
-            aria-label="Task title"
-          ></textarea>
-          <div class="mt-2 flex items-center gap-2">
-            <button
-              hlmBtn
-              size="sm"
-              [disabled]="!draft().trim()"
-              (mousedown)="$event.preventDefault()"
-              (click)="submitTask()"
-            >
-              Add
-            </button>
-            <button
-              hlmBtn
-              size="sm"
-              variant="ghost"
-              (mousedown)="$event.preventDefault()"
-              (click)="cancelAdd()"
-            >
-              Cancel
-            </button>
-          </div>
-        } @else {
-          <button
-            hlmBtn
-            variant="ghost"
-            class="text-muted-foreground w-full justify-start"
-            (click)="startAdd()"
-          >
-            <ng-icon name="lucidePlus" class="mr-2" />
-            Add a task
-          </button>
-        }
-      </div>
+      <app-add-task-form (addTask)="addTask.emit($event)" />
     </div>
   `,
 })
@@ -147,31 +103,4 @@ export class ListColumn {
   protected readonly completedTasks = computed(() =>
     this.list().tasks.filter((t) => t.completedAt),
   );
-
-  protected readonly addingTask = signal(false);
-  protected readonly draft = signal('');
-  private readonly taskInput = viewChild<ElementRef<HTMLTextAreaElement>>('taskInput');
-
-  constructor() {
-    effect(() => {
-      if (this.addingTask()) this.taskInput()?.nativeElement.focus();
-    });
-  }
-
-  protected startAdd(): void {
-    this.draft.set('');
-    this.addingTask.set(true);
-  }
-
-  protected cancelAdd(): void {
-    this.addingTask.set(false);
-    this.draft.set('');
-  }
-
-  protected submitTask(): void {
-    const trimmed = this.draft().trim();
-    if (!trimmed) return;
-    this.addTask.emit(trimmed);
-    this.draft.set('');
-  }
 }
