@@ -8,6 +8,7 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { UserBoardsStore, type BoardWithOrder } from '../data/user-boards.store';
 import { BoardListItem } from '../board-list-item/board-list-item';
 import { BoardFormDialog } from '../board-form-dialog/board-form-dialog';
+import { isTouchOrMobileSignal } from '../../../core/interop/breakpoint-signal';
 
 @Component({
   selector: 'app-boards-sidebar',
@@ -24,13 +25,14 @@ import { BoardFormDialog } from '../board-form-dialog/board-form-dialog';
           <hlm-spinner />
         </div>
       } @else {
-        <nav class="flex-1 space-y-0.5 overflow-y-auto p-2" aria-label="Boards" cdkDropList (cdkDropListDropped)="onDrop($event)">
+        <nav class="flex-1 space-y-0.5 overflow-y-auto p-2" aria-label="Boards" cdkDropList [cdkDropListDisabled]="dragDisabled()" (cdkDropListDropped)="onDrop($event)">
           @for (board of store.boards(); track board.id; let i = $index, count = $count) {
-            <div cdkDrag [cdkDragData]="board.id">
+            <div cdkDrag [cdkDragData]="board.id" [cdkDragDisabled]="dragDisabled()">
               <app-board-list-item
                 [board]="board"
                 [canMoveUp]="i > 0"
                 [canMoveDown]="i < count - 1"
+                [dragDisabled]="dragDisabled()"
                 (rename)="openRename(board)"
                 (deleted)="deleteBoard(board)"
                 (moveUp)="store.reorderBoardToIndex(board.id, i - 1)"
@@ -70,6 +72,9 @@ import { BoardFormDialog } from '../board-form-dialog/board-form-dialog';
 export class BoardsSidebar {
   protected readonly store = inject(UserBoardsStore);
   private readonly router = inject(Router);
+
+  // Suppress sidebar drag reordering on touch/mobile so vertical scroll works.
+  protected readonly dragDisabled = isTouchOrMobileSignal();
 
   private readonly renameDialog = viewChild.required<BoardFormDialog>('renameDialog');
   private renameTargetId: string | null = null;

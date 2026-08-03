@@ -35,16 +35,18 @@ import type { BoardWithOrder } from '../data/user-boards.store';
       routerLinkActive="bg-accent text-accent-foreground"
       #rla="routerLinkActive"
     >
-      <button
-        hlmBtn
-        variant="ghost"
-        size="icon-sm"
-        cdkDragHandle
-        class="cursor-grab opacity-0 group-hover:opacity-100 active:cursor-grabbing"
-        aria-label="Drag to reorder board"
-      >
-        <ng-icon name="lucideGripVertical" />
-      </button>
+      @if (!dragDisabled()) {
+        <button
+          hlmBtn
+          variant="ghost"
+          size="icon-sm"
+          cdkDragHandle
+          class="cursor-grab opacity-0 group-hover:opacity-100 active:cursor-grabbing"
+          aria-label="Drag to reorder board"
+        >
+          <ng-icon name="lucideGripVertical" />
+        </button>
+      }
 
       <a
         class="flex flex-1 items-center gap-2 truncate py-2 pr-1 text-sm font-medium"
@@ -97,6 +99,8 @@ export class BoardListItem {
   readonly board = input.required<BoardWithOrder>();
   readonly canMoveUp = input(false);
   readonly canMoveDown = input(false);
+  // Parent (BoardsSidebar) flips this on mobile/touch to hide the grip handle.
+  readonly dragDisabled = input(false);
   readonly rename = output<void>();
   readonly deleted = output<void>();
   readonly moveUp = output<void>();

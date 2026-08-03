@@ -11,6 +11,7 @@ import { TaskDetailDialog } from '../task-detail/task-detail-dialog';
 import { LabelFilter } from '../label-filter/label-filter';
 import { AssigneeFilter } from '../assignee-filter/assignee-filter';
 import { BoardStore } from '../data/board.store';
+import { isTouchOrMobileSignal } from '../../../core/interop/breakpoint-signal';
 import type { Task } from '../../../shared/types/board';
 
 @Component({
@@ -68,16 +69,18 @@ import type { Task } from '../../../shared/types/board';
               class="flex h-full items-start gap-4"
               cdkDropList
               cdkDropListOrientation="horizontal"
+              [cdkDropListDisabled]="dragDisabled()"
               (cdkDropListDropped)="onListDrop($event)"
             >
               @for (list of store.listsWithTasks(); track list.id; let i = $index, count = $count) {
-                <div cdkDrag [cdkDragData]="list.id">
+                <div cdkDrag [cdkDragData]="list.id" [cdkDragDisabled]="dragDisabled()">
                   <app-list-column
                     [list]="list"
                     [labels]="store.labels() ?? []"
                     [connectedListIds]="listIds()"
                     [canMoveLeft]="i > 0"
                     [canMoveRight]="i < count - 1"
+                    [dragDisabled]="dragDisabled()"
                     (updateTitle)="store.updateListTitle(list.id, { title: $event })"
                     (deleteList)="store.deleteList(list.id)"
                     (addTask)="store.addTask(list.id, { title: $event })"
@@ -101,6 +104,10 @@ import type { Task } from '../../../shared/types/board';
 export class KanbanBoard {
   protected readonly store = inject(BoardStore);
   private readonly detailDialog = viewChild.required<TaskDetailDialog>('detailDialog');
+
+  // Suppress drag-and-drop on mobile viewports and touch-primary devices where
+  // CDK drag intercepts native touch scrolling of the board.
+  protected readonly dragDisabled = isTouchOrMobileSignal();
 
   protected readonly listIds = computed(() => this.store.listsWithTasks().map((l) => l.id));
 

@@ -26,16 +26,18 @@ export type ListWithTasks = List & { tasks: Task[] };
   template: `
     <div class="bg-muted/60 flex max-h-[calc(100dvh-160px)] w-72 shrink-0 flex-col rounded-lg">
       <div class="flex items-center">
-        <button
-          hlmBtn
-          variant="ghost"
-          size="icon-sm"
-          cdkDragHandle
-          class="ml-1 cursor-grab active:cursor-grabbing"
-          aria-label="Drag to reorder list"
-        >
-          <ng-icon name="lucideGripVertical" />
-        </button>
+        @if (!dragDisabled()) {
+          <button
+            hlmBtn
+            variant="ghost"
+            size="icon-sm"
+            cdkDragHandle
+            class="ml-1 cursor-grab active:cursor-grabbing"
+            aria-label="Drag to reorder list"
+          >
+            <ng-icon name="lucideGripVertical" />
+          </button>
+        }
         <div class="flex-1">
           <app-list-header
             [title]="list().title"
@@ -56,10 +58,11 @@ export type ListWithTasks = List & { tasks: Task[] };
         [id]="list().id"
         [cdkDropListData]="activeTasks()"
         [cdkDropListConnectedTo]="connectedListIds()"
+        [cdkDropListDisabled]="dragDisabled()"
         (cdkDropListDropped)="taskDropped.emit($event)"
       >
         @for (task of activeTasks(); track task.id) {
-          <div cdkDrag [cdkDragData]="task">
+          <div cdkDrag [cdkDragData]="task" [cdkDragDisabled]="dragDisabled()">
             <app-task-card [task]="task" [labels]="labels()" (view)="viewTask.emit($event)" />
           </div>
         } @empty {
@@ -90,6 +93,9 @@ export class ListColumn {
   readonly connectedListIds = input<string[]>([]);
   readonly canMoveLeft = input(false);
   readonly canMoveRight = input(false);
+  // Parent (KanbanBoard) flips this on mobile/touch to suppress task drag-drop
+  // and hide the grip handle so it doesn't fight native touch scrolling.
+  readonly dragDisabled = input(false);
 
   readonly updateTitle = output<string>();
   readonly deleteList = output<void>();

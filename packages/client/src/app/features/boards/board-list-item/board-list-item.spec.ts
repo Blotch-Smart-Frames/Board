@@ -74,4 +74,13 @@ describe('BoardListItem', () => {
 
     expect(onMoveDown).toHaveBeenCalled();
   });
+
+  it('hides the drag handle when dragDisabled is true (touch/mobile)', async () => {
+    await render(BoardListItem, {
+      inputs: { board: fakeBoard(), dragDisabled: true },
+      providers: [provideRouter([])],
+    });
+
+    expect(screen.queryByRole('button', { name: /drag to reorder board/i })).not.toBeInTheDocument();
+  });
 });

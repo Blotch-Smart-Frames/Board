@@ -14,12 +14,14 @@
     "pushstate",
     "quicktime",
     "subcollection",
+    "subcollections",
     "tanstack",
     "tsconfig",
     "unsub",
     "Videocam",
     "vite",
     "vitest",
+    "wmde",
     "zustand"
   ],
   "ignorePaths": [

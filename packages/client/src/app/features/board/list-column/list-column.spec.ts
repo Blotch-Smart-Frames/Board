@@ -62,4 +62,22 @@ describe('ListColumn', () => {
 
     expect(onAddTask).toHaveBeenCalledWith('New task');
   });
+
+  it('shows the drag handle by default', async () => {
+    await render(ListColumn, {
+      inputs: { list: fakeList([]) },
+      providers: [storeProvider],
+    });
+
+    expect(screen.getByRole('button', { name: /drag to reorder list/i })).toBeInTheDocument();
+  });
+
+  it('hides the drag handle when dragDisabled is true (touch/mobile)', async () => {
+    await render(ListColumn, {
+      inputs: { list: fakeList([]), dragDisabled: true },
+      providers: [storeProvider],
+    });
+
+    expect(screen.queryByRole('button', { name: /drag to reorder list/i })).not.toBeInTheDocument();
+  });
 });
