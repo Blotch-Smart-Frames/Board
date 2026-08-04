@@ -1,0 +1,16 @@
+@if (!authStore.isAuthReady()) {
+  <div class="flex h-dvh items-center justify-center">
+    <hlm-spinner />
+  </div>
+} @else if (!authStore.isAuthenticated()) {
+  <app-sign-in-page />
+} @else {
+  <div class="flex h-dvh flex-col">
+    <app-main-nav />
+    <main class="min-h-0 flex-1">
+      <router-outlet />
+    </main>
+  </div>
+}
+
+<hlm-toaster richColors closeButton />

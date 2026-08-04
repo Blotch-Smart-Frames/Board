@@ -23,6 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 
-coverage/*
+coverage
 .env
-public/version.json
+packages/client-legacy/public/version.json
+packages/client/public/version.json
+
+# Turborepo
+.turbo

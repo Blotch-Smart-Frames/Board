@@ -22,18 +22,30 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate Angular environment.ts
+        run: |
+          mkdir -p packages/client/src/environments
+          cat > packages/client/src/environments/environment.ts <<'EOF'
+          export const environment = {
+            firebase: {
+              apiKey: '${{ secrets.VITE_FIREBASE_API_KEY }}',
+              authDomain: '${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}',
+              projectId: '${{ secrets.VITE_FIREBASE_PROJECT_ID }}',
+              storageBucket: '${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}',
+              messagingSenderId: '${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}',
+              appId: '${{ secrets.VITE_FIREBASE_APP_ID }}',
+            },
+            google: {
+              clientId: '${{ secrets.VITE_GOOGLE_CLIENT_ID }}',
+            },
+          };
+          EOF
+
       - name: Run tests
-        run: npx vitest run
+        run: npm test
 
       - name: Build
         run: npm run build
-        env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0

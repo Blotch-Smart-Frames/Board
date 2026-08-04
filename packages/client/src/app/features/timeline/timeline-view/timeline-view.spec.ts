@@ -1,0 +1,164 @@
+import { signal } from '@angular/core';
+import type { Timestamp } from 'firebase/firestore';
+import { render, screen } from '@testing-library/angular';
+import { provideMarkdown } from 'ngx-markdown';
+import { TimelineView } from './timeline-view';
+import { BoardStore } from '../../board/data/board.store';
+import { AuthStore } from '../../../core/auth/auth.store';
+import { FIRESTORE_DB } from '../../../core/firebase/firebase.config';
+import { BoardService } from '../../../core/services/board.service';
+import { StorageService } from '../../../core/services/storage.service';
+import { SprintService } from '../../../core/services/sprint.service';
+import { UserBoardsStore } from '../../boards/data/user-boards.store';
+import type {
+  Board,
+  Collaborator,
+  Label,
+  List,
+  Sprint,
+  Task,
+} from '../../../shared/types/board';
+
+// TaskDetailDialog and its children subscribe via collectionSignal — stub the
+// SDK so onSnapshot never actually fires during the empty-state renders.
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn((_db: unknown, ...segments: string[]) => ({
+    type: 'collection',
+    path: segments.join('/'),
+  })),
+  doc: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'doc', path: segments.join('/') })),
+  query: vi.fn((ref: unknown, ...constraints: unknown[]) => ({ type: 'query', ref, constraints })),
+  orderBy: vi.fn((field: string) => ({ orderBy: field })),
+  onSnapshot: vi.fn(() => vi.fn()),
+}));
+
+class ResizeObserverStub {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
+Element.prototype.scrollIntoView ??= function scrollIntoViewPolyfill(): void {};
+Element.prototype.setPointerCapture ??= function setPointerCaptureStub(): void {};
+document.elementFromPoint ??= (): Element | null => null;
+
+function ts(date: Date): Timestamp {
+  return {
+    toDate: () => date,
+    toMillis: () => date.getTime(),
+  } as Timestamp;
+}
+
+function fakeList(id: string, title: string, order = 'a0'): List {
+  return { id, title, order, createdAt: ts(new Date(2026, 0, 1)) };
+}
+
+function fakeTask(overrides: Partial<Task> = {}): Task {
+  return {
+    id: 't1',
+    listId: 'list-1',
+    title: 'Task',
+    order: 'a0',
+    calendarSyncEnabled: false,
+    createdBy: 'u1',
+    createdAt: ts(new Date(2026, 0, 1)),
+    updatedAt: ts(new Date(2026, 0, 1)),
+    ...overrides,
+  };
+}
+
+type SetupOpts = {
+  lists?: List[];
+  tasks?: Task[];
+  labels?: Label[];
+  sprints?: Sprint[];
+  collaborators?: Collaborator[];
+  board?: Board | null;
+};
+
+function setup(opts: SetupOpts = {}) {
+  const store = {
+    boardId: signal('board-1'),
+    lists: signal<List[]>(opts.lists ?? []),
+    tasks: signal<Task[]>(opts.tasks ?? []),
+    labels: signal<Label[]>(opts.labels ?? []),
+    sprints: signal<Sprint[]>(opts.sprints ?? []),
+    collaborators: signal<Collaborator[]>(opts.collaborators ?? []),
+    board: signal<Board | null>(opts.board ?? null),
+    listsWithTasks: signal((opts.lists ?? []).map((l) => ({ ...l, tasks: [] }))),
+    updateTask: vi.fn().mockResolvedValue(undefined),
+    moveTaskToList: vi.fn().mockResolvedValue(undefined),
+    deleteTask: vi.fn().mockResolvedValue(undefined),
+  };
+  return {
+    store,
+    providers: [
+      { provide: BoardStore, useValue: store },
+      { provide: FIRESTORE_DB, useValue: {} },
+      { provide: AuthStore, useValue: { user: signal({ uid: 'u1' }) } },
+      { provide: BoardService, useValue: {} },
+      { provide: StorageService, useValue: {} },
+      { provide: SprintService, useValue: {} },
+      { provide: UserBoardsStore, useValue: { boards: signal([]) } },
+      provideMarkdown(),
+    ],
+  };
+}
+
+describe('TimelineView', () => {
+  it('shows an empty-board message when there are no lists', async () => {
+    const { providers } = setup({ lists: [] });
+    await render(TimelineView, { providers });
+
+    expect(
+      screen.getByText('No lists in this board. Add a list to start using the timeline.'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the "no tasks yet" message when lists exist but no tasks do', async () => {
+    const { providers } = setup({ lists: [fakeList('list-1', 'To Do')] });
+    await render(TimelineView, { providers });
+
+    expect(screen.getByText('No tasks in this board yet.')).toBeInTheDocument();
+  });
+
+  it('shows a hidden-tasks alert when tasks exist without both start and due dates', async () => {
+    const { providers } = setup({
+      lists: [fakeList('list-1', 'To Do')],
+      tasks: [fakeTask({ id: 't1' })],
+    });
+    await render(TimelineView, { providers });
+
+    expect(screen.getByText('1 task hidden.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Tasks need both start and due dates to appear'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Set start and due dates on tasks to see them in the timeline.'),
+    ).toBeInTheDocument();
+  });
+
+  it('pluralizes the hidden-tasks count when multiple tasks are missing dates', async () => {
+    const { providers } = setup({
+      lists: [fakeList('list-1', 'To Do')],
+      tasks: [fakeTask({ id: 't1' }), fakeTask({ id: 't2' })],
+    });
+    await render(TimelineView, { providers });
+
+    expect(screen.getByText('2 tasks hidden.')).toBeInTheDocument();
+  });
+
+  it('renders the timeline grid once at least one task has both dates', async () => {
+    const start = new Date(2026, 0, 1);
+    const end = new Date(2026, 0, 5);
+    const { providers } = setup({
+      lists: [fakeList('list-1', 'To Do')],
+      tasks: [fakeTask({ id: 't1', title: 'Design review', startDate: ts(start), dueDate: ts(end) })],
+    });
+    const view = await render(TimelineView, { providers });
+
+    // TimelineGrid renders sidebar list titles + item bars.
+    expect(view.container.querySelector('app-timeline-grid')).not.toBeNull();
+    expect(screen.queryByText('No tasks in this board yet.')).not.toBeInTheDocument();
+  });
+});
