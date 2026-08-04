@@ -1,31 +1,127 @@
-import { Component, inject, viewChild } from '@angular/core';
+import { Component, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { CdkDropList, CdkDrag, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucidePlus } from '@ng-icons/lucide';
+import {
+  lucidePlus,
+  lucideMenu,
+  lucideShare2,
+  lucideColumns3,
+  lucideGanttChartSquare,
+} from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
+import { HlmToggleGroupImports } from '@spartan-ng/helm/toggle-group';
 import { UserBoardsStore, type BoardWithOrder } from '../data/user-boards.store';
 import { BoardListItem } from '../board-list-item/board-list-item';
 import { BoardFormDialog } from '../board-form-dialog/board-form-dialog';
 import { isTouchOrMobileSignal } from '../../../core/interop/breakpoint-signal';
 
+export type ViewMode = 'kanban' | 'timeline';
+
 @Component({
   selector: 'app-boards-sidebar',
-  imports: [CdkDropList, CdkDrag, NgIcon, HlmButton, HlmSpinner, BoardListItem, BoardFormDialog],
-  providers: [provideIcons({ lucidePlus })],
+  imports: [
+    CdkDropList,
+    CdkDrag,
+    NgIcon,
+    HlmButton,
+    HlmSpinner,
+    HlmToggleGroupImports,
+    BoardListItem,
+    BoardFormDialog,
+  ],
+  providers: [
+    provideIcons({
+      lucidePlus,
+      lucideMenu,
+      lucideShare2,
+      lucideColumns3,
+      lucideGanttChartSquare,
+    }),
+  ],
+  host: {
+    class:
+      'flex h-full shrink-0 flex-col overflow-hidden border-e transition-[width] duration-300 ease-out',
+    '[class.w-70]': '!collapsed()',
+    '[class.w-14]': 'collapsed()',
+  },
   template: `
-    <div class="flex h-full flex-col">
-      <div class="border-b p-4">
-        <h2 class="font-semibold">My Boards</h2>
-      </div>
+    <div class="flex items-center gap-1 border-b p-2">
+      <button
+        hlmBtn
+        variant="ghost"
+        size="icon"
+        aria-label="menu"
+        [attr.aria-expanded]="!collapsed()"
+        (click)="toggleCollapsed()"
+      >
+        <ng-icon name="lucideMenu" />
+      </button>
 
+      @if (!collapsed()) {
+        <h1 class="text-primary min-w-0 grow truncate text-sm font-semibold">{{ title() }}</h1>
+
+        @if (showShare()) {
+          <button hlmBtn variant="ghost" size="icon" aria-label="Share" (click)="share.emit()">
+            <ng-icon name="lucideShare2" />
+          </button>
+        }
+      }
+    </div>
+
+    @if (viewMode(); as mode) {
+      <div class="border-b p-2">
+        <div
+          hlmToggleGroup
+          type="single"
+          [value]="mode"
+          class="w-full"
+          [class.flex-col]="collapsed()"
+          [class.gap-1]="collapsed()"
+          (valueChange)="onViewModeChange($event)"
+        >
+          <button
+            hlmToggleGroupItem
+            value="kanban"
+            aria-label="Kanban view"
+            [class.flex-1]="!collapsed()"
+            [class.w-full]="collapsed()"
+          >
+            <ng-icon name="lucideColumns3" />
+            @if (!collapsed()) {
+              <span>Kanban</span>
+            }
+          </button>
+          <button
+            hlmToggleGroupItem
+            value="timeline"
+            aria-label="Timeline view"
+            [class.flex-1]="!collapsed()"
+            [class.w-full]="collapsed()"
+          >
+            <ng-icon name="lucideGanttChartSquare" />
+            @if (!collapsed()) {
+              <span>Timeline</span>
+            }
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (!collapsed()) {
       @if (store.isLoading()) {
         <div class="flex items-center justify-center p-8">
           <hlm-spinner />
         </div>
       } @else {
-        <nav class="flex-1 space-y-0.5 overflow-y-auto p-2" aria-label="Boards" cdkDropList [cdkDropListDisabled]="dragDisabled()" (cdkDropListDropped)="onDrop($event)">
+        <nav
+          class="flex-1 space-y-0.5 overflow-y-auto p-2"
+          aria-label="Boards"
+          cdkDropList
+          [cdkDropListDisabled]="dragDisabled()"
+          (cdkDropListDropped)="onDrop($event)"
+        >
           @for (board of store.boards(); track board.id; let i = $index, count = $count) {
             <div cdkDrag [cdkDragData]="board.id" [cdkDragDisabled]="dragDisabled()">
               <app-board-list-item
@@ -46,13 +142,28 @@ import { isTouchOrMobileSignal } from '../../../core/interop/breakpoint-signal';
           }
         </nav>
       }
+    } @else {
+      <div class="flex-1"></div>
+    }
 
-      <div class="border-t p-4">
+    <div class="border-t" [class.p-4]="!collapsed()" [class.p-2]="collapsed()">
+      @if (collapsed()) {
+        <button
+          hlmBtn
+          variant="outline"
+          size="icon"
+          aria-label="Create board"
+          class="w-full"
+          (click)="createDialog.open()"
+        >
+          <ng-icon name="lucidePlus" />
+        </button>
+      } @else {
         <button hlmBtn variant="outline" class="w-full" (click)="createDialog.open()">
           <ng-icon name="lucidePlus" class="mr-2" />
           Create board
         </button>
-      </div>
+      }
     </div>
 
     <app-board-form-dialog
@@ -73,8 +184,19 @@ export class BoardsSidebar {
   protected readonly store = inject(UserBoardsStore);
   private readonly router = inject(Router);
 
+  readonly boardTitle = input<string | undefined>(undefined);
+  readonly viewMode = input<ViewMode | undefined>(undefined);
+  readonly showShare = input(false);
+
+  readonly viewModeChange = output<ViewMode>();
+  readonly share = output<void>();
+
+  protected readonly collapsed = signal(false);
+
   // Suppress sidebar drag reordering on touch/mobile so vertical scroll works.
   protected readonly dragDisabled = isTouchOrMobileSignal();
+
+  protected readonly title = computed(() => this.boardTitle() ?? 'Board by Blotch');
 
   private readonly renameDialog = viewChild.required<BoardFormDialog>('renameDialog');
   private renameTargetId: string | null = null;
@@ -107,5 +229,15 @@ export class BoardsSidebar {
     if (event.previousIndex === event.currentIndex) return;
     const boardId = event.item.data as string;
     this.store.reorderBoardToIndex(boardId, event.currentIndex);
+  }
+
+  protected toggleCollapsed(): void {
+    this.collapsed.update((v) => !v);
+  }
+
+  protected onViewModeChange(value: unknown): void {
+    if (value === 'kanban' || value === 'timeline') {
+      this.viewModeChange.emit(value);
+    }
   }
 }

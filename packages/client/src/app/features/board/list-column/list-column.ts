@@ -3,6 +3,8 @@ import { CdkDropList, CdkDrag, CdkDragHandle, type CdkDragDrop } from '@angular/
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideGripVertical } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmScrollAreaImports } from '@spartan-ng/helm/scroll-area';
+import { NgScrollbar } from 'ngx-scrollbar';
 import { AddTaskForm } from './add-task-form/add-task-form';
 import { ListHeader } from '../list-header/list-header';
 import { TaskCard } from '../task-card/task-card';
@@ -18,6 +20,8 @@ export type ListWithTasks = List & { tasks: Task[] };
     CdkDragHandle,
     NgIcon,
     HlmButton,
+    HlmScrollAreaImports,
+    NgScrollbar,
     AddTaskForm,
     ListHeader,
     TaskCard,
@@ -52,23 +56,32 @@ export type ListWithTasks = List & { tasks: Task[] };
         </div>
       </div>
 
-      <div
-        class="flex-1 space-y-2 overflow-y-auto p-2"
-        cdkDropList
-        [id]="list().id"
-        [cdkDropListData]="activeTasks()"
-        [cdkDropListConnectedTo]="connectedListIds()"
-        [cdkDropListDisabled]="dragDisabled()"
-        (cdkDropListDropped)="taskDropped.emit($event)"
+      <ng-scrollbar
+        hlm
+        class="min-h-0 flex-1"
+        appearance="compact"
+        orientation="vertical"
+        style="--_scrollbar-content-width: 100%"
       >
-        @for (task of activeTasks(); track task.id) {
-          <div cdkDrag [cdkDragData]="task" [cdkDragDisabled]="dragDisabled()">
-            <app-task-card [task]="task" [labels]="labels()" (view)="viewTask.emit($event)" />
-          </div>
-        } @empty {
-          <p class="text-muted-foreground py-4 text-center text-sm">No tasks yet</p>
-        }
-      </div>
+        <div
+          class="space-y-2 p-2"
+          scrollViewport
+          cdkDropList
+          [id]="list().id"
+          [cdkDropListData]="activeTasks()"
+          [cdkDropListConnectedTo]="connectedListIds()"
+          [cdkDropListDisabled]="dragDisabled()"
+          (cdkDropListDropped)="taskDropped.emit($event)"
+        >
+          @for (task of activeTasks(); track task.id) {
+            <div cdkDrag [cdkDragData]="task" [cdkDragDisabled]="dragDisabled()">
+              <app-task-card [task]="task" [labels]="labels()" (view)="viewTask.emit($event)" />
+            </div>
+          } @empty {
+            <p class="text-muted-foreground py-4 text-center text-sm">No tasks yet</p>
+          }
+        </div>
+      </ng-scrollbar>
 
       @if (completedTasks().length > 0) {
         <details class="px-2 pb-2">

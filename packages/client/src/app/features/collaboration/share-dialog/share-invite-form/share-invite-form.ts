@@ -3,6 +3,7 @@ import { form, submit, required, email as emailValidator, FormField } from '@ang
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideUserPlus } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 
@@ -16,36 +17,40 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner';
  */
 @Component({
   selector: 'app-share-invite-form',
-  imports: [HlmButton, HlmInput, HlmSpinner, NgIcon, FormField],
+  imports: [HlmButton, HlmFieldImports, HlmInput, HlmSpinner, NgIcon, FormField],
   providers: [provideIcons({ lucideUserPlus })],
   template: `
-    <form class="flex gap-2" (submit)="$event.preventDefault(); onSubmit()">
-      <input
-        hlmInput
-        class="flex-1"
-        placeholder="Enter email address"
-        aria-label="Invite by email"
-        type="email"
-        [formField]="inviteForm.email"
-        (keydown.escape)="escape.emit()"
-      />
-      <button
-        hlmBtn
-        type="button"
-        [disabled]="inviteForm().invalid() || inviting() || !model().email.trim()"
-        (click)="onSubmit()"
-      >
-        @if (inviting()) {
-          <hlm-spinner class="size-4" />
-        } @else {
-          <ng-icon name="lucideUserPlus" class="mr-2" />
-          Invite
+    <form (submit)="$event.preventDefault(); onSubmit()">
+      <div hlmField>
+        <div class="flex gap-2">
+          <input
+            hlmInput
+            class="flex-1"
+            placeholder="Enter email address"
+            aria-label="Invite by email"
+            type="email"
+            [formField]="inviteForm.email"
+            (keydown.escape)="escape.emit()"
+          />
+          <button
+            hlmBtn
+            type="button"
+            [disabled]="inviteForm().invalid() || inviting() || !model().email.trim()"
+            (click)="onSubmit()"
+          >
+            @if (inviting()) {
+              <hlm-spinner class="size-4" />
+            } @else {
+              <ng-icon name="lucideUserPlus" class="mr-2" />
+              Invite
+            }
+          </button>
+        </div>
+        @for (err of inviteForm.email().errors(); track err.kind) {
+          <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>
         }
-      </button>
+      </div>
     </form>
-    @for (err of inviteForm.email().errors(); track err.kind) {
-      <p class="text-destructive text-sm">{{ err.message }}</p>
-    }
   `,
 })
 export class ShareInviteForm {

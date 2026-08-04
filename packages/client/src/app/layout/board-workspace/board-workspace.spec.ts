@@ -127,15 +127,23 @@ describe('BoardWorkspace', () => {
     expect(await screen.findByText(/no lists in this board/i)).toBeInTheDocument();
   });
 
-  it('toggles the desktop sidebar via the app bar menu button', async () => {
+  it('collapses and expands the sidebar via the burger button', async () => {
     const user = userEvent.setup();
     stubMatchMedia(false); // desktop
     await render(BoardWorkspace, { providers: commonProviders(null) });
 
-    expect(document.querySelector('aside')).not.toBeNull();
+    const menu = screen.getByRole('button', { name: 'menu' });
+    expect(menu).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /create board/i })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'menu' }));
+    await user.click(menu);
 
-    expect(document.querySelector('aside')).toBeNull();
+    expect(menu).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: /create board/i })).not.toBeInTheDocument();
+
+    await user.click(menu);
+
+    expect(menu).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /create board/i })).toBeInTheDocument();
   });
 });

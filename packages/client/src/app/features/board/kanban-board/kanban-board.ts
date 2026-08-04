@@ -4,6 +4,8 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideKanbanSquare } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmEmptyImports } from '@spartan-ng/helm/empty';
+import { HlmScrollAreaImports } from '@spartan-ng/helm/scroll-area';
+import { NgScrollbar } from 'ngx-scrollbar';
 import { BoardBackground } from '../board-background/board-background';
 import { ListColumn } from '../list-column/list-column';
 import { AddListButton } from '../add-list-button/add-list-button';
@@ -22,6 +24,8 @@ import type { Task } from '../../../shared/types/board';
     NgIcon,
     HlmButton,
     HlmEmptyImports,
+    HlmScrollAreaImports,
+    NgScrollbar,
     BoardBackground,
     ListColumn,
     AddListButton,
@@ -45,57 +49,63 @@ import type { Task } from '../../../shared/types/board';
         />
       </div>
 
-      <div class="flex-1 overflow-x-auto overflow-y-hidden p-4">
-        @if (store.listsWithTasks().length === 0) {
-          <div class="flex h-full items-center justify-center">
-            <hlm-empty class="w-96">
-              <hlm-empty-header>
-                <hlm-empty-media variant="icon">
-                  <ng-icon name="lucideKanbanSquare" />
-                </hlm-empty-media>
-                <div hlmEmptyTitle>No lists yet</div>
-                <div hlmEmptyDescription>
-                  Get started by creating your first list to organize tasks on this board.
-                </div>
-              </hlm-empty-header>
-              <hlm-empty-content>
-                <button hlmBtn (click)="store.addList({ title: 'New list' })">Create list</button>
-              </hlm-empty-content>
-            </hlm-empty>
-          </div>
-        } @else {
-          <div class="flex h-full items-start gap-4">
-            <div
-              class="flex h-full items-start gap-4"
-              cdkDropList
-              cdkDropListOrientation="horizontal"
-              [cdkDropListDisabled]="dragDisabled()"
-              (cdkDropListDropped)="onListDrop($event)"
-            >
-              @for (list of store.listsWithTasks(); track list.id; let i = $index, count = $count) {
-                <div cdkDrag [cdkDragData]="list.id" [cdkDragDisabled]="dragDisabled()">
-                  <app-list-column
-                    [list]="list"
-                    [labels]="store.labels() ?? []"
-                    [connectedListIds]="listIds()"
-                    [canMoveLeft]="i > 0"
-                    [canMoveRight]="i < count - 1"
-                    [dragDisabled]="dragDisabled()"
-                    (updateTitle)="store.updateListTitle(list.id, { title: $event })"
-                    (deleteList)="store.deleteList(list.id)"
-                    (addTask)="store.addTask(list.id, { title: $event })"
-                    (viewTask)="openDetail($event)"
-                    (taskDropped)="onTaskDrop($event)"
-                    (moveLeft)="store.reorderListToIndex(list.id, i - 1)"
-                    (moveRight)="store.reorderListToIndex(list.id, i + 1)"
-                  />
-                </div>
-              }
+      <ng-scrollbar hlm class="min-h-0 flex-1" appearance="compact" orientation="horizontal">
+        <div class="h-full p-4">
+          @if (store.listsWithTasks().length === 0) {
+            <div class="flex h-full items-center justify-center">
+              <hlm-empty class="w-96">
+                <hlm-empty-header>
+                  <hlm-empty-media variant="icon">
+                    <ng-icon name="lucideKanbanSquare" />
+                  </hlm-empty-media>
+                  <div hlmEmptyTitle>No lists yet</div>
+                  <div hlmEmptyDescription>
+                    Get started by creating your first list to organize tasks on this board.
+                  </div>
+                </hlm-empty-header>
+                <hlm-empty-content>
+                  <button hlmBtn (click)="store.addList({ title: 'New list' })">Create list</button>
+                </hlm-empty-content>
+              </hlm-empty>
             </div>
-            <app-add-list-button (listAdded)="store.addList({ title: $event })" />
-          </div>
-        }
-      </div>
+          } @else {
+            <div class="flex h-full items-start gap-4">
+              <div
+                class="flex h-full items-start gap-4"
+                cdkDropList
+                cdkDropListOrientation="horizontal"
+                [cdkDropListDisabled]="dragDisabled()"
+                (cdkDropListDropped)="onListDrop($event)"
+              >
+                @for (
+                  list of store.listsWithTasks();
+                  track list.id;
+                  let i = $index, count = $count
+                ) {
+                  <div cdkDrag [cdkDragData]="list.id" [cdkDragDisabled]="dragDisabled()">
+                    <app-list-column
+                      [list]="list"
+                      [labels]="store.labels() ?? []"
+                      [connectedListIds]="listIds()"
+                      [canMoveLeft]="i > 0"
+                      [canMoveRight]="i < count - 1"
+                      [dragDisabled]="dragDisabled()"
+                      (updateTitle)="store.updateListTitle(list.id, { title: $event })"
+                      (deleteList)="store.deleteList(list.id)"
+                      (addTask)="store.addTask(list.id, { title: $event })"
+                      (viewTask)="openDetail($event)"
+                      (taskDropped)="onTaskDrop($event)"
+                      (moveLeft)="store.reorderListToIndex(list.id, i - 1)"
+                      (moveRight)="store.reorderListToIndex(list.id, i + 1)"
+                    />
+                  </div>
+                }
+              </div>
+              <app-add-list-button (listAdded)="store.addList({ title: $event })" />
+            </div>
+          }
+        </div>
+      </ng-scrollbar>
     </app-board-background>
 
     <app-task-detail-dialog #detailDialog />

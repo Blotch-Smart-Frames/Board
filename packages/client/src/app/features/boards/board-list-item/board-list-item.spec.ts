@@ -81,6 +81,8 @@ describe('BoardListItem', () => {
       providers: [provideRouter([])],
     });
 
-    expect(screen.queryByRole('button', { name: /drag to reorder board/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /drag to reorder board/i }),
+    ).not.toBeInTheDocument();
   });
 });

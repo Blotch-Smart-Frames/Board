@@ -16,9 +16,12 @@ export const TOUCH_POINTER_QUERY = '(pointer: coarse)';
 /** Reactive "is the viewport at/below the mobile breakpoint" signal. */
 export function isMobileSignal(): Signal<boolean> {
   const breakpointObserver = inject(BreakpointObserver);
-  return toSignal(breakpointObserver.observe(MOBILE_BREAKPOINT_QUERY).pipe(map((state) => state.matches)), {
-    initialValue: breakpointObserver.isMatched(MOBILE_BREAKPOINT_QUERY),
-  });
+  return toSignal(
+    breakpointObserver.observe(MOBILE_BREAKPOINT_QUERY).pipe(map((state) => state.matches)),
+    {
+      initialValue: breakpointObserver.isMatched(MOBILE_BREAKPOINT_QUERY),
+    },
+  );
 }
 
 // True whenever drag-and-drop should be suppressed to avoid fighting native
