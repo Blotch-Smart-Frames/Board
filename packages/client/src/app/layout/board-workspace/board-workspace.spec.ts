@@ -134,16 +134,20 @@ describe('BoardWorkspace', () => {
 
     const menu = screen.getByRole('button', { name: 'menu' });
     expect(menu).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('button', { name: /create board/i })).toBeInTheDocument();
+    // Expanded sidebar shows the labelled Create-board button; collapsed swaps
+    // it for an icon-only variant that keeps `aria-label="Create board"`, so
+    // assert on the visible text to distinguish the two states.
+    expect(screen.getByText(/^create board$/i)).toBeInTheDocument();
 
     await user.click(menu);
 
     expect(menu).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('button', { name: /create board/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/^create board$/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create board/i })).toHaveAttribute('size', 'icon');
 
     await user.click(menu);
 
     expect(menu).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('button', { name: /create board/i })).toBeInTheDocument();
+    expect(screen.getByText(/^create board$/i)).toBeInTheDocument();
   });
 });

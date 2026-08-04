@@ -72,7 +72,22 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "setupFiles": ["src/test-setup.ts"],
-            "isolate": true
+            "isolate": true,
+            "coverageReporters": ["text-summary", "html", "lcov"],
+            "coverageInclude": ["src/**/*.ts"],
+            "coverageExclude": [
+              "src/**/*.spec.ts",
+              "src/test-setup.ts",
+              "src/main.ts",
+              "src/environments/**",
+              "src/**/*.d.ts"
+            ],
+            "coverageThresholds": {
+              "statements": 100,
+              "branches": 100,
+              "functions": 100,
+              "lines": 100
+            }
           }
         }
       }
