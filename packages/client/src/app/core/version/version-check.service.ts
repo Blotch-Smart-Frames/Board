@@ -1,7 +1,6 @@
 import { Service, computed, inject, DestroyRef } from '@angular/core';
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, from, interval, of, startWith, switchMap } from 'rxjs';
-import { BUILD_HASH } from './build-hash';
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -18,8 +17,8 @@ async function fetchVersion(): Promise<string | null> {
 
 /**
  * Polls /version.json every 5 minutes and exposes hasNewVersion when the
- * remote hash differs from the build-stamped BUILD_HASH. Uses toSignal over an
- * interval-driven observable rather than a setInterval-inside-effect so
+ * remote hash differs from the build-stamped __BUILD_HASH__. Uses toSignal over
+ * an interval-driven observable rather than a setInterval-inside-effect so
  * teardown is handled automatically by takeUntilDestroyed — the same idiom the
  * current-time-line component uses for its clock tick.
  */
@@ -38,6 +37,6 @@ export class VersionCheckService {
 
   readonly hasNewVersion = computed(() => {
     const hash = this.remoteHash();
-    return !!hash && hash !== BUILD_HASH;
+    return !!hash && hash !== __BUILD_HASH__;
   });
 }

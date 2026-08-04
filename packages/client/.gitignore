@@ -46,6 +46,5 @@ Thumbs.db
 # Local environment config (copy environment.example.ts to environment.ts and fill in real values)
 /src/environments/environment.ts
 
-# Generated on every build/serve by scripts/stamp-version.mjs
+# Written on every ng build/serve by scripts/with-version.mjs (runtime asset polled by VersionCheckService).
 /public/version.json
-/src/app/core/version/build-hash.ts

@@ -68,7 +68,9 @@ describe('BoardWorkspace', () => {
     stubMatchMedia();
     await render(BoardWorkspace, { providers: commonProviders(null) });
 
-    expect(screen.getByText(/select a board or create a new one/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/select a board from the sidebar or create a new one/i),
+    ).toBeInTheDocument();
   });
 
   it('shows a loading spinner while the selected board resolves', async () => {

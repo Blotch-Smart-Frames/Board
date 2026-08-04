@@ -58,7 +58,11 @@ describe('App', () => {
         provideRouter([]),
         {
           provide: AuthStore,
-          useValue: { isAuthReady: signal(true), isAuthenticated: signal(true) },
+          useValue: {
+            isAuthReady: signal(true),
+            isAuthenticated: signal(true),
+            user: signal({ displayName: 'Test User', email: 'test@example.com', photoURL: null }),
+          },
         },
         { provide: VersionCheckService, useValue: stubbedVersionCheck },
       ],

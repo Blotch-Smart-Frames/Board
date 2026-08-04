@@ -1,6 +1,5 @@
 import { TestBed } from '@angular/core/testing';
 import { VersionCheckService } from './version-check.service';
-import { BUILD_HASH } from './build-hash';
 
 async function settleFetch() {
   // toSignal(from(fetch())) needs several microtask turns before the resolved
@@ -27,7 +26,7 @@ describe('VersionCheckService', () => {
   it('hasNewVersion is false when the remote hash matches the build hash', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ buildHash: BUILD_HASH }),
+      json: () => Promise.resolve({ buildHash: __BUILD_HASH__ }),
     });
 
     const service = TestBed.inject(VersionCheckService);

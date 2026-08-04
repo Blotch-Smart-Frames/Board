@@ -24,7 +24,10 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.css"]
+            "styles": ["src/styles.css"],
+            "define": {
+              "__BUILD_HASH__": "\"dev\""
+            }
           },
           "configurations": {
             "production": {

@@ -3,12 +3,10 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "prestart": "node scripts/stamp-version.mjs",
-    "start": "ng serve",
-    "dev": "ng serve",
-    "prebuild": "node scripts/stamp-version.mjs",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
+    "start": "node scripts/with-version.mjs serve",
+    "dev": "node scripts/with-version.mjs serve",
+    "build": "node scripts/with-version.mjs build",
+    "watch": "node scripts/with-version.mjs build --watch --configuration development",
     "test": "ng test"
   },
   "private": true,
