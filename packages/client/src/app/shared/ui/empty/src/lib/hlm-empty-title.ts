@@ -7,6 +7,6 @@ import { classes } from '@spartan-ng/helm/utils';
 })
 export class HlmEmptyTitle {
   constructor() {
-    classes(() => 'spartan-empty-title');
+    classes(() => 'text-sm font-medium tracking-tight');
   }
 }

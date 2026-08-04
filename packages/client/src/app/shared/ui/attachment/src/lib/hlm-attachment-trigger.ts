@@ -18,6 +18,6 @@ export class HlmAttachmentTrigger {
   );
 
   constructor() {
-    classes(() => 'spartan-attachment-trigger');
+    classes(() => 'absolute inset-0 z-10 outline-none');
   }
 }

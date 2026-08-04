@@ -9,7 +9,7 @@ export class HlmEmptyDescription {
   constructor() {
     classes(
       () =>
-        'spartan-empty-description text-muted-foreground [&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4',
+        'text-sm/relaxed text-muted-foreground [&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4',
     );
   }
 }

@@ -9,7 +9,7 @@ export class HlmAttachmentTitle {
   constructor() {
     classes(
       () =>
-        'spartan-attachment-title group-data-[state=processing]/attachment:shimmer group-data-[state=uploading]/attachment:shimmer block max-w-full min-w-0',
+        'truncate text-sm font-medium group-data-[state=processing]/attachment:shimmer group-data-[state=uploading]/attachment:shimmer block max-w-full min-w-0',
     );
   }
 }

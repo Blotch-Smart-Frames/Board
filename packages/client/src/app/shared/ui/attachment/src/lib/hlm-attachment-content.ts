@@ -9,7 +9,7 @@ export class HlmAttachmentContent {
   constructor() {
     classes(
       () =>
-        'spartan-attachment-content max-w-full group-data-[orientation=vertical]/attachment:px-1',
+        'min-w-0 flex-1 leading-tight max-w-full group-data-[orientation=vertical]/attachment:px-1',
     );
   }
 }

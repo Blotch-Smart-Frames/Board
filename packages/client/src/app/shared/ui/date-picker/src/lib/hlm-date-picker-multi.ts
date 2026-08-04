@@ -22,7 +22,7 @@ import {
 import { BrnFieldControl, provideBrnLabelable } from '@spartan-ng/brain/field';
 import type { ChangeFn, TouchFn } from '@spartan-ng/brain/forms';
 import type { BrnOverlayState } from '@spartan-ng/brain/overlay';
-import { BrnPopover } from '@spartan-ng/brain/popover';
+import { BrnPopover, type BrnPopoverAlign } from '@spartan-ng/brain/popover';
 import { HlmCalendarMulti } from '@spartan-ng/helm/calendar';
 import { HlmPopoverImports } from '@spartan-ng/helm/popover';
 import { injectHlmDatePickerMultiConfig } from './hlm-date-picker-multi.token';
@@ -45,7 +45,12 @@ export const HLM_DATE_PICKER_MUTLI_VALUE_ACCESSOR = {
   hostDirectives: [BrnFieldControl],
   host: { class: 'block' },
   template: `
-    <hlm-popover sideOffset="5" [state]="_popoverState()" (stateChanged)="_onStateChange($event)">
+    <hlm-popover
+      [align]="align()"
+      sideOffset="5"
+      [state]="_popoverState()"
+      (stateChanged)="_onStateChange($event)"
+    >
       <ng-content />
 
       <hlm-popover-content class="w-fit p-0" *hlmPopoverPortal="let ctx">
@@ -54,8 +59,8 @@ export const HLM_DATE_PICKER_MUTLI_VALUE_ACCESSOR = {
           class="rounded-none border-0"
           [date]="_mutableDate()"
           [captionLayout]="captionLayout()"
-          [min]="min()"
-          [max]="max()"
+          [min]="minDate()"
+          [max]="maxDate()"
           [minSelection]="minSelection()"
           [maxSelection]="maxSelection()"
           [disabled]="_disabled()"
@@ -73,16 +78,18 @@ export class HlmDatePickerMulti<T> implements BrnDatePickerBase<T[]>, ControlVal
 
   private readonly _trigger = contentChild(BrnDatePickerTriggerToken);
 
+  public readonly align = input<BrnPopoverAlign>('center');
+
   /** Show dropdowns to navigate between months or years. */
   public readonly captionLayout = input<
     'dropdown' | 'label' | 'dropdown-months' | 'dropdown-years'
   >('label');
 
   /** The minimum date that can be selected.*/
-  public readonly min = input<T>();
+  public readonly minDate = input<T>();
 
   /** The maximum date that can be selected. */
-  public readonly max = input<T>();
+  public readonly maxDate = input<T>();
 
   /** The minimum selectable dates.  */
   public readonly minSelection = input<number, NumberInput>(undefined, {

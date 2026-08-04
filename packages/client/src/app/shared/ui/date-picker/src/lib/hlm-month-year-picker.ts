@@ -21,7 +21,7 @@ import {
 import { BrnFieldControl, provideBrnLabelable } from '@spartan-ng/brain/field';
 import type { ChangeFn, TouchFn } from '@spartan-ng/brain/forms';
 import type { BrnOverlayState } from '@spartan-ng/brain/overlay';
-import { BrnPopover } from '@spartan-ng/brain/popover';
+import { BrnPopover, type BrnPopoverAlign } from '@spartan-ng/brain/popover';
 import { HlmCalendarImports } from '@spartan-ng/helm/calendar';
 import { HlmPopoverImports } from '@spartan-ng/helm/popover';
 import { injectHlmMonthYearPickerConfig } from './hlm-month-year-picker.token';
@@ -43,7 +43,12 @@ export const HLM_MONTH_YEAR_PICKER_VALUE_ACCESSOR = {
   hostDirectives: [BrnFieldControl],
   host: { class: 'block' },
   template: `
-    <hlm-popover sideOffset="5" [state]="_popoverState()" (stateChanged)="_onStateChange($event)">
+    <hlm-popover
+      [align]="align()"
+      sideOffset="5"
+      [state]="_popoverState()"
+      (stateChanged)="_onStateChange($event)"
+    >
       <ng-content />
 
       <hlm-popover-content class="w-fit p-0" *hlmPopoverPortal="let ctx">
@@ -52,8 +57,8 @@ export const HLM_MONTH_YEAR_PICKER_VALUE_ACCESSOR = {
           class="rounded-none border-0"
           [date]="_mutableDate()"
           [defaultFocusedDate]="_mutableDate() ?? defaultFocusedDate()"
-          [min]="min()"
-          [max]="max()"
+          [min]="minDate()"
+          [max]="maxDate()"
           [disabled]="_disabled()"
           (dateChange)="_handleChange($event)"
         />
@@ -69,11 +74,13 @@ export class HlmMonthYearPicker<T> implements BrnDatePickerBase<T>, ControlValue
 
   private readonly _trigger = contentChild(BrnDatePickerTriggerToken);
 
+  public readonly align = input<BrnPopoverAlign>('center');
+
   /** The minimum date that can be selected.*/
-  public readonly min = input<T>();
+  public readonly minDate = input<T>();
 
   /** The maximum date that can be selected. */
-  public readonly max = input<T>();
+  public readonly maxDate = input<T>();
 
   /** Determine if the date picker is disabled. */
   public readonly disabled = input<boolean, BooleanInput>(false, {

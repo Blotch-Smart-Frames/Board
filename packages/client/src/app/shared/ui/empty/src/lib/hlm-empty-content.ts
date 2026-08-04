@@ -8,7 +8,7 @@ import { classes } from '@spartan-ng/helm/utils';
 export class HlmEmptyContent {
   constructor() {
     classes(
-      () => 'spartan-empty-content flex w-full max-w-sm min-w-0 flex-col items-center text-balance',
+      () => 'gap-2.5 text-sm flex w-full max-w-sm min-w-0 flex-col items-center text-balance',
     );
   }
 }
