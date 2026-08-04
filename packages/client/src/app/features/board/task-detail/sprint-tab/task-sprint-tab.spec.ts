@@ -102,4 +102,39 @@ describe('TaskSprintTab', () => {
 
     expect(store.updateTask).toHaveBeenCalledWith('t1', { calendarSyncEnabled: true });
   });
+
+  it('updates the start date when the calendar range emits a different value', async () => {
+    const task = fakeTask({ startDate: ts(new Date(2026, 0, 1)) });
+    const { store, providers } = setup(task);
+    const view = await render(TaskSprintTab, { providers, inputs: { task, boardId: 'board-1' } });
+
+    // Same date — no update should fire.
+    view.fixture.componentInstance['onStartDateChange'](new Date(2026, 0, 1));
+    expect(store.updateTask).not.toHaveBeenCalled();
+
+    // Different date — persists.
+    view.fixture.componentInstance['onStartDateChange'](new Date(2026, 0, 10));
+    expect(store.updateTask).toHaveBeenCalledWith('t1', { startDate: new Date(2026, 0, 10) });
+
+    // Undefined — clears (branch: date is undefined).
+    store.updateTask.mockClear();
+    view.fixture.componentInstance['onStartDateChange'](undefined);
+    expect(store.updateTask).toHaveBeenCalledWith('t1', { startDate: null });
+  });
+
+  it('updates the due date when the calendar range emits a different value', async () => {
+    const task = fakeTask({ dueDate: ts(new Date(2026, 0, 5)) });
+    const { store, providers } = setup(task);
+    const view = await render(TaskSprintTab, { providers, inputs: { task, boardId: 'board-1' } });
+
+    view.fixture.componentInstance['onEndDateChange'](new Date(2026, 0, 5));
+    expect(store.updateTask).not.toHaveBeenCalled();
+
+    view.fixture.componentInstance['onEndDateChange'](new Date(2026, 0, 15));
+    expect(store.updateTask).toHaveBeenCalledWith('t1', { dueDate: new Date(2026, 0, 15) });
+
+    store.updateTask.mockClear();
+    view.fixture.componentInstance['onEndDateChange'](undefined);
+    expect(store.updateTask).toHaveBeenCalledWith('t1', { dueDate: null });
+  });
 });

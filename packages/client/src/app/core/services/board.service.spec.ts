@@ -466,4 +466,92 @@ describe('BoardService', () => {
       ).rejects.toThrow(/task not found/i);
     });
   });
+
+  describe('updateBoard', () => {
+    it('writes the provided fields plus updatedAt', async () => {
+      await service.updateBoard('board-1', { title: 'Renamed', backgroundImageUrl: 'bg.png' });
+
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'boards/board-1' }),
+        { title: 'Renamed', backgroundImageUrl: 'bg.png', updatedAt: 'SERVER_TIMESTAMP' },
+      );
+    });
+  });
+
+  describe('lists', () => {
+    it('addList appends a new list with the next order value', async () => {
+      vi.mocked(getDocs).mockResolvedValue({
+        docs: [
+          { data: () => ({ id: 'list-1', order: 'a0' }) },
+          { data: () => ({ id: 'list-2', order: 'a1' }) },
+        ],
+      } as never);
+      vi.mocked(addDoc).mockResolvedValue({ id: 'list-3' } as never);
+      vi.mocked(getDoc).mockResolvedValue({ id: 'list-3', data: () => ({ title: 'New', order: 'a2' }) } as never);
+
+      const list = await service.addList('board-1', { title: 'New' });
+
+      expect(list.id).toBe('list-3');
+      expect(addDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'boards/board-1/lists' }),
+        expect.objectContaining({ title: 'New', order: expect.any(String) }),
+      );
+    });
+
+    it('updateList writes only the provided fields', async () => {
+      await service.updateList('board-1', 'list-1', { title: 'Renamed' });
+
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'boards/board-1/lists/list-1' }),
+        { title: 'Renamed' },
+      );
+    });
+
+    it('deleteList cascades to every task in the list within one batch', async () => {
+      const batch = fakeBatch();
+      vi.mocked(writeBatch).mockReturnValue(batch as never);
+      vi.mocked(getDocs).mockResolvedValue({
+        docs: [
+          { ref: collectionRef('boards/board-1/tasks/task-1') },
+          { ref: collectionRef('boards/board-1/tasks/task-2') },
+        ],
+      } as never);
+
+      await service.deleteList('board-1', 'list-1');
+
+      expect(batch.delete).toHaveBeenCalledTimes(3); // 2 tasks + 1 list
+      expect(batch.commit).toHaveBeenCalledTimes(1);
+    });
+
+    it('reorderLists writes the new order onto the target list', async () => {
+      await service.reorderLists('board-1', 'list-1', 'a5');
+
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'boards/board-1/lists/list-1' }),
+        { order: 'a5' },
+      );
+    });
+  });
+
+  describe('moveTask', () => {
+    it('writes the new listId, order, and an updatedAt server timestamp', async () => {
+      await service.moveTask('board-1', 'task-1', 'list-2', 'b0');
+
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'boards/board-1/tasks/task-1' }),
+        { listId: 'list-2', order: 'b0', updatedAt: 'SERVER_TIMESTAMP' },
+      );
+    });
+  });
+
+  describe('updateComment', () => {
+    it('writes the new text plus an updatedAt server timestamp', async () => {
+      await service.updateComment('board-1', 'task-1', 'comment-1', { text: 'Fixed' });
+
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'boards/board-1/tasks/task-1/comments/comment-1' }),
+        { text: 'Fixed', updatedAt: 'SERVER_TIMESTAMP' },
+      );
+    });
+  });
 });

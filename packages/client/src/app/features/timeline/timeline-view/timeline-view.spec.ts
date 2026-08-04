@@ -161,4 +161,100 @@ describe('TimelineView', () => {
     expect(view.container.querySelector('app-timeline-grid')).not.toBeNull();
     expect(screen.queryByText('No tasks in this board yet.')).not.toBeInTheDocument();
   });
+
+  it('persists resize events by writing new start and due dates', async () => {
+    const start = new Date(2026, 0, 1);
+    const end = new Date(2026, 0, 5);
+    const { store, providers } = setup({
+      lists: [fakeList('list-1', 'To Do')],
+      tasks: [fakeTask({ id: 't1', startDate: ts(start), dueDate: ts(end) })],
+    });
+    const { fixture } = await render(TimelineView, { providers });
+
+    const grid = fixture.debugElement.query((el) => el.name === 'app-timeline-grid');
+    (grid.componentInstance as { taskResized: { emit: (v: unknown) => void } }).taskResized.emit({
+      id: 't1',
+      span: { start: new Date(2026, 0, 2).getTime(), end: new Date(2026, 0, 10).getTime() },
+    });
+
+    expect(store.updateTask).toHaveBeenCalledWith('t1', {
+      startDate: new Date(2026, 0, 2),
+      dueDate: new Date(2026, 0, 10),
+    });
+  });
+
+  it('persists a move within the same list by writing new dates directly', async () => {
+    const start = new Date(2026, 0, 1);
+    const end = new Date(2026, 0, 5);
+    const { store, providers } = setup({
+      lists: [fakeList('list-1', 'To Do')],
+      tasks: [fakeTask({ id: 't1', startDate: ts(start), dueDate: ts(end) })],
+    });
+    const { fixture } = await render(TimelineView, { providers });
+
+    const grid = fixture.debugElement.query((el) => el.name === 'app-timeline-grid');
+    (grid.componentInstance as { taskMoved: { emit: (v: unknown) => void } }).taskMoved.emit({
+      id: 't1',
+      span: { start: new Date(2026, 0, 3).getTime(), end: new Date(2026, 0, 7).getTime() },
+      rowId: null,
+    });
+
+    expect(store.updateTask).toHaveBeenCalledWith('t1', {
+      startDate: new Date(2026, 0, 3),
+      dueDate: new Date(2026, 0, 7),
+    });
+    expect(store.moveTaskToList).not.toHaveBeenCalled();
+  });
+
+  it('sequences the list-move then date-update when moving across rows', async () => {
+    const start = new Date(2026, 0, 1);
+    const end = new Date(2026, 0, 5);
+    const { store, providers } = setup({
+      lists: [fakeList('list-1', 'To Do'), fakeList('list-2', 'Doing', 'a1')],
+      tasks: [fakeTask({ id: 't1', startDate: ts(start), dueDate: ts(end) })],
+    });
+    const { fixture } = await render(TimelineView, { providers });
+
+    let resolveMove: (() => void) | undefined;
+    store.moveTaskToList.mockImplementation(() => new Promise<void>((r) => { resolveMove = r; }));
+
+    const grid = fixture.debugElement.query((el) => el.name === 'app-timeline-grid');
+    (grid.componentInstance as { taskMoved: { emit: (v: unknown) => void } }).taskMoved.emit({
+      id: 't1',
+      span: { start: new Date(2026, 0, 3).getTime(), end: new Date(2026, 0, 7).getTime() },
+      rowId: 'list-2',
+    });
+
+    // The list move fires first; updateTask must wait for it.
+    expect(store.moveTaskToList).toHaveBeenCalledWith('t1', 'list-2');
+    expect(store.updateTask).not.toHaveBeenCalled();
+
+    resolveMove?.();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(store.updateTask).toHaveBeenCalledWith('t1', {
+      startDate: new Date(2026, 0, 3),
+      dueDate: new Date(2026, 0, 7),
+    });
+  });
+
+  it('opens the task detail dialog when a bar is clicked', async () => {
+    const start = new Date(2026, 0, 1);
+    const end = new Date(2026, 0, 5);
+    const { providers } = setup({
+      lists: [fakeList('list-1', 'To Do')],
+      tasks: [fakeTask({ id: 't1', startDate: ts(start), dueDate: ts(end) })],
+    });
+    const { fixture } = await render(TimelineView, { providers });
+
+    const grid = fixture.debugElement.query((el) => el.name === 'app-timeline-grid');
+    const task = fakeTask({ id: 't1', startDate: ts(start), dueDate: ts(end) });
+    (grid.componentInstance as { viewTask: { emit: (v: unknown) => void } }).viewTask.emit(task);
+
+    // The dialog surface is queried via viewChild — once opened, the dialog title should appear.
+    fixture.detectChanges();
+    // Task detail dialog uses aria attributes to expose its title heading.
+    expect(await screen.findByRole('heading', { name: task.title })).toBeInTheDocument();
+  });
 });

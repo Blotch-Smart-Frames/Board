@@ -89,4 +89,64 @@ describe('TaskCard', () => {
 
     expect(screen.getByText('Write tests')).toHaveClass('line-through');
   });
+
+  it('shows the description, attachment count, and comment count when the task has them', async () => {
+    const { providers, inputs } = setup(
+      fakeTask({
+        description: 'Investigate the flaky test suite.',
+        attachments: [
+          {
+            id: 'a1',
+            fileName: 'report.pdf',
+            fileSize: 1,
+            fileType: 'application/pdf',
+            storagePath: 'p',
+            downloadUrl: 'u',
+            uploadedAt: 0,
+          },
+          {
+            id: 'a2',
+            fileName: 'logs.txt',
+            fileSize: 1,
+            fileType: 'text/plain',
+            storagePath: 'p',
+            downloadUrl: 'u',
+            uploadedAt: 0,
+          },
+        ],
+        commentCount: 5,
+      }),
+    );
+    await render(TaskCard, { providers, inputs });
+
+    expect(screen.getByText('Investigate the flaky test suite.')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument(); // attachment count
+    expect(screen.getByText('5')).toBeInTheDocument(); // comment count
+  });
+
+  it('opens the task with the keyboard when Enter is pressed on the card', async () => {
+    const user = userEvent.setup();
+    const onView = vi.fn();
+    const { providers, inputs } = setup(fakeTask());
+    await render(TaskCard, { providers, inputs, on: { view: onView } });
+
+    const card = screen.getByRole('button', { name: /open task write tests/i });
+    card.focus();
+    await user.keyboard('{Enter}');
+
+    expect(onView).toHaveBeenCalled();
+  });
+
+  it('renders assigned collaborators from the store', async () => {
+    const collaborators: Collaborator[] = [
+      { id: 'u1', email: 'alice@example.com', name: 'Alice', isOwner: false },
+      { id: 'u2', email: 'bob@example.com', name: 'Bob', isOwner: false },
+    ];
+    const { providers, inputs } = setup(fakeTask({ assignedTo: ['u2'] }), [], collaborators);
+    await render(TaskCard, { providers, inputs });
+
+    // UserAvatar renders initials from the display name when no photoURL is provided.
+    expect(screen.getByText('BO')).toBeInTheDocument();
+    expect(screen.queryByText('AL')).not.toBeInTheDocument();
+  });
 });

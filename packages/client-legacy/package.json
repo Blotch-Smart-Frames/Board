@@ -1,5 +1,5 @@
 {
-  "name": "@board/client-legacy",
+  "name": "@blotch/board-client-legacy",
   "private": true,
   "version": "0.0.0",
   "type": "module",

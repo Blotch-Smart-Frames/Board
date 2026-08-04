@@ -1,5 +1,5 @@
 {
-  "name": "@board/client",
+  "name": "@blotch/board-client",
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",

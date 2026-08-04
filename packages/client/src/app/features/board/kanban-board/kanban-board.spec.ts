@@ -146,4 +146,134 @@ describe('KanbanBoard', () => {
 
     expect(store.reorderListToIndex).toHaveBeenCalledWith('list-1', 1);
   });
+
+  it('shows an empty state with a Create list button when the board has no lists', async () => {
+    const user = userEvent.setup();
+    const { store, providers } = setup();
+    store.listsWithTasks.set([]);
+    await render(KanbanBoard, { providers });
+
+    expect(screen.getByText(/no lists yet/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /create list/i }));
+    expect(store.addList).toHaveBeenCalledWith({ title: 'New list' });
+  });
+
+  it('reorders a list to a new index when a list is dropped', async () => {
+    const { store, providers } = setup();
+    const view = await render(KanbanBoard, { providers });
+
+    // Same index -> guard early-return, no store call.
+    view.fixture.componentInstance['onListDrop']({
+      previousIndex: 1,
+      currentIndex: 1,
+      item: { data: 'list-1' },
+    } as never);
+    expect(store.reorderListToIndex).not.toHaveBeenCalled();
+
+    // Different index -> forwards to the store.
+    view.fixture.componentInstance['onListDrop']({
+      previousIndex: 0,
+      currentIndex: 2,
+      item: { data: 'list-1' },
+    } as never);
+    expect(store.reorderListToIndex).toHaveBeenCalledWith('list-1', 2);
+  });
+
+  it('moves a task to a different list index when a task is dropped', async () => {
+    const { store, providers } = setup();
+    const view = await render(KanbanBoard, { providers });
+    const task = fakeTask();
+
+    // Same list, same index -> guard early-return.
+    const sameContainer = { id: 'list-1' } as unknown;
+    view.fixture.componentInstance['onTaskDrop']({
+      previousContainer: sameContainer,
+      container: sameContainer,
+      previousIndex: 0,
+      currentIndex: 0,
+      item: { data: task },
+    } as never);
+    expect(store.moveTaskToIndex).not.toHaveBeenCalled();
+
+    // Same list, different index -> forwards.
+    view.fixture.componentInstance['onTaskDrop']({
+      previousContainer: sameContainer,
+      container: sameContainer,
+      previousIndex: 0,
+      currentIndex: 2,
+      item: { data: task },
+    } as never);
+    expect(store.moveTaskToIndex).toHaveBeenCalledWith('t1', 'list-1', 2);
+
+    // Different list -> forwards regardless of index.
+    store.moveTaskToIndex.mockClear();
+    view.fixture.componentInstance['onTaskDrop']({
+      previousContainer: { id: 'list-1' } as unknown,
+      container: { id: 'list-2' } as unknown,
+      previousIndex: 0,
+      currentIndex: 0,
+      item: { data: task },
+    } as never);
+    expect(store.moveTaskToIndex).toHaveBeenCalledWith('t1', 'list-2', 0);
+  });
+
+  it('renames a list through the header edit flow', async () => {
+    const user = userEvent.setup();
+    const { store, providers } = setup();
+    await render(KanbanBoard, { providers });
+
+    await user.click(screen.getAllByRole('button', { name: /list options/i })[0]);
+    await user.click(await screen.findByRole('menuitem', { name: /edit title/i }));
+
+    const input = await screen.findByLabelText('List title');
+    await user.clear(input);
+    await user.type(input, 'Renamed{Enter}');
+
+    await waitFor(() =>
+      expect(store.updateListTitle).toHaveBeenCalledWith('list-1', { title: 'Renamed' }),
+    );
+  });
+
+  it('deletes a list through the header delete action', async () => {
+    const user = userEvent.setup();
+    const { store, providers } = setup();
+    await render(KanbanBoard, { providers });
+
+    await user.click(screen.getAllByRole('button', { name: /list options/i })[0]);
+    await user.click(await screen.findByRole('menuitem', { name: /delete list/i }));
+
+    await waitFor(() => expect(store.deleteList).toHaveBeenCalledWith('list-1'));
+  });
+
+  it('applies label and assignee filters when the toolbar dispatches changes', async () => {
+    const { store, providers } = setup();
+    store.labels.set([
+      { id: 'l1', name: 'Urgent', color: '#EF4444', order: 'a0', createdAt: ts(), updatedAt: ts() },
+    ] as never);
+    store.collaborators.set([
+      { id: 'u1', email: 'alice@example.com', name: 'Alice', isOwner: true },
+    ] as never);
+    const { fixture } = await render(KanbanBoard, { providers });
+
+    // Emit filter changes from the child components directly rather than
+    // driving the popover/menu UI end-to-end. The template listener under test
+    // is a one-liner (store.labelFilter.set($event)).
+    const debug = fixture.debugElement.nativeElement as HTMLElement;
+    const labelFilter = debug.querySelector('app-label-filter');
+    const assigneeFilter = debug.querySelector('app-assignee-filter');
+    expect(labelFilter).not.toBeNull();
+    expect(assigneeFilter).not.toBeNull();
+
+    // Trigger outputs via DebugElement to hit the template listeners.
+    const labelDebug = fixture.debugElement.query((el) => el.name === 'app-label-filter');
+    const assigneeDebug = fixture.debugElement.query((el) => el.name === 'app-assignee-filter');
+    (labelDebug.componentInstance as { selectedLabelIdsChange: { emit: (v: string[]) => void } })
+      .selectedLabelIdsChange.emit(['l1']);
+    (assigneeDebug.componentInstance as { selectedAssigneeIdChange: { emit: (v: string | null) => void } })
+      .selectedAssigneeIdChange.emit('u1');
+
+    expect(store.labelFilter()).toEqual(['l1']);
+    expect(store.assigneeFilter()).toBe('u1');
+  });
 });

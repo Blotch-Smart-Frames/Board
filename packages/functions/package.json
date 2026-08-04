@@ -1,0 +1,29 @@
+{
+  "name": "@blotch/board-functions",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Firebase Cloud Functions for the board app",
+  "scripts": {
+    "build": "vite build && node scripts/generate-dist-package-json.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "npm run build && firebase deploy --only functions"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "~6.0.2",
+    "vite": "^7.0.0",
+    "vitest": "^4.1.10"
+  }
+}

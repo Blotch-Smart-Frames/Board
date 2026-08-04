@@ -213,4 +213,199 @@ describe('diffTaskChanges', () => {
 
     expect(entries).toEqual([]);
   });
+
+  it('falls back to the label id when the label is not in the workspace lookup', () => {
+    const oldTask = fakeTask({ labelIds: ['unknown-1'] });
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(oldTask, { labelIds: ['unknown-2'] }, context);
+
+    expect(entries).toEqual([
+      {
+        action: 'label_added',
+        userId: 'u1',
+        metadata: { labelName: 'unknown-2', labelColor: undefined },
+      },
+      {
+        action: 'label_removed',
+        userId: 'u1',
+        metadata: { labelName: 'unknown-1', labelColor: undefined },
+      },
+    ]);
+  });
+
+  it('falls back to the user id when the collaborator is not in the workspace lookup', () => {
+    const oldTask = fakeTask({ assignedTo: ['ghost-1'] });
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(oldTask, { assignedTo: ['ghost-2'] }, context);
+
+    expect(entries).toEqual([
+      { action: 'assignee_added', userId: 'u1', metadata: { userName: 'ghost-2' } },
+      { action: 'assignee_removed', userId: 'u1', metadata: { userName: 'ghost-1' } },
+    ]);
+  });
+
+  it('does not produce a completed entry when completedAt was already set', () => {
+    const oldTask = fakeTask({ completedAt: ts(new Date(2026, 0, 1)) });
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(
+      oldTask,
+      { completedAt: new Date(2026, 0, 2) },
+      context,
+    );
+
+    // Same "completed" status — no entry.
+    expect(entries.filter((e) => e.action === 'completed' || e.action === 'reopened')).toEqual([]);
+  });
+
+  it('does not produce a reopened entry when the task was already open', () => {
+    const oldTask = fakeTask();
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(oldTask, { completedAt: null }, context);
+
+    expect(entries.filter((e) => e.action === 'reopened')).toEqual([]);
+  });
+
+  it('produces a field_changed entry when startDate changes and formats both dates', () => {
+    const oldDate = new Date(2026, 0, 1);
+    const newDate = new Date(2026, 1, 15);
+    const oldTask = fakeTask({ startDate: ts(oldDate) });
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(oldTask, { startDate: newDate }, context);
+
+    expect(entries).toEqual([
+      {
+        action: 'field_changed',
+        field: 'startDate',
+        userId: 'u1',
+        metadata: {
+          oldValue: oldDate.toLocaleDateString(),
+          newValue: newDate.toLocaleDateString(),
+        },
+      },
+    ]);
+  });
+
+  it('produces a field_changed entry when dueDate changes from unset to a Date', () => {
+    const newDate = new Date(2026, 5, 10);
+    const oldTask = fakeTask();
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(oldTask, { dueDate: newDate }, context);
+
+    expect(entries).toEqual([
+      {
+        action: 'field_changed',
+        field: 'dueDate',
+        userId: 'u1',
+        metadata: { oldValue: '', newValue: newDate.toLocaleDateString() },
+      },
+    ]);
+  });
+
+  it('produces no entry when a startDate is re-written to the same instant', () => {
+    const date = new Date(2026, 0, 1);
+    const oldTask = fakeTask({ startDate: ts(date) });
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(oldTask, { startDate: new Date(date.getTime()) }, context);
+
+    expect(entries).toEqual([]);
+  });
+
+  it('produces a field_changed entry when clearing a startDate', () => {
+    const oldTask = fakeTask({ startDate: ts(new Date(2026, 0, 1)) });
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(oldTask, { startDate: null }, context);
+
+    expect(entries).toEqual([
+      {
+        action: 'field_changed',
+        field: 'startDate',
+        userId: 'u1',
+        metadata: {
+          oldValue: new Date(2026, 0, 1).toLocaleDateString(),
+          newValue: '',
+        },
+      },
+    ]);
+  });
+
+  it('produces a field_changed entry when the description changes', () => {
+    const oldTask = fakeTask({ description: 'old' });
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(oldTask, { description: 'new' }, context);
+
+    expect(entries).toEqual([
+      {
+        action: 'field_changed',
+        field: 'description',
+        userId: 'u1',
+        metadata: { oldValue: 'old', newValue: 'new' },
+      },
+    ]);
+  });
+
+  it('produces a field_changed entry when the color changes', () => {
+    const oldTask = fakeTask({ color: '#111111' });
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(oldTask, { color: '#222222' }, context);
+
+    expect(entries).toEqual([
+      {
+        action: 'field_changed',
+        field: 'color',
+        userId: 'u1',
+        metadata: { oldValue: '#111111', newValue: '#222222' },
+      },
+    ]);
+  });
+
+  it('treats a null labelIds update the same as an empty array (defensive fallback)', () => {
+    const oldTask = fakeTask({ labelIds: ['l1'] });
+    const context = fakeContext({ labels: [fakeLabel({ id: 'l1', name: 'Urgent' })] });
+
+    const entries = diffTaskChanges(oldTask, { labelIds: null as unknown as string[] }, context);
+
+    expect(entries).toEqual([
+      { action: 'label_removed', userId: 'u1', metadata: { labelName: 'Urgent', labelColor: '#EF4444' } },
+    ]);
+  });
+
+  it('treats a null assignedTo update the same as an empty array (defensive fallback)', () => {
+    const oldTask = fakeTask({ assignedTo: ['u2'] });
+    const context = fakeContext({ collaborators: [fakeCollaborator({ id: 'u2', name: 'Jane' })] });
+
+    const entries = diffTaskChanges(
+      oldTask,
+      { assignedTo: null as unknown as string[] },
+      context,
+    );
+
+    expect(entries).toEqual([
+      { action: 'assignee_removed', userId: 'u1', metadata: { userName: 'Jane' } },
+    ]);
+  });
+
+  it('treats a null attachments update the same as an empty array (defensive fallback)', () => {
+    const oldTask = fakeTask({ attachments: [fakeAttachment({ id: 'a1', fileName: 'x.pdf' })] });
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(
+      oldTask,
+      { attachments: null as unknown as Attachment[] },
+      context,
+    );
+
+    expect(entries).toEqual([
+      { action: 'attachment_removed', userId: 'u1', metadata: { fileName: 'x.pdf' } },
+    ]);
+  });
 });

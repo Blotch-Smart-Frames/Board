@@ -531,4 +531,123 @@ describe('BoardStore', () => {
       expect(order < 'a0').toBe(true); // before list-1's 'a0'
     });
   });
+
+  describe('list mutations', () => {
+    it('addList forwards the input to BoardService with the active board id', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+
+      const list = await store.addList({ title: 'New' });
+
+      expect(boardService.addList).toHaveBeenCalledWith('board-1', { title: 'New' });
+      expect(list.id).toBe('list-new');
+    });
+
+    it('updateListTitle forwards to BoardService with the active board id', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+
+      await store.updateListTitle('list-1', { title: 'Renamed' });
+
+      expect(boardService.updateList).toHaveBeenCalledWith('board-1', 'list-1', { title: 'Renamed' });
+    });
+
+    it('deleteList forwards to BoardService with the active board id', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+
+      await store.deleteList('list-1');
+
+      expect(boardService.deleteList).toHaveBeenCalledWith('board-1', 'list-1');
+    });
+  });
+
+  describe('task mutations edge cases', () => {
+    it('addTask throws when no user is signed in', async () => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: FIRESTORE_DB, useValue: {} },
+          { provide: ActivatedRoute, useValue: { paramMap: paramMap$ } },
+          { provide: AuthStore, useValue: { user: signal(null) } },
+          { provide: BoardService, useValue: boardService },
+          { provide: SyncService, useValue: syncService },
+          { provide: UserService, useValue: { getUsersByIds: vi.fn().mockResolvedValue([]) } },
+          BoardStore,
+        ],
+      });
+
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+
+      await expect(store.addTask('list-1', { title: 'T' })).rejects.toThrow(/not authenticated/i);
+      expect(boardService.addTask).not.toHaveBeenCalled();
+    });
+
+    it('deleteTask forwards to BoardService with the active board id', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+
+      await store.deleteTask('t1');
+
+      expect(boardService.deleteTask).toHaveBeenCalledWith('board-1', 't1');
+    });
+
+    it('moveTask rolls back the optimistic override when the service throws', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      onSnapshotCallbacks.get('boards/board-1/lists')!(
+        collectionSnapshot([{ id: 'list-1', data: { title: 'To Do', order: 'a0' } }]),
+      );
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([{ id: 't1', data: { title: 'X', listId: 'list-1', order: 'a0' } }]),
+      );
+      boardService.moveTask.mockRejectedValueOnce(new Error('offline'));
+
+      await expect(store.moveTask('t1', 'list-2', 'a5')).rejects.toThrow('offline');
+      // The task-overrides entry for t1 has been cleared, so list-1 still owns t1.
+      const list1 = store.listsWithTasks().find((l) => l.id === 'list-1');
+      expect(list1?.tasks.map((t) => t.id) ?? []).toContain('t1');
+    });
+
+    it('reorderList rolls back the optimistic list-order override when the service throws', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      onSnapshotCallbacks.get('boards/board-1/lists')!(
+        collectionSnapshot([
+          { id: 'list-1', data: { title: 'To Do', order: 'a0' } },
+          { id: 'list-2', data: { title: 'Doing', order: 'a1' } },
+        ]),
+      );
+      boardService.reorderLists.mockRejectedValueOnce(new Error('offline'));
+
+      await expect(store['reorderList']('list-1', 'a5')).rejects.toThrow('offline');
+      // After rollback the effective order is unchanged.
+      const order = store.listsWithTasks().find((l) => l.id === 'list-1');
+      expect(order?.order).toBe('a0');
+    });
+
+    it('migrateTaskToBoard throws when no user is signed in', async () => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: FIRESTORE_DB, useValue: {} },
+          { provide: ActivatedRoute, useValue: { paramMap: paramMap$ } },
+          { provide: AuthStore, useValue: { user: signal(null) } },
+          { provide: BoardService, useValue: boardService },
+          { provide: SyncService, useValue: syncService },
+          { provide: UserService, useValue: { getUsersByIds: vi.fn().mockResolvedValue([]) } },
+          BoardStore,
+        ],
+      });
+
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+
+      await expect(store.migrateTaskToBoard('t1', 'board-2', 'list-x', 'Target')).rejects.toThrow(
+        /not authenticated/i,
+      );
+      expect(boardService.migrateTaskToBoard).not.toHaveBeenCalled();
+    });
+  });
 });

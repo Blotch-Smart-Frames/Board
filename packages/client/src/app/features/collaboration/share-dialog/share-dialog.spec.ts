@@ -113,4 +113,103 @@ describe('ShareDialog', () => {
       expect(boardService.removeCollaborator).toHaveBeenCalledWith('board-1', 'u2'),
     );
   });
+
+  it('closes when the "Done" footer button is clicked', async () => {
+    const user = userEvent.setup();
+    await openWith();
+
+    await user.click(await screen.findByRole('button', { name: /done/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /done/i })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('closes when the invite form emits escape', async () => {
+    const user = userEvent.setup();
+    await openWith();
+
+    // The invite form escapes on the Escape key.
+    await user.type(await screen.findByLabelText('Invite by email'), '{Escape}');
+
+    await waitFor(() =>
+      expect(screen.queryByLabelText('Invite by email')).not.toBeInTheDocument(),
+    );
+  });
+
+  it('copies the current URL and surfaces a transient success banner', async () => {
+    vi.useFakeTimers();
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        configurable: true,
+        writable: true,
+      });
+
+      await openWith();
+
+      await user.click(await screen.findByRole('button', { name: /copy board link/i }));
+
+      await vi.waitFor(() => expect(writeText).toHaveBeenCalled());
+      expect(await screen.findByText(/link copied to clipboard/i)).toBeInTheDocument();
+
+      // The success banner auto-dismisses after 3s.
+      vi.advanceTimersByTime(3001);
+      await Promise.resolve();
+      await vi.waitFor(() =>
+        expect(screen.queryByText(/link copied to clipboard/i)).not.toBeInTheDocument(),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('surfaces an error when the clipboard API rejects', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'));
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+      writable: true,
+    });
+
+    await openWith();
+
+    await user.click(await screen.findByRole('button', { name: /copy board link/i }));
+
+    expect(await screen.findByText(/could not copy link/i)).toBeInTheDocument();
+  });
+
+  it('clears any pending success timer when a new success arrives', async () => {
+    vi.useFakeTimers();
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        configurable: true,
+        writable: true,
+      });
+
+      await openWith();
+
+      // First success starts the 3s timer.
+      await user.click(await screen.findByRole('button', { name: /copy board link/i }));
+      await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+
+      vi.advanceTimersByTime(1500);
+      // Second success clears the first timer and starts a fresh one.
+      await user.click(screen.getByRole('button', { name: /copy board link/i }));
+      await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+
+      // 1500ms later — first timer would have expired — success is still visible.
+      vi.advanceTimersByTime(1500);
+      await Promise.resolve();
+      expect(screen.getByText(/link copied to clipboard/i)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
