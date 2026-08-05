@@ -252,4 +252,42 @@ describe('HistorySection', () => {
       vi.useRealTimers();
     }
   });
+
+  it('falls back to blank strings when history entries omit their metadata fields', async () => {
+    const collaborators: Collaborator[] = [
+      { id: 'u1', email: 'alice@example.com', name: 'Alice', isOwner: true },
+    ];
+    const stableTs = ts(new Date(2026, 0, 1));
+
+    // Same actions as the "recognised" test but every entry omits its metadata
+    // so the "?? ''" fallback branches in describe() run.
+    const entries: HistoryEntry[] = [
+      { id: 'h1', action: 'label_added', userId: 'u1', createdAt: stableTs },
+      { id: 'h2', action: 'label_removed', userId: 'u1', createdAt: stableTs },
+      { id: 'h3', action: 'assignee_added', userId: 'u1', createdAt: stableTs },
+      { id: 'h4', action: 'assignee_removed', userId: 'u1', createdAt: stableTs },
+      { id: 'h5', action: 'attachment_added', userId: 'u1', createdAt: stableTs },
+      { id: 'h6', action: 'attachment_removed', userId: 'u1', createdAt: stableTs },
+      { id: 'h7', action: 'moved', userId: 'u1', createdAt: stableTs },
+      { id: 'h8', action: 'board_migrated', userId: 'u1', createdAt: stableTs },
+    ];
+
+    const { detectChanges } = await render(HistorySection, {
+      providers: [{ provide: FIRESTORE_DB, useValue: {} }],
+      inputs: { boardId: 'board-1', taskId: 'task-1', collaborators },
+    });
+
+    feed(entries);
+    detectChanges();
+
+    // Trailing blank space is expected — assert on the prefix content.
+    expect(screen.getByText(/^Alice added label\s*$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Alice removed label\s*$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Alice assigned\s*$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Alice unassigned\s*$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Alice added attachment\s*$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Alice removed attachment\s*$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Alice moved from\s+to\s*$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Alice migrated this task from\s+to\s*$/)).toBeInTheDocument();
+  });
 });

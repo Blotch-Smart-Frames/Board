@@ -61,7 +61,7 @@ function setup() {
     tasks: signal([fakeTask()]),
     sprints: signal([]),
     labelFilter: signal<string[]>([]),
-    assigneeFilter: signal<string | null>(null),
+    assigneeFilter: signal<string[]>([]),
     listsWithTasks: signal([
       { id: 'list-1', title: 'To Do', order: 'a0', createdAt: ts(), tasks: [fakeTask()] },
     ]),
@@ -187,6 +187,25 @@ describe('KanbanBoard', () => {
     expect(store.reorderListToIndex).toHaveBeenCalledWith('list-1', 2);
   });
 
+  it('wires the horizontal cdkDropList output into onListDrop', async () => {
+    const { CdkDropList } = await import('@angular/cdk/drag-drop');
+    const { store, providers } = setup();
+    const view = await render(KanbanBoard, { providers });
+
+    const dropListDebug = view.fixture.debugElement.query(
+      (el) => !!el.injector.get(CdkDropList, null),
+    );
+    const dropList = dropListDebug!.injector.get(CdkDropList);
+    // The output name is `cdkDropListDropped` — CDK exposes it as `dropped`.
+    (dropList.dropped as unknown as { emit: (e: unknown) => void }).emit({
+      previousIndex: 0,
+      currentIndex: 1,
+      item: { data: 'list-1' },
+    });
+
+    expect(store.reorderListToIndex).toHaveBeenCalledWith('list-1', 1);
+  });
+
   it('moves a task to a different list index when a task is dropped', async () => {
     const { store, providers } = setup();
     const view = await render(KanbanBoard, { providers });
@@ -280,12 +299,12 @@ describe('KanbanBoard', () => {
     ).selectedLabelIdsChange.emit(['l1']);
     (
       assigneeDebug.componentInstance as {
-        selectedAssigneeIdChange: { emit: (v: string | null) => void };
+        selectedAssigneeIdsChange: { emit: (v: string[]) => void };
       }
-    ).selectedAssigneeIdChange.emit('u1');
+    ).selectedAssigneeIdsChange.emit(['u1']);
 
     expect(store.labelFilter()).toEqual(['l1']);
-    expect(store.assigneeFilter()).toBe('u1');
+    expect(store.assigneeFilter()).toEqual(['u1']);
   });
 
   it('forwards a task drop from a list-column to onTaskDrop → store.moveTaskToIndex', async () => {

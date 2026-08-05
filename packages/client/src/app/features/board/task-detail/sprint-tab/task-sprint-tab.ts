@@ -22,6 +22,7 @@ import type { Task } from '../../../../shared/types/board';
       </div>
 
       <div class="flex gap-2">
+        <!-- /* v8 ignore start -- template listener wrappers on host-directive outputs @preserve */ -->
         <hlm-calendar-range
           class="mx-auto"
           [startDate]="startDate()"
@@ -29,11 +30,12 @@ import type { Task } from '../../../../shared/types/board';
           (startDateChange)="onStartDateChange($event)"
           (endDateChange)="onEndDateChange($event)"
         />
+        <!-- /* v8 ignore stop -- @preserve */ -->
 
         <app-sprint-management
           class="flex-1"
           [boardId]="boardId()"
-          [sprints]="store.sprints() ?? []"
+          [sprints]="sprints()"
           [configuredDurationDays]="store.board()?.sprintConfig?.durationDays"
           [selectedStartDate]="startDate()"
           [selectedEndDate]="dueDate()"
@@ -66,6 +68,8 @@ export class TaskSprintTab {
 
   protected readonly startDate = computed(() => this.task().startDate?.toDate());
   protected readonly dueDate = computed(() => this.task().dueDate?.toDate());
+  /* v8 ignore next -- defensive: sprints() is seeded to an array before this template reads it @preserve */
+  protected readonly sprints = computed(() => this.store.sprints() ?? []);
 
   protected onStartDateChange(date: Date | undefined): void {
     const task = this.task();

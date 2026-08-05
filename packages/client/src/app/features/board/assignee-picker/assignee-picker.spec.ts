@@ -69,4 +69,24 @@ describe('AssigneePicker', () => {
 
     expect(onChange).toHaveBeenCalledWith(['u2']);
   });
+
+  it('renders nothing when there are no collaborators', async () => {
+    await render(AssigneePicker, { inputs: { collaborators: [] } });
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('sorts within the same owner group alphabetically', async () => {
+    const collaborators = [
+      fakeCollaborator({ id: 'u1', name: 'Charlie', isOwner: false }),
+      fakeCollaborator({ id: 'u2', name: 'Alice', isOwner: false }),
+      fakeCollaborator({ id: 'u3', name: 'Bob', isOwner: false }),
+    ];
+    await render(AssigneePicker, { inputs: { collaborators } });
+
+    const rows = screen.getAllByRole('button');
+    expect(rows[0]).toHaveTextContent('Alice');
+    expect(rows[1]).toHaveTextContent('Bob');
+    expect(rows[2]).toHaveTextContent('Charlie');
+  });
 });

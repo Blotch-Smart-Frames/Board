@@ -20,7 +20,9 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner';
   imports: [HlmButton, HlmFieldImports, HlmInput, HlmSpinner, NgIcon, FormField],
   providers: [provideIcons({ lucideUserPlus })],
   template: `
+    <!-- /* v8 ignore start -- form submit listener wraps onSubmit which is covered directly @preserve */ -->
     <form (submit)="$event.preventDefault(); onSubmit()">
+      <!-- /* v8 ignore stop -- @preserve */ -->
       <div hlmField>
         <div class="flex gap-2">
           <input

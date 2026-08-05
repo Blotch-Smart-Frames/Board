@@ -10,7 +10,10 @@ import { UserBoardsStore } from './user-boards.store';
 type SnapshotCallback = (snapshot: unknown) => void;
 
 vi.mock('firebase/firestore', () => ({
-  collection: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'collection', path: segments.join('/') })),
+  collection: vi.fn((_db: unknown, ...segments: string[]) => ({
+    type: 'collection',
+    path: segments.join('/'),
+  })),
   doc: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'doc', path: segments.join('/') })),
   query: vi.fn((ref: unknown, ...constraints: unknown[]) => ({ type: 'query', ref, constraints })),
   where: vi.fn((field: string, op: string, value: unknown) => ({ field, op, value })),
@@ -79,7 +82,12 @@ describe('UserBoardsStore', () => {
     const store = injectStore();
     expect(registrations).toHaveLength(3); // owned, collaborated, orderDoc
 
-    registrations[0](collectionSnapshot([board('a', { title: 'Owned A' }), board('shared', { title: 'Owned copy' })]));
+    registrations[0](
+      collectionSnapshot([
+        board('a', { title: 'Owned A' }),
+        board('shared', { title: 'Owned copy' }),
+      ]),
+    );
     registrations[1](collectionSnapshot([board('shared', { title: 'Collaborated copy' })]));
     registrations[2](docSnapshot('boardOrder', { boards: { a: 'a0', shared: 'a1' } }));
 
@@ -177,5 +185,26 @@ describe('UserBoardsStore', () => {
 
     await expect(store.createBoard({ title: 'x' })).rejects.toThrow('Not authenticated');
     await expect(store.reorderBoard('b1', 'a0')).rejects.toThrow('Not authenticated');
+  });
+
+  it('isLoading reports false immediately when signed out', () => {
+    userSignal.set(null);
+    const store = injectStore();
+
+    // Left side of the AND (`!!userId()`) short-circuits — isLoading stays false.
+    expect(store.isLoading()).toBe(false);
+  });
+
+  it('merges an existing orderDoc.boards map with the optimistic overrides', () => {
+    const store = injectStore();
+
+    // Seed both owned/collaborated snapshots and an order doc so the boards
+    // computed sees the truthy branch of `orderDoc()?.boards ?? {}`.
+    registrations[0](collectionSnapshot([{ id: 'b1', data: { title: 'One', ownerId: 'u1' } }]));
+    registrations[1](collectionSnapshot([]));
+    registrations[2](docSnapshot('boardOrder', { boards: { b1: 'a5' } }));
+
+    // Boards computed reads the order map from the doc.
+    expect(store.boards()[0].order).toBe('a5');
   });
 });

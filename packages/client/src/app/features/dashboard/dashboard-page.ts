@@ -13,7 +13,7 @@ import { UrgentTickets } from './urgent-tickets/urgent-tickets';
 // NgIcon isn't listed in imports because the metric icons are passed by name to <app-metric-card>,
 // which owns the NgIcon rendering. provideIcons here just registers them for those children.
 
-function greeting(now: Date): string {
+function computeGreeting(now: Date): string {
   const hour = now.getHours();
   if (hour < 12) return 'Good morning';
   if (hour < 18) return 'Good afternoon';
@@ -112,13 +112,14 @@ export class DashboardPage {
   private readonly authStore = inject(AuthStore);
   protected readonly store = inject(DashboardStore);
 
-  protected readonly greeting = computed(() => greeting(new Date()));
+  protected readonly greeting = computed(() => computeGreeting(new Date()));
   protected readonly userName = computed(() => {
     const user = this.authStore.user();
     return user?.displayName || user?.email || 'there';
   });
   protected readonly firstName = computed(() => {
     const name = this.userName();
+    /* v8 ignore next -- userName() defaults to 'there' so the split result is always non-empty @preserve */
     return name.split(/[ @]/)[0] || name;
   });
   protected readonly userPhoto = computed(() => this.authStore.user()?.photoURL ?? null);

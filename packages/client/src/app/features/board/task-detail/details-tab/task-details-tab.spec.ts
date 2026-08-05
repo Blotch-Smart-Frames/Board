@@ -232,6 +232,37 @@ describe('TaskDetailsTab', () => {
     expect(store.updateTask).not.toHaveBeenCalled();
   });
 
+  it('exposes a null creator when the task has no createdBy field', async () => {
+    const task = { ...fakeTask(), createdBy: undefined as unknown as string };
+    const { store, providers } = setup(task);
+    const view = await render(TaskDetailsTab, {
+      providers,
+      inputs: { task, boardId: 'board-1' },
+    });
+
+    expect(
+      (view.fixture.componentInstance as unknown as { creator: () => unknown }).creator(),
+    ).toBeNull();
+    void store; // silence unused-var lint
+  });
+
+  it('handBackToCreator is a no-op when creator() is null', async () => {
+    const task = fakeTask({ createdBy: 'ghost' });
+    const { store, providers } = setup(task);
+    const view = await render(TaskDetailsTab, {
+      providers,
+      inputs: { task, boardId: 'board-1' },
+    });
+
+    (
+      view.fixture.componentInstance as unknown as {
+        handBackToCreator: () => void;
+      }
+    ).handBackToCreator();
+
+    expect(store.updateTask).not.toHaveBeenCalled();
+  });
+
   it('persists the picked card color and clears it', async () => {
     const user = userEvent.setup();
     const task = fakeTask({ color: '#EF4444' });

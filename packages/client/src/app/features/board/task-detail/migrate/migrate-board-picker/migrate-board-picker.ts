@@ -45,5 +45,6 @@ export class MigrateBoardPicker {
   }
 
   protected readonly idToTitle = (id: string): string =>
+    /* v8 ignore next -- idToTitle only runs after a board is selected from the same list @preserve */
     this.boards().find((b) => b.id === id)?.title ?? '';
 }

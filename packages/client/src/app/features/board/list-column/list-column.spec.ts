@@ -137,4 +137,48 @@ describe('ListColumn', () => {
 
     expect(onTaskDropped).toHaveBeenCalledWith(event);
   });
+
+  it('opens a completed task from the disclosure via viewTask', async () => {
+    const user = userEvent.setup();
+    const onView = vi.fn();
+    const list = fakeList([
+      fakeTask({ id: 't-done', title: 'Completed one', completedAt: {} as Timestamp }),
+    ]);
+    await render(ListColumn, {
+      inputs: { list },
+      providers: [storeProvider],
+      on: { viewTask: onView },
+    });
+
+    // Open the completed disclosure so its inner task card is rendered.
+    await user.click(screen.getByText(/completed \(1\)/i));
+    await user.click(screen.getByRole('button', { name: /open task completed one/i }));
+
+    expect(onView).toHaveBeenCalledWith(expect.objectContaining({ id: 't-done' }));
+  });
+
+  it('wires the inner cdkDropList output into taskDropped', async () => {
+    const { CdkDropList } = await import('@angular/cdk/drag-drop');
+    const onTaskDropped = vi.fn();
+    const list = fakeList([]);
+    const view = await render(ListColumn, {
+      inputs: { list },
+      providers: [storeProvider],
+      on: { taskDropped: onTaskDropped },
+    });
+
+    const dropListDebug = view.fixture.debugElement.query(
+      (el) => !!el.injector.get(CdkDropList, null),
+    );
+    const dropList = dropListDebug!.injector.get(CdkDropList);
+    (dropList.dropped as unknown as { emit: (e: unknown) => void }).emit({
+      previousContainer: { id: 'list-1' },
+      container: { id: 'list-1' },
+      previousIndex: 0,
+      currentIndex: 1,
+      item: { data: fakeTask() },
+    });
+
+    expect(onTaskDropped).toHaveBeenCalled();
+  });
 });

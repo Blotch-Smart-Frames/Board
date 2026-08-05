@@ -167,4 +167,24 @@ describe('UrgentTickets', () => {
     expect(screen.getByText('Task 9')).toBeInTheDocument();
     expect(screen.queryByText('Task 10')).not.toBeInTheDocument();
   });
+
+  it('labels tickets past due today as "Overdue today"', async () => {
+    const now = Date.now();
+    const { providers } = setup({
+      all: [fakeTask({ id: 't-just-late', dueDate: ts(new Date(now - 3_600_000)) })],
+    });
+    await render(UrgentTickets, { providers });
+
+    expect(screen.getByText(/overdue today/i)).toBeInTheDocument();
+  });
+
+  it('treats a ticket without a due date as a 0ms diff (overdue today)', async () => {
+    const { providers } = setup({
+      all: [fakeTask({ id: 't-no-due', dueDate: undefined })],
+    });
+    await render(UrgentTickets, { providers });
+
+    // The `?? 0` fallback makes due=0, which is in the far past → many days overdue.
+    expect(screen.getAllByText(/overdue/i).length).toBeGreaterThan(0);
+  });
 });

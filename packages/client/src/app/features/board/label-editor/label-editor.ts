@@ -67,6 +67,7 @@ export class LabelEditor {
         ? {
             name: label.name,
             emoji: label.emoji ?? '',
+            /* v8 ignore next -- defensive: label.color is always set on stored labels @preserve */
             color: label.color ?? EMPTY_LABEL_FORM.color,
           }
         : EMPTY_LABEL_FORM,

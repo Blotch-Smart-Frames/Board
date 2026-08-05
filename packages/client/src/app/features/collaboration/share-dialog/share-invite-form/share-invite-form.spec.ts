@@ -53,4 +53,20 @@ describe('ShareInviteForm', () => {
 
     await waitFor(() => expect(errorCb).toHaveBeenCalledWith('No user found'));
   });
+
+  it('falls back to a generic error message when the handler rejects with a non-Error', async () => {
+    const user = userEvent.setup();
+    const inviteHandler = vi.fn().mockRejectedValue('kaboom');
+    const errorCb = vi.fn();
+
+    await render(ShareInviteForm, {
+      inputs: { inviteHandler },
+      on: { error: errorCb },
+    });
+
+    await user.type(await screen.findByLabelText('Invite by email'), 'ghost@example.com');
+    await user.click(screen.getByRole('button', { name: /invite/i }));
+
+    await waitFor(() => expect(errorCb).toHaveBeenCalledWith('Failed to send invitation'));
+  });
 });

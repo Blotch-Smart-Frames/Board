@@ -332,6 +332,25 @@ describe('diffTaskChanges', () => {
     ]);
   });
 
+  it('produces a field_changed entry when clearing a dueDate', () => {
+    const oldTask = fakeTask({ dueDate: ts(new Date(2026, 0, 1)) });
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(oldTask, { dueDate: null }, context);
+
+    expect(entries).toEqual([
+      {
+        action: 'field_changed',
+        field: 'dueDate',
+        userId: 'u1',
+        metadata: {
+          oldValue: new Date(2026, 0, 1).toLocaleDateString(),
+          newValue: '',
+        },
+      },
+    ]);
+  });
+
   it('produces a field_changed entry when the description changes', () => {
     const oldTask = fakeTask({ description: 'old' });
     const context = fakeContext();
@@ -403,5 +422,78 @@ describe('diffTaskChanges', () => {
     expect(entries).toEqual([
       { action: 'attachment_removed', userId: 'u1', metadata: { fileName: 'x.pdf' } },
     ]);
+  });
+  it('treats an oldTask with no labelIds field as an empty selection', async () => {
+    const oldTask = { ...fakeTask(), labelIds: undefined };
+    const label = fakeLabel({ id: 'l1', name: 'Urgent' });
+    const context = fakeContext({ labels: [label] });
+
+    const entries = diffTaskChanges(oldTask, { labelIds: ['l1'] }, context);
+
+    expect(entries).toEqual([
+      {
+        action: 'label_added',
+        userId: 'u1',
+        metadata: { labelName: 'Urgent', labelColor: '#EF4444' },
+      },
+    ]);
+  });
+
+  it('treats an oldTask with no assignedTo field as an empty assignment', async () => {
+    const oldTask = { ...fakeTask(), assignedTo: undefined };
+    const context = fakeContext({
+      collaborators: [fakeCollaborator({ id: 'u2', name: 'Bob' })],
+    });
+
+    const entries = diffTaskChanges(oldTask, { assignedTo: ['u2'] }, context);
+
+    expect(entries).toEqual([
+      { action: 'assignee_added', userId: 'u1', metadata: { userName: 'Bob' } },
+    ]);
+  });
+
+  it('treats an oldTask with no attachments field as an empty attachment list', async () => {
+    const oldTask = { ...fakeTask(), attachments: undefined };
+    const newAttachment = fakeAttachment({ id: 'a1', fileName: 'new.pdf' });
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(oldTask, { attachments: [newAttachment] }, context);
+
+    expect(entries).toEqual([
+      { action: 'attachment_added', userId: 'u1', metadata: { fileName: 'new.pdf' } },
+    ]);
+  });
+
+  it('produces no add/remove entries when the same attachment list is set twice', async () => {
+    const attachment = fakeAttachment({ id: 'a1' });
+    const oldTask = fakeTask({ attachments: [attachment] });
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(oldTask, { attachments: [attachment] }, context);
+
+    expect(entries).toEqual([]);
+  });
+
+  it('formats a startDate change where the incoming value is a non-Date primitive', async () => {
+    const oldTask = fakeTask({ startDate: ts(new Date(2026, 0, 1)) });
+    const context = fakeContext();
+
+    // Non-Date value exercises the String(val ?? '') fallback path.
+    const entries = diffTaskChanges(oldTask, { startDate: 'invalid' as unknown as Date }, context);
+
+    expect(entries[0]).toMatchObject({
+      action: 'field_changed',
+      field: 'startDate',
+      metadata: { newValue: 'invalid' },
+    });
+  });
+
+  it('produces no entry when a color update sets the same value', async () => {
+    const oldTask = fakeTask({ color: '#123456' });
+    const context = fakeContext();
+
+    const entries = diffTaskChanges(oldTask, { color: '#123456' }, context);
+
+    expect(entries).toEqual([]);
   });
 });

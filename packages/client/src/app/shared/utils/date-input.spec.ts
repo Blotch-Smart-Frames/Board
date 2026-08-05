@@ -22,4 +22,10 @@ describe('parseDateInput', () => {
     const original = new Date(2026, 11, 31);
     expect(parseDateInput(toDateInputValue(original))?.getTime()).toBe(original.getTime());
   });
+
+  it('returns null when any of year/month/day cannot be parsed', () => {
+    expect(parseDateInput('not-a-date')).toBeNull();
+    expect(parseDateInput('2026-03-')).toBeNull();
+    expect(parseDateInput('2026--05')).toBeNull();
+  });
 });

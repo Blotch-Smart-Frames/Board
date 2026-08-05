@@ -55,4 +55,22 @@ describe('VersionCheckService', () => {
 
     expect(service.hasNewVersion()).toBe(false);
   });
+
+  it('stays false when the server returns a non-2xx response', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 503 });
+
+    const service = TestBed.inject(VersionCheckService);
+    await settleFetch();
+
+    expect(service.hasNewVersion()).toBe(false);
+  });
+
+  it('stays false when /version.json is missing a buildHash field', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+
+    const service = TestBed.inject(VersionCheckService);
+    await settleFetch();
+
+    expect(service.hasNewVersion()).toBe(false);
+  });
 });

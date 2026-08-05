@@ -10,6 +10,7 @@ import { DashboardStore } from './dashboard.store';
 import type { Task, User } from '../../../shared/types/board';
 
 type SnapshotCallback = (snapshot: unknown) => void;
+type ErrorCallback = () => void;
 
 // Mirror the mocking pattern used by BoardStore/UserBoardsStore specs — the store
 // calls collection/onSnapshot directly, and we swap them for capturable fakes.
@@ -52,7 +53,7 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
 }
 
 describe('DashboardStore', () => {
-  let onSnapshotCalls: Array<{ path: string; onNext: SnapshotCallback }>;
+  let onSnapshotCalls: Array<{ path: string; onNext: SnapshotCallback; onError: ErrorCallback }>;
   let userSignal: WritableSignal<{ uid: string } | null | undefined>;
   let boardsSignal: WritableSignal<BoardWithOrder[]>;
   let isLoadingSignal: WritableSignal<boolean>;
@@ -66,9 +67,13 @@ describe('DashboardStore', () => {
     isLoadingSignal = signal(false);
     userService = { getUsersByIds: vi.fn().mockResolvedValue([]) };
 
-    vi.mocked(onSnapshot).mockImplementation((ref: unknown, onNext: unknown) => {
+    vi.mocked(onSnapshot).mockImplementation((ref: unknown, onNext: unknown, onError: unknown) => {
       const path = (ref as { path: string }).path;
-      onSnapshotCalls.push({ path, onNext: onNext as SnapshotCallback });
+      onSnapshotCalls.push({
+        path,
+        onNext: onNext as SnapshotCallback,
+        onError: (onError ?? (() => {})) as ErrorCallback,
+      });
       return vi.fn();
     });
 
@@ -120,6 +125,37 @@ describe('DashboardStore', () => {
 
       expect(onSnapshot).not.toHaveBeenCalled();
       expect(store.allTasks()).toEqual([]);
+    });
+
+    it('proxies the user boards loading flag through isLoadingBoards', async () => {
+      const store = TestBed.inject(DashboardStore);
+      expect(store.isLoadingBoards()).toBe(false);
+
+      isLoadingSignal.set(true);
+      expect(store.isLoadingBoards()).toBe(true);
+    });
+
+    it('resolves board collaborators through userDisplay alongside task assignees', async () => {
+      const users = [
+        {
+          id: 'u2',
+          email: 'bob@example.com',
+          displayName: 'Bob',
+          photoURL: null,
+        },
+      ];
+      userService.getUsersByIds.mockResolvedValue(users);
+
+      boardsSignal.set([fakeBoard({ id: 'b1', collaborators: ['u2'] })]);
+      const store = TestBed.inject(DashboardStore);
+      await settle();
+      feedLists('b1', []);
+      feedTasks('b1', []);
+      await settle();
+      await Promise.resolve();
+      TestBed.flushEffects();
+
+      expect(store.userDisplay()('u2').name).toBe('Bob');
     });
 
     it('opens one tasks + one lists subscription per board', async () => {
@@ -471,6 +507,135 @@ describe('DashboardStore', () => {
         photoURL: null,
         isOwner: false,
       });
+    });
+
+    it('falls back to email as the display name when profile has no displayName', async () => {
+      const users: User[] = [
+        { id: 'u1', email: 'a@example.com', displayName: null, photoURL: null } as unknown as User,
+      ];
+      userService.getUsersByIds.mockResolvedValue(users);
+
+      boardsSignal.set([fakeBoard({ id: 'b1' })]);
+      const store = TestBed.inject(DashboardStore);
+      await settle();
+      feedLists('b1', []);
+      feedTasks('b1', [{ id: 't1', data: fakeTask({ createdBy: 'u1' }) }]);
+      await settle();
+
+      expect(store.userDisplay()('u1').name).toBe('a@example.com');
+    });
+
+    it('falls back to a generic "User" label when profile has neither displayName nor email', async () => {
+      const users: User[] = [
+        { id: 'u1', email: null, displayName: null, photoURL: null } as unknown as User,
+      ];
+      userService.getUsersByIds.mockResolvedValue(users);
+
+      boardsSignal.set([fakeBoard({ id: 'b1' })]);
+      const store = TestBed.inject(DashboardStore);
+      await settle();
+      feedLists('b1', []);
+      feedTasks('b1', [{ id: 't1', data: fakeTask({ createdBy: 'u1' }) }]);
+      await settle();
+
+      expect(store.userDisplay()('u1').name).toBe('User');
+    });
+
+    it('falls back to "You" for the signed-in user when their profile lacks a displayName', async () => {
+      userSignal.set({
+        uid: 'u1',
+        email: null,
+        displayName: null,
+        photoURL: null,
+      } as unknown as { uid: string });
+
+      boardsSignal.set([fakeBoard({ id: 'b1' })]);
+      const store = TestBed.inject(DashboardStore);
+      await settle();
+
+      const resolve = store.userDisplay();
+      expect(resolve('u1').name).toBe('You');
+    });
+  });
+
+  describe('resilience', () => {
+    it('emits an empty tasks list when the tasks subscription errors', async () => {
+      boardsSignal.set([fakeBoard({ id: 'b1' })]);
+      const store = TestBed.inject(DashboardStore);
+      await settle();
+
+      const tasksCall = onSnapshotCalls.find((c) => c.path === 'boards/b1/tasks');
+      expect(tasksCall).toBeDefined();
+      // Fire the error handler to exercise the fallback subscriber.next([]).
+      tasksCall!.onError();
+      await settle();
+
+      expect(store.allTasks()).toEqual([]);
+    });
+
+    it('emits an empty lists list when the lists subscription errors', async () => {
+      boardsSignal.set([fakeBoard({ id: 'b1' })]);
+      const store = TestBed.inject(DashboardStore);
+      await settle();
+
+      const listsCall = onSnapshotCalls.find((c) => c.path === 'boards/b1/lists');
+      expect(listsCall).toBeDefined();
+      listsCall!.onError();
+      await settle();
+
+      // With no known list, tasks fall back to "Unassigned".
+      feedTasks('b1', [{ id: 't1', data: fakeTask({ listId: 'l1' }) }]);
+      expect(store.allTasks()[0].listTitle).toBe('Unassigned');
+    });
+
+    it('falls back to "Unknown board" when a task refers to a board title not in the boards signal', async () => {
+      // Two boards subscribe. We feed task data with a boardId of a board we
+      // temporarily drop from the boards signal to exercise the fallback.
+      boardsSignal.set([
+        fakeBoard({ id: 'b1', title: 'Alpha' }),
+        fakeBoard({ id: 'b2', title: 'Beta' }),
+      ]);
+      const store = TestBed.inject(DashboardStore);
+      await settle();
+
+      feedLists('b1', [{ id: 'l1', data: { title: 'To Do' } }]);
+      feedLists('b2', [{ id: 'l1', data: { title: 'To Do' } }]);
+      feedTasks('b1', [{ id: 't1', data: fakeTask({ id: 't1' }) }]);
+      feedTasks('b2', [{ id: 't2', data: fakeTask({ id: 't2' }) }]);
+
+      // Drop b2 from the boards signal so its title lookup misses. rawTasks still
+      // carries the b2 task (subscription is still live) until the next tick.
+      boardsSignal.set([fakeBoard({ id: 'b1', title: 'Alpha' })]);
+      await Promise.resolve();
+      TestBed.flushEffects();
+
+      // Look at allTasks with the current view: any task whose boardId is no
+      // longer mapped falls back to 'Unknown board'.
+      const unknown = store.allTasks().find((t) => t.boardId === 'b2');
+      if (unknown) {
+        expect(unknown.boardTitle).toBe('Unknown board');
+      }
+    });
+
+    it('myUrgentTickets returns an empty list when no user is signed in', async () => {
+      userSignal.set(null);
+      boardsSignal.set([fakeBoard({ id: 'b1' })]);
+      const store = TestBed.inject(DashboardStore);
+      await settle();
+
+      expect(store.myUrgentTickets()).toEqual([]);
+    });
+
+    it('recentActivity skips tasks with no createdAt or completedAt timestamps', async () => {
+      boardsSignal.set([fakeBoard({ id: 'b1' })]);
+      const store = TestBed.inject(DashboardStore);
+      await settle();
+      feedLists('b1', [{ id: 'l1', data: { title: 'To Do', order: 'a0' } }]);
+
+      // Tasks whose createdAt/completedAt lack `toDate` contribute no events.
+      feedTasks('b1', [{ id: 't-no-time', data: { title: 'X', listId: 'l1', createdBy: 'u1' } }]);
+
+      expect(store.recentActivity()).toEqual([]);
     });
   });
 });

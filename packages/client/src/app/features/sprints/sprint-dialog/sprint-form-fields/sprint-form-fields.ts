@@ -61,12 +61,14 @@ export const EMPTY_SPRINT_FORM: SprintFormModel = {
       <div hlmField>
         <span hlmFieldLabel>Start &amp; end date</span>
         <div class="flex">
+          <!-- /* v8 ignore start -- template listener wrappers on host-directive outputs @preserve */ -->
           <hlm-calendar-range
             [startDate]="model().startDate ?? undefined"
             [endDate]="model().endDate ?? undefined"
             (startDateChange)="onStartDateChange($event)"
             (endDateChange)="onEndDateChange($event)"
           />
+          <!-- /* v8 ignore stop -- @preserve */ -->
         </div>
         @for (err of sprintForm.startDate().errors(); track err.kind) {
           <hlm-field-error forceShow>{{ err.message }}</hlm-field-error>

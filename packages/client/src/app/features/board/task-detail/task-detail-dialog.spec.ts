@@ -473,4 +473,43 @@ describe('TaskDetailDialog', () => {
     );
     consoleError.mockRestore();
   });
+
+  it('renders nothing but the shell when no task is currently open', async () => {
+    // The dialog is rendered but open() is never called — task() stays undefined.
+    const task = fakeTask();
+    const { store, providers } = setup(task);
+    // Make store.tasks empty so task() is undefined even after open.
+    store.tasks.set([]);
+    const view = await render(TaskDetailDialog, { providers });
+    view.fixture.componentInstance.open(task);
+    view.fixture.detectChanges();
+    await view.fixture.whenStable();
+
+    // The `@if (task(); as task)` gate hides the destructive "Delete" button
+    // (label "Delete") — the icon-only close button in the dialog corner is
+    // named "Close" and still renders.
+    expect(screen.queryByRole('button', { name: /^delete$/i })).not.toBeInTheDocument();
+  });
+
+  it('is a no-op when the title change handler runs without a matching task', async () => {
+    const task = fakeTask();
+    const { store, providers } = setup(task);
+    store.tasks.set([]);
+    const view = await render(TaskDetailDialog, { providers });
+
+    view.fixture.componentInstance['onTitleChange']('should not be saved');
+
+    expect(store.updateTask).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op when the delete flow runs without a matching task', async () => {
+    const task = fakeTask();
+    const { store, providers } = setup(task);
+    store.tasks.set([]);
+    const view = await render(TaskDetailDialog, { providers });
+
+    await view.fixture.componentInstance['deleteTask']();
+
+    expect(store.deleteTask).not.toHaveBeenCalled();
+  });
 });

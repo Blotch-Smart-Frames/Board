@@ -69,4 +69,22 @@ describe('ShareCollaboratorList', () => {
 
     await waitFor(() => expect(errorCb).toHaveBeenCalledWith('Permission denied'));
   });
+
+  it('falls back to a generic error message when the remove handler rejects with a non-Error', async () => {
+    const user = userEvent.setup();
+    const removeHandler = vi.fn().mockRejectedValue('kaboom');
+    const errorCb = vi.fn();
+
+    await render(ShareCollaboratorList, {
+      inputs: {
+        collaborators: [fakeCollaborator({ id: 'u2', name: 'Guest', isOwner: false })],
+        removeHandler,
+      },
+      on: { error: errorCb },
+    });
+
+    await user.click(await screen.findByRole('button', { name: /remove guest/i }));
+
+    await waitFor(() => expect(errorCb).toHaveBeenCalledWith('Failed to remove collaborator'));
+  });
 });

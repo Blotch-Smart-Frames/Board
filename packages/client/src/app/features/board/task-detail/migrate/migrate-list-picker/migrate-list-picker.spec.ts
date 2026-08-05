@@ -131,4 +131,17 @@ describe('MigrateListPicker', () => {
 
     expect(screen.getByRole('combobox', { name: 'Target list' })).toHaveTextContent('Doing');
   });
+
+  it('emits null when the underlying select bubbles a non-string value', async () => {
+    const onValueChange = vi.fn();
+    const view = await render(MigrateListPicker, {
+      inputs: { boardId: 'board-2' },
+      on: { valueChange: onValueChange },
+      providers: [{ provide: FIRESTORE_DB, useValue: {} }],
+    });
+
+    view.fixture.componentInstance['onValueChange'](undefined);
+
+    expect(onValueChange).toHaveBeenCalledWith(null);
+  });
 });

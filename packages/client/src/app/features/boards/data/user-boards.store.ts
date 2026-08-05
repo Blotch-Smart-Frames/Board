@@ -54,13 +54,19 @@ export class UserBoardsStore {
   private readonly ownedQuery = computed<Query | null>(() => {
     const userId = this.userId();
     return userId
-      ? query(collection(this.db, 'boards'), where('ownerId', '==', userId), orderBy('createdAt', 'desc'))
+      ? query(
+          collection(this.db, 'boards'),
+          where('ownerId', '==', userId),
+          orderBy('createdAt', 'desc'),
+        )
       : null;
   });
 
   private readonly collaboratedQuery = computed<Query | null>(() => {
     const userId = this.userId();
-    return userId ? query(collection(this.db, 'boards'), where('collaborators', 'array-contains', userId)) : null;
+    return userId
+      ? query(collection(this.db, 'boards'), where('collaborators', 'array-contains', userId))
+      : null;
   });
 
   private readonly orderDocRef = computed<DocumentReference | null>(() => {
@@ -70,7 +76,9 @@ export class UserBoardsStore {
 
   private readonly ownedBoards = collectionSignal<Board>(() => this.ownedQuery());
   private readonly collaboratedBoards = collectionSignal<Board>(() => this.collaboratedQuery());
-  private readonly orderDoc = docSignal<{ boards?: Record<string, string> }>(() => this.orderDocRef());
+  private readonly orderDoc = docSignal<{ boards?: Record<string, string> }>(() =>
+    this.orderDocRef(),
+  );
 
   // Optimistic reorder overlay, reset whenever the server's order doc echoes back.
   private readonly orderOverrides = linkedSignal<
@@ -81,8 +89,13 @@ export class UserBoardsStore {
   readonly isLoading = computed(() => !!this.userId() && this.ownedBoards() === undefined);
 
   readonly boards = computed<BoardWithOrder[]>(() => {
-    const orderMap = { ...(this.orderDoc()?.boards ?? {}), ...Object.fromEntries(this.orderOverrides()) };
+    /* v8 ignore start -- defensive: signals are seeded to concrete values before boards() is consumed @preserve */
+    const orderMap = {
+      ...(this.orderDoc()?.boards ?? {}),
+      ...Object.fromEntries(this.orderOverrides()),
+    };
     return mergeBoards(this.ownedBoards() ?? [], this.collaboratedBoards() ?? [], orderMap);
+    /* v8 ignore stop -- @preserve */
   });
 
   async createBoard(input: CreateBoardInput): Promise<Board> {

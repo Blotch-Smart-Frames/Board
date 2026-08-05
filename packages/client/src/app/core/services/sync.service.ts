@@ -16,6 +16,7 @@ export class SyncService {
   async syncTaskToCalendar(boardId: string, task: Task): Promise<string | null> {
     if (!task.calendarSyncEnabled || !task.dueDate) return null;
 
+    /* v8 ignore next -- Task.dueDate is typed as Timestamp so the plain-Date branch only fires if a caller violates the type @preserve */
     const dueDate = task.dueDate instanceof Timestamp ? task.dueDate.toDate() : task.dueDate;
 
     try {

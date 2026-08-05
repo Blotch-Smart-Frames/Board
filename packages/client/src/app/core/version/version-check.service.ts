@@ -29,6 +29,7 @@ export class VersionCheckService {
   private readonly remoteHash = toSignal(
     interval(POLL_INTERVAL_MS).pipe(
       startWith(0),
+      /* v8 ignore next -- fetchVersion errors are swallowed to null; only fires on network failure @preserve */
       switchMap(() => from(fetchVersion()).pipe(catchError(() => of(null)))),
       takeUntilDestroyed(this.destroyRef),
     ),

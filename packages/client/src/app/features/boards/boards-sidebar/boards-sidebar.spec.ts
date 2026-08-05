@@ -277,4 +277,70 @@ describe('BoardsSidebar', () => {
     expect(screen.getByRole('button', { name: /kanban view/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /timeline view/i })).toBeInTheDocument();
   });
+
+  it('wires the nav cdkDropList output into onDrop', async () => {
+    const { CdkDropList } = await import('@angular/cdk/drag-drop');
+    const store = {
+      boards: signal([fakeBoard('1', 'Alpha'), fakeBoard('2', 'Beta')]),
+      isLoading: signal(false),
+      createBoard: vi.fn(),
+      renameBoard: vi.fn(),
+      deleteBoard: vi.fn(),
+      reorderBoardToIndex: vi.fn().mockResolvedValue(undefined),
+    };
+    const view = await render(BoardsSidebar, {
+      providers: [provideRouter([]), { provide: UserBoardsStore, useValue: store }],
+    });
+
+    const dropListDebug = view.fixture.debugElement.query(
+      (el) => !!el.injector.get(CdkDropList, null),
+    );
+    const dropList = dropListDebug!.injector.get(CdkDropList);
+    (dropList.dropped as unknown as { emit: (e: unknown) => void }).emit({
+      previousIndex: 0,
+      currentIndex: 1,
+      item: { data: '1' },
+    });
+
+    expect(store.reorderBoardToIndex).toHaveBeenCalledWith('1', 1);
+  });
+
+  it('renders the view-mode toggle even in the collapsed layout', async () => {
+    const user = userEvent.setup();
+    const { providers } = setup([]);
+    await render(BoardsSidebar, {
+      providers,
+      inputs: { viewMode: 'kanban' },
+    });
+
+    // Collapse the sidebar so the toggle group renders in vertical/icon-only layout.
+    await user.click(screen.getByRole('button', { name: 'menu' }));
+
+    expect(screen.getByRole('button', { name: /kanban view/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /timeline view/i })).toBeInTheDocument();
+  });
+
+  it('is a no-op when the rename handler runs without a target set', async () => {
+    const store = {
+      boards: signal<BoardWithOrder[]>([]),
+      isLoading: signal(false),
+      createBoard: vi.fn(),
+      renameBoard: vi.fn().mockResolvedValue(undefined),
+      deleteBoard: vi.fn(),
+      reorderBoardToIndex: vi.fn(),
+    };
+    const { fixture } = await render(BoardsSidebar, {
+      providers: [provideRouter([]), { provide: UserBoardsStore, useValue: store }],
+    });
+
+    // Invoke the renameHandler input value directly without going through openRename.
+    const rename = (
+      fixture.componentInstance as unknown as {
+        renameHandler: (title: string) => Promise<void>;
+      }
+    ).renameHandler;
+    await rename('Ignored');
+
+    expect(store.renameBoard).not.toHaveBeenCalled();
+  });
 });

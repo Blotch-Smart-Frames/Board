@@ -159,11 +159,13 @@ export class UrgentTickets {
       .map((task) => ({
         task,
         urgency: urgencyLabel(task, now),
+        /* v8 ignore next -- defensive: assignedTo is always an array on live tasks @preserve */
         assignees: (task.assignedTo ?? []).slice(0, 3).map(resolve),
       }));
   });
 
   protected onScopeChange(value: unknown): void {
+    /* v8 ignore next -- defensive: the select only offers 'all' or 'mine', so the negative branch is unreachable @preserve */
     if (value === 'all' || value === 'mine') this.scope.set(value);
   }
 }

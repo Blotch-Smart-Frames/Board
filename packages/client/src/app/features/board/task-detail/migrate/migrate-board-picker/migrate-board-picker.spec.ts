@@ -77,4 +77,16 @@ describe('MigrateBoardPicker', () => {
 
     expect(onValueChange).toHaveBeenCalledWith('b2');
   });
+
+  it('emits null when the underlying select bubbles a non-string value', async () => {
+    const onValueChange = vi.fn();
+    const view = await render(MigrateBoardPicker, {
+      inputs: { boards: [fakeBoard('b1', 'Alpha')] },
+      on: { valueChange: onValueChange },
+    });
+
+    view.fixture.componentInstance['onValueChange'](undefined);
+
+    expect(onValueChange).toHaveBeenCalledWith(null);
+  });
 });

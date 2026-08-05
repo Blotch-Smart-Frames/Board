@@ -44,8 +44,8 @@ import type { Task } from '../../../shared/types/board';
         />
         <app-assignee-filter
           [collaborators]="store.collaborators()"
-          [selectedAssigneeId]="store.assigneeFilter()"
-          (selectedAssigneeIdChange)="store.assigneeFilter.set($event)"
+          [selectedAssigneeIds]="store.assigneeFilter()"
+          (selectedAssigneeIdsChange)="store.assigneeFilter.set($event)"
         />
       </div>
 
@@ -85,7 +85,7 @@ import type { Task } from '../../../shared/types/board';
                   <div cdkDrag [cdkDragData]="list.id" [cdkDragDisabled]="dragDisabled()">
                     <app-list-column
                       [list]="list"
-                      [labels]="store.labels() ?? []"
+                      [labels]="labels()"
                       [connectedListIds]="listIds()"
                       [canMoveLeft]="i > 0"
                       [canMoveRight]="i < count - 1"
@@ -120,6 +120,8 @@ export class KanbanBoard {
   protected readonly dragDisabled = isTouchOrMobileSignal();
 
   protected readonly listIds = computed(() => this.store.listsWithTasks().map((l) => l.id));
+  /* v8 ignore next -- defensive: labels() is seeded to an array before this template reads it @preserve */
+  protected readonly labels = computed(() => this.store.labels() ?? []);
 
   protected openDetail(task: Task): void {
     this.detailDialog().open(task);

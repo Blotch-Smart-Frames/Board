@@ -1,5 +1,11 @@
 import { Service, inject } from '@angular/core';
-import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import {
+  ref,
+  uploadBytes,
+  uploadBytesResumable,
+  getDownloadURL,
+  deleteObject,
+} from 'firebase/storage';
 import { FIREBASE_STORAGE } from '../firebase/firebase.config';
 import {
   ALLOWED_IMAGE_TYPES,
@@ -43,7 +49,9 @@ export class StorageService {
     }
 
     const attachmentId = crypto.randomUUID();
-    const extension = file.name.split('.').pop() ?? '';
+    // String.prototype.split always returns at least one element, so `.pop()`
+    // here is only typed as `string | undefined` for TS — never at runtime.
+    const extension = file.name.split('.').pop() as string;
     const storagePath = `boards/${boardId}/tasks/${taskId}/attachments/${attachmentId}.${extension}`;
     const storageRef = ref(this.storage, storagePath);
     const uploadTask = uploadBytesResumable(storageRef, file);

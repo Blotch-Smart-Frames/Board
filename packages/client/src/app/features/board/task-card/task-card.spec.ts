@@ -151,4 +151,13 @@ describe('TaskCard', () => {
     expect(screen.getByText('BO')).toBeInTheDocument();
     expect(screen.queryByText('AL')).not.toBeInTheDocument();
   });
+
+  it('tints the card background with the task color when one is set', async () => {
+    const { providers, inputs } = setup(fakeTask({ color: '#3B82F6' }));
+    await render(TaskCard, { providers, inputs });
+
+    const card = screen.getByRole('button', { name: /open task write tests/i });
+    // Color tint is applied at 15% alpha as `#RRGGBB + '15'`.
+    expect(card.style.backgroundColor).not.toBe('');
+  });
 });

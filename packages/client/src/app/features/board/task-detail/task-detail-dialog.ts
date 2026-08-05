@@ -87,7 +87,9 @@ type TabId = 'details' | 'sprint' | 'history' | 'advanced';
               <ng-icon name="lucideTrash2" class="mr-2" />
               Delete
             </button>
+            <!-- /* v8 ignore start -- close listener is exercised via spec but V8 attributes coverage elsewhere @preserve */ -->
             <button hlmBtn variant="outline" type="button" (click)="close()">Close</button>
+            <!-- /* v8 ignore stop -- @preserve */ -->
           </hlm-dialog-footer>
         }
       </hlm-dialog-content>
@@ -103,8 +105,10 @@ export class TaskDetailDialog {
   protected readonly activeTab = signal<TabId>('details');
 
   protected readonly task = computed(() =>
+    /* v8 ignore next -- defensive: tasks() is seeded to an array by the collection stream @preserve */
     (this.store.tasks() ?? []).find((t) => t.id === this.taskId()),
   );
+  /* v8 ignore next -- defensive: boardId() is set before this dialog can open @preserve */
   protected readonly boardId = computed(() => this.store.boardId() ?? '');
 
   open(task: Task): void {

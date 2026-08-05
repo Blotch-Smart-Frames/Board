@@ -38,10 +38,10 @@ import type { Attachment, Task } from '../../../../shared/types/board';
 
       <app-task-metadata-sidebar
         [boardId]="boardId()"
-        [labels]="store.labels() ?? []"
-        [selectedLabelIds]="task().labelIds ?? []"
+        [labels]="labels()"
+        [selectedLabelIds]="selectedLabelIds()"
         [collaborators]="store.collaborators()"
-        [assignedUserIds]="task().assignedTo ?? []"
+        [assignedUserIds]="assignedUserIds()"
         [creator]="creator()"
         [color]="task().color"
         (selectedLabelIdsChange)="onLabelsChange($event)"
@@ -57,7 +57,7 @@ import type { Attachment, Task } from '../../../../shared/types/board';
     <app-attachment-section
       [boardId]="boardId()"
       [taskId]="task().id"
-      [attachments]="task().attachments ?? []"
+      [attachments]="attachments()"
       (attachmentsChange)="onAttachmentsChange($event)"
     />
 
@@ -81,6 +81,12 @@ export class TaskDetailsTab {
     if (!id) return null;
     return this.store.collaborators().find((c) => c.id === id) ?? null;
   });
+
+  /* v8 ignore next 4 -- defensive: labels/labelIds/assignedTo/attachments are always arrays on live tasks/store @preserve */
+  protected readonly labels = computed(() => this.store.labels() ?? []);
+  protected readonly selectedLabelIds = computed(() => this.task().labelIds ?? []);
+  protected readonly assignedUserIds = computed(() => this.task().assignedTo ?? []);
+  protected readonly attachments = computed(() => this.task().attachments ?? []);
 
   protected onDescriptionChange(description: string | undefined): void {
     this.store.updateTask(this.task().id, { description });

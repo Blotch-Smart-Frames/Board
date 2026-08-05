@@ -51,4 +51,55 @@ describe('AddTaskForm', () => {
     expect(screen.queryByLabelText('Task title')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /add a task/i })).toBeInTheDocument();
   });
+
+  it('cancels the draft when Escape is pressed inside the textarea', async () => {
+    const user = userEvent.setup();
+
+    await render(AddTaskForm);
+
+    await user.click(screen.getByRole('button', { name: /add a task/i }));
+    await user.type(screen.getByLabelText('Task title'), 'Draft{Escape}');
+
+    expect(screen.queryByLabelText('Task title')).not.toBeInTheDocument();
+  });
+
+  it('emits when the Add button is clicked', async () => {
+    const user = userEvent.setup();
+    const addTask = vi.fn();
+
+    await render(AddTaskForm, { on: { addTask } });
+
+    await user.click(screen.getByRole('button', { name: /add a task/i }));
+    await user.type(screen.getByLabelText('Task title'), 'From click');
+    await user.click(screen.getByRole('button', { name: /^add$/i }));
+
+    expect(addTask).toHaveBeenCalledWith('From click');
+  });
+
+  it('prevents the mousedown default on Add/Cancel so the textarea keeps focus', async () => {
+    const user = userEvent.setup();
+    await render(AddTaskForm);
+
+    await user.click(screen.getByRole('button', { name: /add a task/i }));
+    await user.type(screen.getByLabelText('Task title'), 'x');
+
+    const addButton = screen.getByRole('button', { name: /^add$/i });
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
+
+    for (const button of [addButton, cancelButton]) {
+      const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+      button.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+    }
+  });
+
+  it('focuses the textarea on open (effect runs when adding() flips to true)', async () => {
+    const user = userEvent.setup();
+    await render(AddTaskForm);
+
+    await user.click(screen.getByRole('button', { name: /add a task/i }));
+
+    // The textarea is focused via the effect once it becomes the active element.
+    expect(screen.getByLabelText('Task title')).toHaveFocus();
+  });
 });

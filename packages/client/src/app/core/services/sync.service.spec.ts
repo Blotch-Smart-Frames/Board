@@ -260,6 +260,26 @@ describe('SyncService', () => {
       );
       consoleError.mockRestore();
     });
+
+    it('clears the due date when the calendar event has neither dateTime nor date', async () => {
+      vi.mocked(getDoc).mockResolvedValue({ data: () => ({}) } as never);
+      calendarService.syncEvents.mockResolvedValue({
+        items: [{ id: 'event-a', summary: 'A', description: 'x', start: {} }],
+      });
+
+      const result = await service.syncCalendarToTasks(
+        'board-1',
+        [fakeTask({ id: 'task-a', calendarEventId: 'event-a' })],
+        'u1',
+      );
+
+      expect(result.updated).toEqual(['task-a']);
+      expect(boardService.updateTask).toHaveBeenCalledWith(
+        'board-1',
+        'task-a',
+        expect.objectContaining({ dueDate: undefined }),
+      );
+    });
   });
 
   describe('enableCalendarSync / disableCalendarSync', () => {

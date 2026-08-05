@@ -48,4 +48,26 @@ describe('TaskListSelect', () => {
       expect(await screen.findByRole('option', { name: list.title })).toBeInTheDocument();
     }
   });
+
+  it('ignores a non-string value change and does not emit', async () => {
+    const onListMove = vi.fn();
+    const { fixture } = await render(TaskListSelect, {
+      inputs: { value: 'list-1', lists },
+      on: { listMove: onListMove },
+    });
+
+    fixture.componentInstance['onValueChange'](null);
+    fixture.componentInstance['onValueChange'](undefined);
+    fixture.componentInstance['onValueChange']('');
+
+    expect(onListMove).not.toHaveBeenCalled();
+  });
+
+  it('renders the trigger as blank when the current value has no matching list', async () => {
+    await render(TaskListSelect, { inputs: { value: 'ghost-list', lists } });
+
+    const trigger = screen.getByRole('combobox', { name: 'List' });
+    // idToTitle returns '' for the missing id; the value template renders an empty string.
+    expect(trigger.textContent?.trim()).toBe('');
+  });
 });

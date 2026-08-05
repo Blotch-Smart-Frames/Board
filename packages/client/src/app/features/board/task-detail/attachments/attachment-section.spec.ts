@@ -206,4 +206,47 @@ describe('AttachmentSection', () => {
 
     expect(deleteTaskAttachment).not.toHaveBeenCalled();
   });
+
+  it('tracks per-upload progress independently when multiple uploads are in flight', async () => {
+    const user = userEvent.setup();
+    const progressCallbacks: Array<(p: number) => void> = [];
+    const uploadResolvers: Array<(a: Attachment) => void> = [];
+
+    const uploadTaskAttachment = vi.fn(
+      (_b: string, _t: string, _f: File, onProgress: (p: number) => void) => {
+        progressCallbacks.push(onProgress);
+        return new Promise<Attachment>((resolve) => uploadResolvers.push(resolve));
+      },
+    );
+    const { providers } = setup({ uploadTaskAttachment });
+
+    const view = await render(AttachmentSection, {
+      providers,
+      inputs: { boardId: 'board-1', taskId: 'task-1' },
+    });
+
+    const fileInput = view.container.querySelector('input[type=file]') as HTMLInputElement;
+    // Upload two files at once. multi=true is already on the input.
+    const files = [
+      new File(['a'], 'first.png', { type: 'image/png' }),
+      new File(['b'], 'second.png', { type: 'image/png' }),
+    ];
+    await user.upload(fileInput, files);
+
+    expect(await screen.findByText('first.png')).toBeInTheDocument();
+    expect(screen.getByText('second.png')).toBeInTheDocument();
+
+    // Progress only the first upload; the map's non-match branch fires for the second.
+    progressCallbacks[0](50);
+    view.fixture.detectChanges();
+
+    expect(screen.getByText(/uploading · 50%/i)).toBeInTheDocument();
+    expect(screen.getByText(/uploading · 0%/i)).toBeInTheDocument();
+
+    // Cleanup — resolve both so the in-flight promises don't leak.
+    uploadResolvers.forEach((resolve, i) =>
+      resolve(fakeAttachment({ id: `a${i}`, fileName: files[i].name })),
+    );
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  });
 });

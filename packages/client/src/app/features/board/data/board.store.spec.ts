@@ -211,12 +211,12 @@ describe('BoardStore', () => {
       expect(store.listsWithTasks()[0].tasks.map((t) => t.id)).toEqual(['t1', 't2', 't3']);
     });
 
-    it('assigneeFilter narrows tasks to those assigned to the selected user', () => {
+    it('assigneeFilter narrows tasks to those assigned to any selected user', () => {
       const store = TestBed.inject(BoardStore);
       TestBed.flushEffects();
       seedForFilters();
 
-      store.assigneeFilter.set('u1');
+      store.assigneeFilter.set(['u1']);
 
       expect(store.listsWithTasks()[0].tasks.map((t) => t.id)).toEqual(['t1']);
     });
@@ -236,7 +236,7 @@ describe('BoardStore', () => {
       TestBed.flushEffects();
       seedForFilters();
 
-      store.assigneeFilter.set('u2');
+      store.assigneeFilter.set(['u2']);
       store.labelFilter.set(['l1']);
 
       expect(store.listsWithTasks()[0].tasks).toEqual([]);
@@ -650,6 +650,229 @@ describe('BoardStore', () => {
         /not authenticated/i,
       );
       expect(boardService.migrateTaskToBoard).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('calendar sync failures', () => {
+    it('logs but does not throw when calendar sync fails on addTask', async () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      syncService.syncTaskToCalendar.mockRejectedValueOnce(new Error('quota'));
+      boardService.addTask.mockResolvedValue({
+        id: 't1',
+        listId: 'list-1',
+        calendarSyncEnabled: true,
+        dueDate: new Date(),
+      });
+
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+
+      await store.addTask('list-1', { title: 'x', calendarSyncEnabled: true });
+      // Let the fire-and-forget sync land.
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(consoleError).toHaveBeenCalledWith(
+        'Calendar sync failed for new task:',
+        expect.any(Error),
+      );
+      consoleError.mockRestore();
+    });
+
+    it('logs but does not throw when calendar sync fails on updateTask', async () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      syncService.syncTaskToCalendar.mockRejectedValueOnce(new Error('quota'));
+
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([
+          {
+            id: 't1',
+            data: {
+              title: 'X',
+              listId: 'list-1',
+              calendarSyncEnabled: true,
+              dueDate: { toDate: () => new Date() },
+            },
+          },
+        ]),
+      );
+
+      await store.updateTask('t1', { title: 'Renamed' });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(consoleError).toHaveBeenCalledWith(
+        'Calendar sync failed for task update:',
+        expect.any(Error),
+      );
+      consoleError.mockRestore();
+    });
+
+    it('setTaskCompleted does not log history when nothing changed', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([
+          {
+            id: 't1',
+            data: { title: 'X', listId: 'list-1', completedAt: { toDate: () => new Date() } },
+          },
+        ]),
+      );
+
+      // Task is already completed — flipping to completed again is a no-op.
+      await store.setTaskCompleted('t1', true);
+
+      expect(boardService.addTaskHistory).not.toHaveBeenCalled();
+    });
+
+    it('setTaskCompleted writes a "reopened" entry when toggling a completed task back open', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([
+          {
+            id: 't1',
+            data: { title: 'X', listId: 'list-1', completedAt: { toDate: () => new Date() } },
+          },
+        ]),
+      );
+
+      await store.setTaskCompleted('t1', false);
+
+      expect(boardService.addTaskHistory).toHaveBeenCalledWith('board-1', 't1', [
+        { action: 'reopened', userId: 'u1' },
+      ]);
+      // completedAt: null is written when uncompleting.
+      expect(boardService.updateTask).toHaveBeenCalledWith(
+        'board-1',
+        't1',
+        expect.objectContaining({ completedAt: null }),
+      );
+    });
+
+    it('setTaskCompleted skips history when no user is signed in', async () => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: FIRESTORE_DB, useValue: {} },
+          { provide: ActivatedRoute, useValue: { paramMap: paramMap$ } },
+          { provide: AuthStore, useValue: { user: signal(null) } },
+          { provide: BoardService, useValue: boardService },
+          { provide: SyncService, useValue: syncService },
+          { provide: UserService, useValue: { getUsersByIds: vi.fn().mockResolvedValue([]) } },
+          BoardStore,
+        ],
+      });
+
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([{ id: 't1', data: { title: 'X', listId: 'list-1' } }]),
+      );
+
+      await store.setTaskCompleted('t1', true);
+
+      // updateTask still fires; history does not.
+      expect(boardService.updateTask).toHaveBeenCalled();
+      expect(boardService.addTaskHistory).not.toHaveBeenCalled();
+    });
+
+    it('moveTask does not log a history entry when the task is unknown', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      // No tasks seeded, so t1 is not found.
+      await store.moveTask('t1', 'list-2', 'a1');
+
+      expect(boardService.moveTask).toHaveBeenCalled();
+      expect(boardService.addTaskHistory).not.toHaveBeenCalled();
+    });
+
+    it('updateTask handles tasks/labels/lists signals that are still undefined', async () => {
+      // The signals default to undefined until the first snapshot fires.
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      // Directly call updateTask before any snapshot has fed data; should not throw.
+      await expect(store.updateTask('t1', { title: 'no-op' })).resolves.toBeUndefined();
+
+      expect(boardService.updateTask).toHaveBeenCalledWith('board-1', 't1', { title: 'no-op' });
+      // No matching existing task → no history call.
+      expect(boardService.addTaskHistory).not.toHaveBeenCalled();
+    });
+
+    it('moveTask records blank names when the source/target lists are missing from the store', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      // Only seed the tasks — no lists in the store.
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([{ id: 't1', data: { title: 'X', listId: 'list-1', order: 'a0' } }]),
+      );
+
+      await store.moveTask('t1', 'list-2', 'a1');
+
+      expect(boardService.addTaskHistory).toHaveBeenCalledWith('board-1', 't1', [
+        {
+          action: 'moved',
+          userId: 'u1',
+          metadata: { fromListName: '', toListName: '' },
+        },
+      ]);
+    });
+  });
+
+  describe('boardId guard', () => {
+    it('every mutation rejects with "No board selected" when the route has no boardId', async () => {
+      paramMap$.next(convertToParamMap({}));
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+
+      // The mutations throw synchronously from requireBoardId; wrap in
+      // Promise.resolve().then() so the assertion sees a rejection either way.
+      const wrap = (fn: () => unknown) => Promise.resolve().then(fn);
+
+      await expect(wrap(() => store.addList({ title: 'x' }))).rejects.toThrow(/no board selected/i);
+      await expect(wrap(() => store.updateListTitle('l1', { title: 'x' }))).rejects.toThrow(
+        /no board selected/i,
+      );
+      await expect(wrap(() => store.deleteList('l1'))).rejects.toThrow(/no board selected/i);
+      await expect(wrap(() => store.deleteTask('t1'))).rejects.toThrow(/no board selected/i);
+    });
+  });
+
+  describe('migrateTaskToBoard falls back to empty source-board title', () => {
+    it('records an empty fromBoardName when the source board doc has not resolved yet', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      // board() signal is still undefined — the source-board title falls back to ''.
+      await store.migrateTaskToBoard('t1', 'board-2', 'list-x', 'Target');
+
+      expect(boardService.migrateTaskToBoard).toHaveBeenCalledWith(
+        'board-1',
+        't1',
+        'board-2',
+        'list-x',
+        'u1',
+        expect.objectContaining({ fromBoardName: '', toBoardName: 'Target' }),
+      );
+    });
+  });
+
+  describe('moveTaskToIndex handles missing destination lists', () => {
+    it('uses an empty tasks list when the destination list is not in listsWithTasks yet', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      // No lists/tasks fed — listsWithTasks() is empty, so the destList lookup misses.
+      await store.moveTaskToIndex('t1', 'ghost-list', 0);
+
+      // The move still fires; the missing destList only affects the derived order key.
+      expect(boardService.moveTask).toHaveBeenCalledWith(
+        'board-1',
+        't1',
+        'ghost-list',
+        expect.any(String),
+      );
     });
   });
 });

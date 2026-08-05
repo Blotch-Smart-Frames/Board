@@ -19,4 +19,19 @@ describe('ThemeToggle', () => {
 
     expect(setMode).toHaveBeenCalledWith('dark');
   });
+
+  it('falls back to the "system" icon when the ThemeService reports an unrecognised mode', async () => {
+    // Signals in tests can hold any value; the fallback branch on currentIcon()
+    // guards against a foreign mode string ever making it into the trigger icon.
+    const mode = signal<string>('psychedelic');
+
+    const { fixture } = await render(ThemeToggle, {
+      providers: [{ provide: ThemeService, useValue: { mode, setMode: vi.fn() } }],
+    });
+
+    // The protected currentIcon() returns 'lucideMonitor' as the fallback.
+    expect(
+      (fixture.componentInstance as unknown as { currentIcon: () => string }).currentIcon(),
+    ).toBe('lucideMonitor');
+  });
 });

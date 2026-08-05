@@ -4,7 +4,12 @@ import { FIRESTORE_DB } from '../firebase/firebase.config';
 import { LabelService } from './label.service';
 
 function fakeBatch() {
-  return { set: vi.fn(), update: vi.fn(), delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) };
+  return {
+    set: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    commit: vi.fn().mockResolvedValue(undefined),
+  };
 }
 
 vi.mock('firebase/firestore', () => ({
@@ -14,7 +19,10 @@ vi.mock('firebase/firestore', () => ({
   getDocs: vi.fn(),
   addDoc: vi.fn(),
   updateDoc: vi.fn(),
-  query: vi.fn((collectionRef: unknown, ...constraints: unknown[]) => ({ collectionRef, constraints })),
+  query: vi.fn((collectionRef: unknown, ...constraints: unknown[]) => ({
+    collectionRef,
+    constraints,
+  })),
   where: vi.fn((field: string, op: string, value: unknown) => ({ field, op, value })),
   orderBy: vi.fn((field: string) => ({ orderBy: field })),
   serverTimestamp: vi.fn(() => 'SERVER_TIMESTAMP'),
@@ -82,6 +90,22 @@ describe('LabelService', () => {
       expect(batch.delete).toHaveBeenCalledTimes(1);
       expect(batch.commit).toHaveBeenCalledTimes(1);
     });
+
+    it('treats a matched task with no labelIds field as an empty list', async () => {
+      const batch = fakeBatch();
+      vi.mocked(writeBatch).mockReturnValue(batch as never);
+      const taskDocRef = { id: 'task-1' };
+      vi.mocked(getDocs).mockResolvedValue({
+        docs: [{ ref: taskDocRef, data: () => ({}) }],
+      } as never);
+
+      await service.deleteLabel('board-1', 'label-1');
+
+      expect(batch.update).toHaveBeenCalledWith(
+        taskDocRef,
+        expect.objectContaining({ labelIds: [] }),
+      );
+    });
   });
 
   describe('initializeDefaultLabels', () => {
@@ -108,7 +132,9 @@ describe('LabelService', () => {
       const labels = await service.initializeDefaultLabels('board-1');
 
       expect(batch.set).toHaveBeenCalledTimes(6);
-      const orders = batch.set.mock.calls.map(([, payload]) => (payload as { order: string }).order);
+      const orders = batch.set.mock.calls.map(
+        ([, payload]) => (payload as { order: string }).order,
+      );
       const sorted = [...orders].sort();
       expect(orders).toEqual(sorted);
       expect(new Set(orders).size).toBe(6);

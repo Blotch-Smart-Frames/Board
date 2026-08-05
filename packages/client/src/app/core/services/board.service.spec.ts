@@ -168,6 +168,34 @@ describe('BoardService', () => {
       expect(storageService.deleteBoardBackground).not.toHaveBeenCalled();
     });
 
+    it('walks tasks with no attachments field without exploding on the ?? fallback', async () => {
+      vi.mocked(getDoc).mockResolvedValueOnce({
+        exists: () => true,
+        id: 'board-1',
+        data: () => ({ title: 'B', ownerId: 'u1', collaborators: [] }),
+      } as never);
+      vi.mocked(getDocs).mockImplementation((ref: unknown) => {
+        const path = (ref as { path: string }).path;
+        if (path === 'boards/board-1/tasks') {
+          return Promise.resolve({
+            docs: [
+              {
+                id: 'task-attachment-less',
+                ref: collectionRef('boards/board-1/tasks/task-attachment-less'),
+                // The task doc omits the attachments field entirely.
+                data: () => ({}),
+              },
+            ],
+          } as never);
+        }
+        return Promise.resolve({ docs: [] } as never);
+      });
+      vi.mocked(writeBatch).mockReturnValue(fakeBatch() as never);
+
+      await expect(service.deleteBoard('board-1')).resolves.toBeUndefined();
+      expect(storageService.deleteTaskAttachment).not.toHaveBeenCalled();
+    });
+
     it('splits deletes into chunks of 500 so no single batch exceeds the Firestore limit', async () => {
       vi.mocked(getDoc).mockResolvedValueOnce({
         exists: () => true,
@@ -195,6 +223,62 @@ describe('BoardService', () => {
       expect(batches[1].commit).toHaveBeenCalledTimes(1);
       expect(batches[0].delete).toHaveBeenCalledTimes(500);
       expect(batches[1].delete).toHaveBeenCalledTimes(251);
+    });
+
+    it('best-effort cleans up storage even if individual deletions reject', async () => {
+      vi.mocked(getDoc).mockResolvedValueOnce({
+        exists: () => true,
+        id: 'board-1',
+        data: () => ({
+          title: 'B',
+          ownerId: 'u1',
+          collaborators: [],
+          backgroundImageUrl: 'bg.png',
+        }),
+      } as never);
+
+      vi.mocked(getDocs).mockImplementation((ref: unknown) => {
+        const path = (ref as { path: string }).path;
+        if (path === 'boards/board-1/tasks') {
+          return Promise.resolve({
+            docs: [
+              {
+                id: 'task-1',
+                ref: collectionRef('boards/board-1/tasks/task-1'),
+                data: () => ({ attachments: [{ storagePath: 'att-1' }] }),
+              },
+            ],
+          } as never);
+        }
+        if (path === 'boards/board-1/labels') {
+          return Promise.resolve({
+            docs: [{ id: 'l1', ref: collectionRef('boards/board-1/labels/l1') }],
+          } as never);
+        }
+        if (path === 'boards/board-1/sprints') {
+          return Promise.resolve({
+            docs: [{ id: 's1', ref: collectionRef('boards/board-1/sprints/s1') }],
+          } as never);
+        }
+        return Promise.resolve({ docs: [] } as never);
+      });
+
+      const batch = fakeBatch();
+      vi.mocked(writeBatch).mockReturnValue(batch as never);
+      storageService.deleteBoardBackground.mockRejectedValue(new Error('offline'));
+      storageService.deleteTaskAttachment.mockRejectedValue(new Error('offline'));
+
+      // Should not throw despite the storage rejects.
+      await expect(service.deleteBoard('board-1')).resolves.toBeUndefined();
+      expect(storageService.deleteBoardBackground).toHaveBeenCalledWith('board-1');
+      expect(storageService.deleteTaskAttachment).toHaveBeenCalledWith('att-1');
+      // The label + sprint refs are also included in the delete batch.
+      expect(batch.delete).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'boards/board-1/labels/l1' }),
+      );
+      expect(batch.delete).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'boards/board-1/sprints/s1' }),
+      );
     });
   });
 
@@ -306,6 +390,17 @@ describe('BoardService', () => {
 
       expect(storageService.deleteTaskAttachment).toHaveBeenCalledWith('a1');
       expect(storageService.deleteTaskAttachment).toHaveBeenCalledWith('a2');
+      expect(deleteDoc).toHaveBeenCalledTimes(1);
+    });
+
+    it('still deletes the task doc even when the attachment cleanup rejects', async () => {
+      vi.mocked(getDoc).mockResolvedValue({
+        data: () => ({ attachments: [{ storagePath: 'a1' }] }),
+      } as never);
+      storageService.deleteTaskAttachment.mockRejectedValue(new Error('offline'));
+
+      await expect(service.deleteTask('board-1', 'task-1')).resolves.toBeUndefined();
+
       expect(deleteDoc).toHaveBeenCalledTimes(1);
     });
   });
@@ -556,6 +651,99 @@ describe('BoardService', () => {
         expect.objectContaining({ path: 'boards/board-1/tasks/task-1/comments/comment-1' }),
         { text: 'Fixed', updatedAt: 'SERVER_TIMESTAMP' },
       );
+    });
+  });
+
+  describe('addTask defaults', () => {
+    it('serializes both startDate and dueDate when provided', async () => {
+      vi.mocked(getDocs).mockResolvedValue({ docs: [] } as never);
+      vi.mocked(addDoc).mockResolvedValue({ id: 'task-1' } as never);
+      vi.mocked(getDoc).mockResolvedValue({ id: 'task-1', data: () => ({}) } as never);
+
+      const startDate = new Date('2026-06-01');
+      const dueDate = new Date('2026-06-07');
+      await service.addTask('board-1', 'list-1', { title: 'T', startDate, dueDate }, 'u1');
+
+      const [, payload] = vi.mocked(addDoc).mock.calls[0];
+      expect((payload as { startDate: unknown }).startDate).toEqual({
+        __timestamp: startDate.getTime(),
+        toDate: expect.any(Function),
+      });
+      expect((payload as { dueDate: unknown }).dueDate).toEqual({
+        __timestamp: dueDate.getTime(),
+        toDate: expect.any(Function),
+      });
+    });
+
+    it('stores null for both dates when neither is provided', async () => {
+      vi.mocked(getDocs).mockResolvedValue({ docs: [] } as never);
+      vi.mocked(addDoc).mockResolvedValue({ id: 'task-1' } as never);
+      vi.mocked(getDoc).mockResolvedValue({ id: 'task-1', data: () => ({}) } as never);
+
+      await service.addTask('board-1', 'list-1', { title: 'T' }, 'u1');
+
+      const [, payload] = vi.mocked(addDoc).mock.calls[0];
+      expect(payload).toMatchObject({ startDate: null, dueDate: null });
+    });
+  });
+
+  describe('updateTask edge cases', () => {
+    it('passes non-date fields with a null value through unchanged (not through Timestamp.fromDate)', async () => {
+      await service.updateTask('board-1', 'task-1', { color: null });
+
+      const [, payload] = vi.mocked(updateDoc).mock.calls[0];
+      expect(payload).toEqual({ color: null, updatedAt: 'SERVER_TIMESTAMP' });
+      expect(Timestamp.fromDate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('migrateTaskToBoard minimal source task', () => {
+    it('falls back to null/empty defaults for every optional field on the source task', async () => {
+      const batch = fakeBatch();
+      vi.mocked(writeBatch).mockReturnValue(batch as never);
+      let autoIdCounter = 0;
+      vi.mocked(doc).mockImplementation((_ref: unknown, ...segments: string[]) => {
+        const id = segments.length > 0 ? segments[segments.length - 1] : `auto-${autoIdCounter++}`;
+        return { path: segments.join('/'), id } as never;
+      });
+
+      // A source task with none of the optional fields present.
+      vi.mocked(getDoc).mockResolvedValue({
+        exists: () => true,
+        data: () => ({
+          listId: 'list-src',
+          title: 'Minimal',
+          order: 'a0',
+          createdBy: 'u1',
+          createdAt: { seconds: 1 },
+        }),
+      } as never);
+      vi.mocked(getDocs)
+        .mockResolvedValueOnce({ docs: [] } as never)
+        .mockResolvedValueOnce({ docs: [] } as never)
+        .mockResolvedValueOnce({ docs: [] } as never);
+
+      await service.migrateTaskToBoard('board-1', 'task-1', 'board-2', 'list-dst', 'u1', {
+        fromBoardName: 'Source',
+        toBoardName: 'Target',
+      });
+
+      const firstSetPayload = batch.set.mock.calls[0][1];
+      expect(firstSetPayload).toMatchObject({
+        listId: 'list-dst',
+        title: 'Minimal',
+        description: '',
+        startDate: null,
+        dueDate: null,
+        calendarEventId: null,
+        calendarSyncEnabled: false,
+        assignedTo: [],
+        labelIds: [],
+        color: null,
+        attachments: [],
+        commentCount: 0,
+        completedAt: null,
+      });
     });
   });
 });

@@ -10,7 +10,10 @@ vi.mock('firebase/firestore', () => ({
   getDoc: vi.fn(),
   getDocs: vi.fn(),
   setDoc: vi.fn(),
-  query: vi.fn((collectionRef: unknown, ...constraints: unknown[]) => ({ collectionRef, constraints })),
+  query: vi.fn((collectionRef: unknown, ...constraints: unknown[]) => ({
+    collectionRef,
+    constraints,
+  })),
   where: vi.fn((field: string, op: string, value: unknown) => ({ field, op, value })),
   serverTimestamp: vi.fn(() => 'SERVER_TIMESTAMP'),
 }));
@@ -49,6 +52,21 @@ describe('UserService', () => {
         service.syncUserProfile({ uid: 'u1', email: 'a@b.com' } as FirebaseUser),
       ).resolves.toBeUndefined();
     });
+
+    it('falls back to an empty email string when the FirebaseUser has none', async () => {
+      await service.syncUserProfile({
+        uid: 'u1',
+        email: null,
+        displayName: 'Jane',
+        photoURL: null,
+      } as unknown as FirebaseUser);
+
+      expect(setDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ email: '' }),
+        { merge: true },
+      );
+    });
   });
 
   describe('getUserByEmail', () => {
@@ -86,7 +104,11 @@ describe('UserService', () => {
 
     it('filters out ids that resolve to no user', async () => {
       vi.mocked(getDoc)
-        .mockResolvedValueOnce({ exists: () => true, id: 'u1', data: () => ({ email: 'a@b.com' }) } as never)
+        .mockResolvedValueOnce({
+          exists: () => true,
+          id: 'u1',
+          data: () => ({ email: 'a@b.com' }),
+        } as never)
         .mockResolvedValueOnce({ exists: () => false } as never);
 
       expect(await service.getUsersByIds(['u1', 'missing'])).toEqual([

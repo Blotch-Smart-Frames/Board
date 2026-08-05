@@ -220,4 +220,15 @@ describe('TaskMigrateForm', () => {
 
     expect(await screen.findByText(/failed to migrate task/i)).toBeInTheDocument();
   });
+
+  it('is a no-op when submit is called without both a board and list selected', async () => {
+    const { boardStore, fixture } = await renderForm({
+      boards: [fakeBoard('board-2', 'Other')],
+    });
+
+    // No selections yet — submit early-returns.
+    await fixture.componentInstance['submit']();
+
+    expect(boardStore.migrateTaskToBoard).not.toHaveBeenCalled();
+  });
 });

@@ -128,6 +128,21 @@ describe('SprintManagement', () => {
     expect(sprintService.deleteSprint).toHaveBeenCalledWith('board-1', 's1');
   });
 
+  it('falls back to a generic delete error message when the service rejects with a non-Error value', async () => {
+    const user = userEvent.setup();
+    const { providers } = setup({
+      deleteSprint: vi.fn().mockRejectedValue('kaboom'),
+    });
+    await render(SprintManagement, {
+      providers,
+      inputs: { boardId: 'board-1', sprints: [fakeSprint()] },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Delete sprint' }));
+
+    expect(await screen.findByText(/failed to delete sprint/i)).toBeInTheDocument();
+  });
+
   it('deletes a sprint through the service when no tasks are assigned', async () => {
     const user = userEvent.setup();
     const { providers, sprintService } = setup();

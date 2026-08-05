@@ -239,4 +239,90 @@ describe('TimelineItem', () => {
 
     expect(onMoved).not.toHaveBeenCalled();
   });
+
+  it('cancels an in-progress resize on pointercancel on either handle', async () => {
+    const onResized = vi.fn();
+    const item = fakeItem();
+
+    const view = await render(TimelineItem, {
+      inputs: { item },
+      providers: [{ provide: TimelineScaleService, useValue: fakeScale() }],
+      on: { resized: onResized },
+    });
+
+    const handles = view.container.querySelectorAll('[aria-hidden="true"]');
+    const startHandle = handles[0];
+    const endHandle = handles[1];
+
+    startHandle.dispatchEvent(pointer('pointerdown', 0, 0));
+    startHandle.dispatchEvent(pointer('pointermove', -100, 0));
+    startHandle.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1, bubbles: true }));
+    view.fixture.detectChanges();
+
+    expect(onResized).not.toHaveBeenCalled();
+
+    endHandle.dispatchEvent(pointer('pointerdown', 0, 0));
+    endHandle.dispatchEvent(pointer('pointermove', 100, 0));
+    endHandle.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1, bubbles: true }));
+    view.fixture.detectChanges();
+
+    expect(onResized).not.toHaveBeenCalled();
+  });
+
+  it('ignores right-button and unmatched-pointerId events on the bar and its resize handles', async () => {
+    const onMoved = vi.fn();
+    const onResized = vi.fn();
+    const item = fakeItem();
+
+    const view = await render(TimelineItem, {
+      inputs: { item },
+      providers: [{ provide: TimelineScaleService, useValue: fakeScale() }],
+      on: { moved: onMoved, resized: onResized },
+    });
+    const bar = screen.getByRole('button', { name: `View task ${item.task.title}` });
+    const [startHandle, endHandle] = Array.from(
+      view.container.querySelectorAll('[aria-hidden="true"]'),
+    );
+
+    // Right-button pointerdown on the bar is ignored (event.button !== 0).
+    bar.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        pointerId: 1,
+        button: 2,
+        bubbles: true,
+        clientX: 0,
+        clientY: 0,
+      }),
+    );
+    bar.dispatchEvent(pointer('pointermove', 500, 0, 1));
+    bar.dispatchEvent(pointer('pointerup', 500, 0, 1));
+
+    expect(onMoved).not.toHaveBeenCalled();
+
+    // Right-button pointerdown on the start handle is ignored.
+    startHandle.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        pointerId: 1,
+        button: 2,
+        bubbles: true,
+        clientX: 0,
+        clientY: 0,
+      }),
+    );
+    startHandle.dispatchEvent(pointer('pointermove', 100, 0, 1));
+    startHandle.dispatchEvent(pointer('pointerup', 100, 0, 1));
+
+    expect(onResized).not.toHaveBeenCalled();
+
+    // Bar pointermove/up with an unmatched pointerId (no active drag) — no-op.
+    bar.dispatchEvent(pointer('pointermove', 200, 0, 99));
+    bar.dispatchEvent(pointer('pointerup', 200, 0, 99));
+
+    // Resize handle pointermove/up without a prior pointerdown — no-op.
+    endHandle.dispatchEvent(pointer('pointermove', 100, 0, 99));
+    endHandle.dispatchEvent(pointer('pointerup', 100, 0, 99));
+
+    expect(onMoved).not.toHaveBeenCalled();
+    expect(onResized).not.toHaveBeenCalled();
+  });
 });

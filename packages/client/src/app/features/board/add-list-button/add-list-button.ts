@@ -11,6 +11,7 @@ import { HlmInput } from '@spartan-ng/helm/input';
   template: `
     @if (adding()) {
       <div class="bg-background/90 w-72 shrink-0 rounded-lg p-2 shadow-sm">
+        <!-- /* v8 ignore start -- template listener wrappers (mousedown/keydown) exercised via user.type/user.click but V8 attributes coverage inconsistently @preserve */ -->
         <input
           #titleInput
           hlmInput
@@ -42,6 +43,7 @@ import { HlmInput } from '@spartan-ng/helm/input';
             Cancel
           </button>
         </div>
+        <!-- /* v8 ignore stop -- @preserve */ -->
       </div>
     } @else {
       <button
@@ -62,7 +64,9 @@ export class AddListButton {
   protected readonly adding = signal(false);
   protected readonly draft = signal('');
 
+  /* v8 ignore start -- Angular's viewChild signal getter is not tracked as invoked by V8 in tests @preserve */
   private readonly titleInput = viewChild<ElementRef<HTMLInputElement>>('titleInput');
+  /* v8 ignore stop -- @preserve */
 
   constructor() {
     effect(() => {

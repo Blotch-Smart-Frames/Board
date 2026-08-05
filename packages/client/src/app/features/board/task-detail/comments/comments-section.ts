@@ -1,4 +1,4 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { FIRESTORE_DB } from '../../../../core/firebase/firebase.config';
 import { taskCommentsQuery } from '../../../../core/firebase/firestore-refs';
 import { collectionSignal } from '../../../../core/interop/signal-interop';
@@ -68,7 +68,4 @@ export class CommentsSection {
   protected deleteComment(commentId: string): void {
     this.boardService.deleteComment(this.boardId(), this.taskId(), commentId).catch(() => {});
   }
-
-  // Kept for template symmetry / potential future use.
-  protected readonly hasComments = computed(() => (this.comments()?.length ?? 0) > 0);
 }

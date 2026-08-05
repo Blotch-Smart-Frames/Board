@@ -8,6 +8,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui --coverage.enabled=true",
     "typecheck": "tsc --noEmit",
     "serve": "npm run build && firebase emulators:start --only functions",
     "deploy": "npm run build && firebase deploy --only functions"
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/ui": "^4.1.10",
     "typescript": "~6.0.2",
     "vite": "^7.0.0",
     "vitest": "^4.1.10"

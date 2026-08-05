@@ -106,4 +106,94 @@ describe('SprintFormFields', () => {
 
     expect(await screen.findByText(/something went wrong/i)).toBeInTheDocument();
   });
+
+  it('emits escape when Escape is pressed inside the name input', async () => {
+    const user = userEvent.setup();
+    const escape = vi.fn();
+    await render(SprintFormFields, {
+      inputs: {
+        initialValue: {
+          name: 'Sprint A',
+          startDate: new Date(2026, 0, 1),
+          endDate: new Date(2026, 0, 14),
+        },
+      },
+      on: { escape },
+    });
+
+    const nameInput = await screen.findByLabelText('Sprint Name');
+    nameInput.focus();
+    await user.keyboard('{Escape}');
+
+    expect(escape).toHaveBeenCalled();
+  });
+
+  it('emits submit when the form is submitted', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    await render(SprintFormFields, {
+      inputs: {
+        initialValue: {
+          name: 'Sprint A',
+          startDate: new Date(2026, 0, 1),
+          endDate: new Date(2026, 0, 14),
+        },
+      },
+      on: { submit: onSubmit },
+    });
+
+    const nameInput = await screen.findByLabelText('Sprint Name');
+    nameInput.focus();
+    await user.keyboard('{Enter}');
+
+    expect(onSubmit).toHaveBeenCalled();
+  });
+
+  it('wires the calendar range startDate/endDate outputs into the model', async () => {
+    const view = await render(SprintFormFields, {
+      inputs: {
+        initialValue: {
+          name: 'Sprint A',
+          startDate: new Date(2026, 0, 1),
+          endDate: new Date(2026, 0, 14),
+        },
+      },
+    });
+
+    // hlm-calendar-range re-exports startDateChange/endDateChange from a host
+    // directive (BrnCalendarRange). The template listener is attached to the
+    // element; the safest way to hit it is to call the component's own
+    // protected handler (which the template one-liner just forwards to).
+    (
+      view.fixture.componentInstance as unknown as {
+        onStartDateChange: (d: Date) => void;
+        onEndDateChange: (d: Date) => void;
+      }
+    ).onStartDateChange(new Date(2026, 0, 5));
+    (
+      view.fixture.componentInstance as unknown as {
+        onEndDateChange: (d: Date) => void;
+      }
+    ).onEndDateChange(new Date(2026, 0, 20));
+
+    const value = view.fixture.componentInstance.value();
+    expect(value.startDate).toEqual(new Date(2026, 0, 5));
+    expect(value.endDate).toEqual(new Date(2026, 0, 20));
+
+    // The onXxxChange handlers also handle the `undefined` clear case.
+    (
+      view.fixture.componentInstance as unknown as {
+        onStartDateChange: (d: Date | undefined) => void;
+      }
+    ).onStartDateChange(undefined);
+    (
+      view.fixture.componentInstance as unknown as {
+        onEndDateChange: (d: Date | undefined) => void;
+      }
+    ).onEndDateChange(undefined);
+
+    const cleared = view.fixture.componentInstance.value();
+    expect(cleared.startDate).toBeNull();
+    expect(cleared.endDate).toBeNull();
+  });
 });

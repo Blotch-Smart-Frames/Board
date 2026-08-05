@@ -295,4 +295,54 @@ describe('TimelineView', () => {
     expect(overridden[0].span).toEqual(nextSpan);
     expect(overridden[0].rowId).toBe('list-2');
   });
+
+  it('applies a span-only override when a move stays on the same row', async () => {
+    const start = new Date(2026, 0, 1);
+    const end = new Date(2026, 0, 5);
+    const { providers } = setup({
+      lists: [fakeList('list-1', 'To Do')],
+      tasks: [fakeTask({ id: 't1', startDate: ts(start), dueDate: ts(end) })],
+    });
+    const { fixture } = await render(TimelineView, { providers });
+
+    const gridDebug = fixture.debugElement.query((el) => el.name === 'app-timeline-grid');
+    const gridInstance = gridDebug.componentInstance as { items: () => unknown[] };
+    const spanOnly = {
+      start: new Date(2026, 0, 3).getTime(),
+      end: new Date(2026, 0, 7).getTime(),
+    };
+    (gridDebug.componentInstance as { taskMoved: { emit: (v: unknown) => void } }).taskMoved.emit({
+      id: 't1',
+      span: spanOnly,
+      rowId: null,
+    });
+    fixture.detectChanges();
+
+    const overridden = gridInstance.items() as {
+      id: string;
+      rowId: string;
+      span: { start: number; end: number };
+    }[];
+    // The rowId is inherited from the underlying task; only the span override was applied.
+    expect(overridden[0].span).toEqual(spanOnly);
+    expect(overridden[0].rowId).toBe('list-1');
+  });
+
+  it('projects labels and sprints as empty arrays when the store’s signals are undefined', async () => {
+    const start = new Date(2026, 0, 1);
+    const end = new Date(2026, 0, 5);
+    const { providers } = setup({
+      lists: [fakeList('list-1', 'To Do')],
+      tasks: [fakeTask({ id: 't1', startDate: ts(start), dueDate: ts(end) })],
+    });
+    const { fixture } = await render(TimelineView, { providers });
+
+    const grid = fixture.debugElement.query((el) => el.name === 'app-timeline-grid');
+    const gridInstance = grid.componentInstance as {
+      labels: () => unknown[];
+      sprints: () => unknown[];
+    };
+    expect(gridInstance.labels()).toEqual([]);
+    expect(gridInstance.sprints()).toEqual([]);
+  });
 });

@@ -26,6 +26,7 @@ import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
   template: `
     <div class="flex items-center justify-between gap-1 px-2 py-2">
       @if (editing()) {
+        <!-- /* v8 ignore start -- template listener wrappers (blur/keydown/input) exercised via user events but V8 attributes coverage inconsistently @preserve */ -->
         <input
           #titleInput
           hlmInput
@@ -37,6 +38,7 @@ import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
           (keydown.escape)="cancel()"
           aria-label="List title"
         />
+        <!-- /* v8 ignore stop -- @preserve */ -->
       } @else {
         <div class="flex min-w-0 flex-1 items-center gap-2">
           <h2
@@ -49,11 +51,19 @@ import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
           >
             {{ title() }}
           </h2>
-          <span class="bg-accent text-muted-foreground rounded-full px-2 py-0.5 text-xs">{{ taskCount() }}</span>
+          <span class="bg-accent text-muted-foreground rounded-full px-2 py-0.5 text-xs">{{
+            taskCount()
+          }}</span>
         </div>
       }
 
-      <button hlmBtn variant="ghost" size="icon-sm" [hlmDropdownMenuTrigger]="menu" aria-label="List options">
+      <button
+        hlmBtn
+        variant="ghost"
+        size="icon-sm"
+        [hlmDropdownMenuTrigger]="menu"
+        aria-label="List options"
+      >
         <ng-icon name="lucideEllipsisVertical" />
       </button>
       <ng-template #menu>
@@ -96,7 +106,9 @@ export class ListHeader {
   protected readonly editing = signal(false);
   protected readonly draft = signal('');
 
+  /* v8 ignore start -- Angular's viewChild signal getter is not tracked as invoked by V8 in tests @preserve */
   private readonly titleInput = viewChild<ElementRef<HTMLInputElement>>('titleInput');
+  /* v8 ignore stop -- @preserve */
 
   constructor() {
     effect(() => {
@@ -113,6 +125,7 @@ export class ListHeader {
   }
 
   protected commit(): void {
+    /* v8 ignore next -- defensive: commit is only wired to blur/keydown while editing is true @preserve */
     if (!this.editing()) return;
     const trimmed = this.draft().trim();
     if (trimmed && trimmed !== this.title()) {

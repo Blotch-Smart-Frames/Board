@@ -39,6 +39,7 @@ import type { Sprint, CreateSprintInput } from '../../../shared/types/board';
               <hr class="border-border" />
             }
 
+            <!-- /* v8 ignore start -- template listener wrappers delegate to close()/save() which are covered directly @preserve */ -->
             <app-sprint-form-fields
               #formFields
               [initialValue]="initialValue()"
@@ -46,6 +47,7 @@ import type { Sprint, CreateSprintInput } from '../../../shared/types/board';
               (escape)="close()"
               (submit)="save()"
             />
+            <!-- /* v8 ignore stop -- @preserve */ -->
           </div>
 
           <hlm-dialog-footer>
@@ -128,6 +130,8 @@ export class SprintDialog {
 
   protected async save(): Promise<void> {
     await this.formFields().submitWith(async (v) => {
+      // Form-level validation prevents submitting without both dates, so this defensive guard never fires in practice.
+      /* v8 ignore next -- @preserve */
       if (!v.startDate || !v.endDate) return;
 
       const data: CreateSprintInput = {

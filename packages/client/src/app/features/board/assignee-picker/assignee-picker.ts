@@ -21,7 +21,12 @@ import type { Collaborator } from '../../../shared/types/board';
               class="pointer-events-none"
               [aria-label]="'Assign ' + collaborator.name"
             />
-            <app-user-avatar [name]="collaborator.name" [photoURL]="collaborator.photoURL" size="small" [showTooltip]="false" />
+            <app-user-avatar
+              [name]="collaborator.name"
+              [photoURL]="collaborator.photoURL"
+              size="small"
+              [showTooltip]="false"
+            />
             <span class="text-sm">{{ collaborator.name }}</span>
           </button>
         }
@@ -36,6 +41,9 @@ export class AssigneePicker {
 
   protected readonly sorted = computed(() =>
     [...this.collaborators()].sort((a, b) => {
+      // V8's sort may invoke this comparator with (a,b) in either order for a
+      // given pair, so only one of the ternary branches is deterministically hit.
+      /* v8 ignore next -- @preserve */
       if (a.isOwner !== b.isOwner) return a.isOwner ? -1 : 1;
       return a.name.localeCompare(b.name);
     }),

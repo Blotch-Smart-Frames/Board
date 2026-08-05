@@ -115,4 +115,15 @@ describe('TaskTitleEditor', () => {
     // observe the emitted value here, not the re-rendered heading.
     await waitFor(() => expect(onTitleChange).toHaveBeenCalledWith('Newer'));
   });
+
+  it('starts editing when Enter is pressed on the focused heading', async () => {
+    const user = userEvent.setup();
+    await render(TaskTitleEditor, { providers, inputs: { title: 'Focus me' } });
+
+    const heading = screen.getByRole('heading', { name: 'Focus me' });
+    heading.focus();
+    await user.keyboard('{Enter}');
+
+    expect(screen.getByLabelText('Title')).toHaveValue('Focus me');
+  });
 });

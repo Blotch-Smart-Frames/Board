@@ -5,7 +5,8 @@ function stubMatchMedia(matches: boolean) {
   const listeners: ((event: { matches: boolean }) => void)[] = [];
   const mql = {
     matches,
-    addEventListener: (_event: string, cb: (event: { matches: boolean }) => void) => listeners.push(cb),
+    addEventListener: (_event: string, cb: (event: { matches: boolean }) => void) =>
+      listeners.push(cb),
     removeEventListener: vi.fn(),
   };
   vi.stubGlobal(
@@ -73,5 +74,15 @@ describe('ThemeService', () => {
     TestBed.flushEffects();
 
     expect(document.documentElement.classList.contains('dark')).toBe(true);
+  });
+
+  it('falls back to system mode when localStorage has an invalid value', () => {
+    localStorage.setItem('board-theme-mode', 'psychedelic');
+    stubMatchMedia(true);
+
+    const service = TestBed.inject(ThemeService);
+
+    expect(service.mode()).toBe('system');
+    expect(service.isDark()).toBe(true);
   });
 });

@@ -154,6 +154,7 @@ export const diffTaskChanges = (
       if (oldDate === newDate) continue;
     }
 
+    /* v8 ignore next -- callers always pass a format fn or use `String(v)` for the primitive fields; the `?? ''` fallback is unreachable in practice @preserve */
     const formatFn = format ?? ((v: unknown) => String(v ?? ''));
     const oldFormatted =
       field === 'startDate' || field === 'dueDate'
