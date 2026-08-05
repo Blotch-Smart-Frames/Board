@@ -58,7 +58,9 @@ describe('BoardsSidebar', () => {
     const user = userEvent.setup();
     const { store, providers } = setup([]);
     const { fixture } = await render(BoardsSidebar, { providers });
-    const navigate = vi.spyOn(fixture.debugElement.injector.get(Router), 'navigate').mockResolvedValue(true);
+    const navigate = vi
+      .spyOn(fixture.debugElement.injector.get(Router), 'navigate')
+      .mockResolvedValue(true);
 
     await user.click(screen.getByRole('button', { name: /create board/i }));
     await user.type(await screen.findByLabelText(/board title/i), 'Gamma');
@@ -94,5 +96,185 @@ describe('BoardsSidebar', () => {
     await user.click(await screen.findByRole('menuitem', { name: /delete/i }));
 
     expect(store.deleteBoard).toHaveBeenCalledWith('1');
+  });
+
+  it('navigates home after deleting the currently open board', async () => {
+    const user = userEvent.setup();
+    const { store, providers } = setup([fakeBoard('1', 'Alpha')]);
+    const { fixture } = await render(BoardsSidebar, { providers });
+    const router = fixture.debugElement.injector.get(Router);
+    Object.defineProperty(router, 'url', { get: () => '/board/1', configurable: true });
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    await user.click(screen.getByRole('button', { name: /options for alpha/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /delete/i }));
+
+    await waitFor(() => expect(store.deleteBoard).toHaveBeenCalledWith('1'));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith(['/']));
+  });
+
+  it('collapses and re-expands the sidebar when the menu button is toggled', async () => {
+    const user = userEvent.setup();
+    const { providers } = setup([fakeBoard('1', 'Alpha')]);
+    const { fixture } = await render(BoardsSidebar, {
+      providers,
+      inputs: { boardTitle: 'My Board' },
+    });
+
+    const host = fixture.debugElement.nativeElement as HTMLElement;
+    expect(host.classList.contains('w-70')).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: /menu/i }));
+    expect(host.classList.contains('w-14')).toBe(true);
+    // While collapsed the icon-only "Create board" button is used.
+    expect(screen.getByRole('button', { name: /create board/i })).toBeInTheDocument();
+  });
+
+  it('emits share when the Share button is clicked', async () => {
+    const user = userEvent.setup();
+    const onShare = vi.fn();
+    const { providers } = setup([]);
+    await render(BoardsSidebar, {
+      providers,
+      inputs: { showShare: true },
+      on: { share: onShare },
+    });
+
+    await user.click(screen.getByRole('button', { name: /share/i }));
+
+    expect(onShare).toHaveBeenCalledTimes(1);
+  });
+
+  it('emits a viewMode change when the toggle group changes value', async () => {
+    const user = userEvent.setup();
+    const onViewModeChange = vi.fn();
+    const { providers } = setup([]);
+    await render(BoardsSidebar, {
+      providers,
+      inputs: { viewMode: 'kanban' },
+      on: { viewModeChange: onViewModeChange },
+    });
+
+    await user.click(screen.getByRole('button', { name: /timeline view/i }));
+
+    expect(onViewModeChange).toHaveBeenCalledWith('timeline');
+  });
+
+  it('does nothing when a foreign value is dispatched to the toggle group', async () => {
+    const onViewModeChange = vi.fn();
+    const { providers } = setup([]);
+    const { fixture } = await render(BoardsSidebar, {
+      providers,
+      inputs: { viewMode: 'kanban' },
+      on: { viewModeChange: onViewModeChange },
+    });
+
+    // Call the guarded event handler directly with a foreign value.
+    fixture.componentInstance['onViewModeChange']('gantt');
+
+    expect(onViewModeChange).not.toHaveBeenCalled();
+  });
+
+  it('reorders a board via the item Move Up action', async () => {
+    const user = userEvent.setup();
+    const store = {
+      boards: signal([fakeBoard('1', 'Alpha'), fakeBoard('2', 'Beta')]),
+      isLoading: signal(false),
+      createBoard: vi.fn(),
+      renameBoard: vi.fn(),
+      deleteBoard: vi.fn(),
+      reorderBoardToIndex: vi.fn().mockResolvedValue(undefined),
+    };
+    await render(BoardsSidebar, {
+      providers: [provideRouter([]), { provide: UserBoardsStore, useValue: store }],
+    });
+
+    // Move Beta up.
+    await user.click(screen.getByRole('button', { name: /options for beta/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /move up/i }));
+
+    expect(store.reorderBoardToIndex).toHaveBeenCalledWith('2', 0);
+  });
+
+  it('reorders a board via the item Move Down action', async () => {
+    const user = userEvent.setup();
+    const store = {
+      boards: signal([fakeBoard('1', 'Alpha'), fakeBoard('2', 'Beta')]),
+      isLoading: signal(false),
+      createBoard: vi.fn(),
+      renameBoard: vi.fn(),
+      deleteBoard: vi.fn(),
+      reorderBoardToIndex: vi.fn().mockResolvedValue(undefined),
+    };
+    await render(BoardsSidebar, {
+      providers: [provideRouter([]), { provide: UserBoardsStore, useValue: store }],
+    });
+
+    await user.click(screen.getByRole('button', { name: /options for alpha/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /move down/i }));
+
+    expect(store.reorderBoardToIndex).toHaveBeenCalledWith('1', 1);
+  });
+
+  it('forwards a drag-drop reorder to the store, skipping same-index drops', async () => {
+    const { providers } = setup([fakeBoard('1', 'Alpha'), fakeBoard('2', 'Beta')]);
+    const store = {
+      boards: signal([fakeBoard('1', 'Alpha'), fakeBoard('2', 'Beta')]),
+      isLoading: signal(false),
+      createBoard: vi.fn(),
+      renameBoard: vi.fn(),
+      deleteBoard: vi.fn(),
+      reorderBoardToIndex: vi.fn().mockResolvedValue(undefined),
+    };
+    void providers; // silence unused-var lint
+    const { fixture } = await render(BoardsSidebar, {
+      providers: [provideRouter([]), { provide: UserBoardsStore, useValue: store }],
+    });
+
+    // Same index -> guard early-return, no store call.
+    fixture.componentInstance['onDrop']({
+      previousIndex: 1,
+      currentIndex: 1,
+      item: { data: '1' },
+    } as never);
+    expect(store.reorderBoardToIndex).not.toHaveBeenCalled();
+
+    // Different index -> forwards.
+    fixture.componentInstance['onDrop']({
+      previousIndex: 0,
+      currentIndex: 1,
+      item: { data: '1' },
+    } as never);
+    expect(store.reorderBoardToIndex).toHaveBeenCalledWith('1', 1);
+  });
+
+  it('opens the create dialog from the collapsed-state icon button', async () => {
+    const user = userEvent.setup();
+    const { store, providers } = setup([]);
+    const { fixture } = await render(BoardsSidebar, { providers });
+    const navigate = vi
+      .spyOn(fixture.debugElement.injector.get(Router), 'navigate')
+      .mockResolvedValue(true);
+
+    // Collapse the sidebar so the icon-only Create board button becomes visible.
+    await user.click(screen.getByRole('button', { name: 'menu' }));
+    await user.click(screen.getByRole('button', { name: /create board/i }));
+
+    await user.type(await screen.findByLabelText(/board title/i), 'From Collapsed');
+    await user.click(screen.getByRole('button', { name: /^create$/i }));
+
+    expect(store.createBoard).toHaveBeenCalledWith({ title: 'From Collapsed' });
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith(['/board', 'new-board']));
+  });
+
+  it('renders the kanban/timeline toggle when a viewMode input is provided', async () => {
+    const { providers } = setup([]);
+    await render(BoardsSidebar, {
+      providers,
+      inputs: { viewMode: 'kanban' },
+    });
+
+    expect(screen.getByRole('button', { name: /kanban view/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /timeline view/i })).toBeInTheDocument();
   });
 });

@@ -104,7 +104,10 @@ describe('TimelineItem', () => {
     bar.dispatchEvent(pointer('pointerup', 300, 0));
     view.fixture.detectChanges();
 
-    expect(onMoved).toHaveBeenCalledWith({ span: { start: 13 * MS_PER_DAY, end: 15 * MS_PER_DAY }, rowId: null });
+    expect(onMoved).toHaveBeenCalledWith({
+      span: { start: 13 * MS_PER_DAY, end: 15 * MS_PER_DAY },
+      rowId: null,
+    });
   });
 
   it('dragging the start handle resizes without moving the end', async () => {
@@ -176,5 +179,64 @@ describe('TimelineItem', () => {
 
     otherRow.remove();
     vi.restoreAllMocks();
+  });
+
+  it('paints the bar with the first matching label color', async () => {
+    const scale = fakeScale();
+    const item = fakeItem({ task: fakeTask({ labelIds: ['l1'] }) });
+    const labels = [
+      { id: 'l1', name: 'Urgent', color: '#FF00FF', order: 'a0', createdAt: {}, updatedAt: {} },
+    ] as unknown as Parameters<typeof render>[1] extends { inputs?: infer I } ? never : never;
+
+    await render(TimelineItem, {
+      inputs: {
+        item,
+        labels: [
+          { id: 'l1', name: 'Urgent', color: '#FF00FF', order: 'a0', createdAt: {}, updatedAt: {} },
+        ] as never,
+      },
+      providers: [{ provide: TimelineScaleService, useValue: scale }],
+    });
+    const bar = screen.getByRole('button', { name: `View task ${item.task.title}` });
+
+    // Browsers may normalize the color; assert a case-insensitive match.
+    expect(bar.style.backgroundColor.toLowerCase()).toBe('rgb(255, 0, 255)');
+    // Reference labels to satisfy TS narrowing.
+    void labels;
+  });
+
+  it('opens the task via keyboard Enter', async () => {
+    const onView = vi.fn();
+    const item = fakeItem();
+
+    await render(TimelineItem, {
+      inputs: { item },
+      providers: [{ provide: TimelineScaleService, useValue: fakeScale() }],
+      on: { view: onView },
+    });
+    const bar = screen.getByRole('button', { name: `View task ${item.task.title}` });
+
+    bar.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    expect(onView).toHaveBeenCalledWith(item.task);
+  });
+
+  it('cancels an in-progress drag on pointercancel and does not emit moved', async () => {
+    const onMoved = vi.fn();
+    const item = fakeItem();
+
+    const view = await render(TimelineItem, {
+      inputs: { item },
+      providers: [{ provide: TimelineScaleService, useValue: fakeScale() }],
+      on: { moved: onMoved },
+    });
+    const bar = screen.getByRole('button', { name: `View task ${item.task.title}` });
+
+    bar.dispatchEvent(pointer('pointerdown', 0, 0));
+    bar.dispatchEvent(pointer('pointermove', 200, 0));
+    bar.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1, bubbles: true }));
+    view.fixture.detectChanges();
+
+    expect(onMoved).not.toHaveBeenCalled();
   });
 });

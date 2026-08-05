@@ -549,7 +549,9 @@ describe('BoardStore', () => {
 
       await store.updateListTitle('list-1', { title: 'Renamed' });
 
-      expect(boardService.updateList).toHaveBeenCalledWith('board-1', 'list-1', { title: 'Renamed' });
+      expect(boardService.updateList).toHaveBeenCalledWith('board-1', 'list-1', {
+        title: 'Renamed',
+      });
     });
 
     it('deleteList forwards to BoardService with the active board id', async () => {

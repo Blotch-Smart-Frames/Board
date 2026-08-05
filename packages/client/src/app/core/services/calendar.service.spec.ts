@@ -58,6 +58,26 @@ describe('CalendarService', () => {
       expect(options.method).toBe('PATCH');
       expect(JSON.parse(options.body)).toEqual({ summary: 'Renamed' });
     });
+
+    it('serializes description, startDateTime and endDateTime when provided', async () => {
+      service.setAccessToken('token-123');
+      fetchMock.mockResolvedValue(jsonResponse({ id: 'event-1' }));
+
+      const startDateTime = new Date('2026-05-01T10:00:00Z');
+      const endDateTime = new Date('2026-05-01T11:00:00Z');
+      await service.updateEvent('event-1', {
+        description: 'Notes',
+        startDateTime,
+        endDateTime,
+      });
+
+      const [, options] = fetchMock.mock.calls[0];
+      expect(JSON.parse(options.body)).toEqual({
+        description: 'Notes',
+        start: { dateTime: startDateTime.toISOString() },
+        end: { dateTime: endDateTime.toISOString() },
+      });
+    });
   });
 
   describe('deleteEvent', () => {
@@ -72,7 +92,16 @@ describe('CalendarService', () => {
       service.setAccessToken('token-123');
       fetchMock.mockResolvedValue({ ok: false, status: 404 } as Response);
 
-      await expect(service.deleteEvent('event-1')).rejects.toThrow('Failed to delete calendar event');
+      await expect(service.deleteEvent('event-1')).rejects.toThrow(
+        'Failed to delete calendar event',
+      );
+    });
+
+    it('throws when no access token is set', async () => {
+      await expect(service.deleteEvent('event-1')).rejects.toThrow(
+        'Not authenticated with Google Calendar',
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
     });
   });
 
@@ -103,9 +132,22 @@ describe('CalendarService', () => {
   describe('error handling', () => {
     it('surfaces the API error message from the response body', async () => {
       service.setAccessToken('token-123');
-      fetchMock.mockResolvedValue(jsonResponse({ error: { message: 'Quota exceeded' } }, false, 429));
+      fetchMock.mockResolvedValue(
+        jsonResponse({ error: { message: 'Quota exceeded' } }, false, 429),
+      );
 
       await expect(service.syncEvents()).rejects.toThrow('Quota exceeded');
+    });
+
+    it('falls back to a generic message when the response body is not JSON', async () => {
+      service.setAccessToken('token-123');
+      fetchMock.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: () => Promise.reject(new Error('parse failed')),
+      } as Response);
+
+      await expect(service.syncEvents()).rejects.toThrow('Calendar API error');
     });
   });
 });

@@ -10,14 +10,7 @@ import { BoardService } from '../../../core/services/board.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { SprintService } from '../../../core/services/sprint.service';
 import { UserBoardsStore } from '../../boards/data/user-boards.store';
-import type {
-  Board,
-  Collaborator,
-  Label,
-  List,
-  Sprint,
-  Task,
-} from '../../../shared/types/board';
+import type { Board, Collaborator, Label, List, Sprint, Task } from '../../../shared/types/board';
 
 // TaskDetailDialog and its children subscribe via collectionSignal — stub the
 // SDK so onSnapshot never actually fires during the empty-state renders.
@@ -130,9 +123,7 @@ describe('TimelineView', () => {
     await render(TimelineView, { providers });
 
     expect(screen.getByText('1 task hidden.')).toBeInTheDocument();
-    expect(
-      screen.getByText('Tasks need both start and due dates to appear'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Tasks need both start and due dates to appear')).toBeInTheDocument();
     expect(
       screen.getByText('Set start and due dates on tasks to see them in the timeline.'),
     ).toBeInTheDocument();
@@ -153,7 +144,9 @@ describe('TimelineView', () => {
     const end = new Date(2026, 0, 5);
     const { providers } = setup({
       lists: [fakeList('list-1', 'To Do')],
-      tasks: [fakeTask({ id: 't1', title: 'Design review', startDate: ts(start), dueDate: ts(end) })],
+      tasks: [
+        fakeTask({ id: 't1', title: 'Design review', startDate: ts(start), dueDate: ts(end) }),
+      ],
     });
     const view = await render(TimelineView, { providers });
 
@@ -216,7 +209,12 @@ describe('TimelineView', () => {
     const { fixture } = await render(TimelineView, { providers });
 
     let resolveMove: (() => void) | undefined;
-    store.moveTaskToList.mockImplementation(() => new Promise<void>((r) => { resolveMove = r; }));
+    store.moveTaskToList.mockImplementation(
+      () =>
+        new Promise<void>((r) => {
+          resolveMove = r;
+        }),
+    );
 
     const grid = fixture.debugElement.query((el) => el.name === 'app-timeline-grid');
     (grid.componentInstance as { taskMoved: { emit: (v: unknown) => void } }).taskMoved.emit({
@@ -256,5 +254,45 @@ describe('TimelineView', () => {
     fixture.detectChanges();
     // Task detail dialog uses aria attributes to expose its title heading.
     expect(await screen.findByRole('heading', { name: task.title })).toBeInTheDocument();
+  });
+
+  it('applies optimistic overrides to the items projected into the grid', async () => {
+    const start = new Date(2026, 0, 1);
+    const end = new Date(2026, 0, 5);
+    const { providers } = setup({
+      lists: [fakeList('list-1', 'To Do'), fakeList('list-2', 'Doing', 'a1')],
+      tasks: [fakeTask({ id: 't1', startDate: ts(start), dueDate: ts(end) })],
+    });
+    const { fixture } = await render(TimelineView, { providers });
+
+    // Sanity check: initial items come straight from the server data.
+    const gridDebug = fixture.debugElement.query((el) => el.name === 'app-timeline-grid');
+    const gridInstance = gridDebug.componentInstance as { items: () => unknown[] };
+    const initial = gridInstance.items() as {
+      id: string;
+      rowId: string;
+      span: { start: number; end: number };
+    }[];
+    expect(initial).toHaveLength(1);
+
+    // Emit a move that changes both the span and the row.
+    const nextSpan = {
+      start: new Date(2026, 0, 6).getTime(),
+      end: new Date(2026, 0, 10).getTime(),
+    };
+    (gridDebug.componentInstance as { taskMoved: { emit: (v: unknown) => void } }).taskMoved.emit({
+      id: 't1',
+      span: nextSpan,
+      rowId: 'list-2',
+    });
+    fixture.detectChanges();
+
+    const overridden = gridInstance.items() as {
+      id: string;
+      rowId: string;
+      span: { start: number; end: number };
+    }[];
+    expect(overridden[0].span).toEqual(nextSpan);
+    expect(overridden[0].rowId).toBe('list-2');
   });
 });

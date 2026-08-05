@@ -14,7 +14,10 @@ type SnapshotCallback = (snapshot: { docs: SnapshotDoc[] }) => void;
 let onSnapshotCallback: SnapshotCallback | undefined;
 
 vi.mock('firebase/firestore', () => ({
-  collection: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'collection', path: segments.join('/') })),
+  collection: vi.fn((_db: unknown, ...segments: string[]) => ({
+    type: 'collection',
+    path: segments.join('/'),
+  })),
   doc: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'doc', path: segments.join('/') })),
   query: vi.fn((ref: unknown, ...constraints: unknown[]) => ({ type: 'query', ref, constraints })),
   orderBy: vi.fn((field: string) => ({ orderBy: field })),
@@ -97,9 +100,11 @@ describe('CommentsSection', () => {
       providers,
     });
 
-    const postHandler = (fixture.componentInstance as unknown as {
-      postHandler: (text: string) => Promise<void>;
-    }).postHandler;
+    const postHandler = (
+      fixture.componentInstance as unknown as {
+        postHandler: (text: string) => Promise<void>;
+      }
+    ).postHandler;
 
     await expect(postHandler('boom')).rejects.toThrow('Not authenticated');
     expect(boardService.addComment).not.toHaveBeenCalled();
@@ -119,9 +124,27 @@ describe('CommentsSection', () => {
     });
 
     feed([
-      { id: 'c1', text: 'Own comment', authorId: 'u1', createdAt: ts(new Date(2026, 0, 1)), updatedAt: ts(new Date(2026, 0, 1)) },
-      { id: 'c2', text: "Other's comment", authorId: 'u2', createdAt: ts(new Date(2026, 0, 2)), updatedAt: ts(new Date(2026, 0, 2)) },
-      { id: 'c3', text: 'Ghost comment', authorId: 'ghost', createdAt: ts(new Date(2026, 0, 3)), updatedAt: ts(new Date(2026, 0, 3)) },
+      {
+        id: 'c1',
+        text: 'Own comment',
+        authorId: 'u1',
+        createdAt: ts(new Date(2026, 0, 1)),
+        updatedAt: ts(new Date(2026, 0, 1)),
+      },
+      {
+        id: 'c2',
+        text: "Other's comment",
+        authorId: 'u2',
+        createdAt: ts(new Date(2026, 0, 2)),
+        updatedAt: ts(new Date(2026, 0, 2)),
+      },
+      {
+        id: 'c3',
+        text: 'Ghost comment',
+        authorId: 'ghost',
+        createdAt: ts(new Date(2026, 0, 3)),
+        updatedAt: ts(new Date(2026, 0, 3)),
+      },
     ]);
     fixture.detectChanges();
 
@@ -138,7 +161,9 @@ describe('CommentsSection', () => {
     await user.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() =>
-      expect(boardService.updateComment).toHaveBeenCalledWith('board-1', 'task-1', 'c1', { text: 'Updated' }),
+      expect(boardService.updateComment).toHaveBeenCalledWith('board-1', 'task-1', 'c1', {
+        text: 'Updated',
+      }),
     );
 
     // Now delete the own comment.
@@ -159,7 +184,13 @@ describe('CommentsSection', () => {
     });
 
     feed([
-      { id: 'c1', text: 'Own', authorId: 'u1', createdAt: ts(new Date(2026, 0, 1)), updatedAt: ts(new Date(2026, 0, 1)) },
+      {
+        id: 'c1',
+        text: 'Own',
+        authorId: 'u1',
+        createdAt: ts(new Date(2026, 0, 1)),
+        updatedAt: ts(new Date(2026, 0, 1)),
+      },
     ]);
     fixture.detectChanges();
 

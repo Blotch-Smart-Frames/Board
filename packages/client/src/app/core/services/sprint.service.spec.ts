@@ -67,6 +67,20 @@ describe('SprintService', () => {
         updatedAt: 'SERVER_TIMESTAMP',
       });
     });
+
+    it('serializes startDate and endDate through Timestamp.fromDate when provided', async () => {
+      const startDate = new Date('2026-05-01');
+      const endDate = new Date('2026-05-14');
+
+      await service.updateSprint('board-1', 'sprint-1', { startDate, endDate });
+
+      const [, payload] = vi.mocked(updateDoc).mock.calls[0];
+      expect(payload).toEqual({
+        startDate: { __timestamp: startDate.getTime(), toDate: expect.any(Function) },
+        endDate: { __timestamp: endDate.getTime(), toDate: expect.any(Function) },
+        updatedAt: 'SERVER_TIMESTAMP',
+      });
+    });
   });
 
   describe('deleteSprint', () => {

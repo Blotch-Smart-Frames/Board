@@ -250,11 +250,7 @@ describe('diffTaskChanges', () => {
     const oldTask = fakeTask({ completedAt: ts(new Date(2026, 0, 1)) });
     const context = fakeContext();
 
-    const entries = diffTaskChanges(
-      oldTask,
-      { completedAt: new Date(2026, 0, 2) },
-      context,
-    );
+    const entries = diffTaskChanges(oldTask, { completedAt: new Date(2026, 0, 2) }, context);
 
     // Same "completed" status — no entry.
     expect(entries.filter((e) => e.action === 'completed' || e.action === 'reopened')).toEqual([]);
@@ -375,7 +371,11 @@ describe('diffTaskChanges', () => {
     const entries = diffTaskChanges(oldTask, { labelIds: null as unknown as string[] }, context);
 
     expect(entries).toEqual([
-      { action: 'label_removed', userId: 'u1', metadata: { labelName: 'Urgent', labelColor: '#EF4444' } },
+      {
+        action: 'label_removed',
+        userId: 'u1',
+        metadata: { labelName: 'Urgent', labelColor: '#EF4444' },
+      },
     ]);
   });
 
@@ -383,11 +383,7 @@ describe('diffTaskChanges', () => {
     const oldTask = fakeTask({ assignedTo: ['u2'] });
     const context = fakeContext({ collaborators: [fakeCollaborator({ id: 'u2', name: 'Jane' })] });
 
-    const entries = diffTaskChanges(
-      oldTask,
-      { assignedTo: null as unknown as string[] },
-      context,
-    );
+    const entries = diffTaskChanges(oldTask, { assignedTo: null as unknown as string[] }, context);
 
     expect(entries).toEqual([
       { action: 'assignee_removed', userId: 'u1', metadata: { userName: 'Jane' } },

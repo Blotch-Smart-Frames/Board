@@ -182,4 +182,24 @@ describe('LabelPicker', () => {
       ),
     );
   });
+
+  it('logs but does not throw when deleting a label fails', async () => {
+    const user = userEvent.setup();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const labelService = fakeLabelService();
+    labelService.deleteLabel.mockRejectedValueOnce(new Error('offline'));
+    const label = fakeLabel({ id: 'l1', name: 'Bug' });
+
+    await render(LabelPicker, {
+      inputs: { boardId: 'board-1', labels: [label] },
+      providers: [{ provide: LabelService, useValue: labelService }],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Delete label' }));
+
+    await waitFor(() =>
+      expect(consoleError).toHaveBeenCalledWith('Failed to delete label:', expect.any(Error)),
+    );
+    consoleError.mockRestore();
+  });
 });

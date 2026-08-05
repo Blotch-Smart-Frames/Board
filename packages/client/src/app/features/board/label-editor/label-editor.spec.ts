@@ -104,4 +104,56 @@ describe('LabelEditor', () => {
       }),
     );
   });
+
+  it('closes when the Cancel button is clicked', async () => {
+    const user = userEvent.setup();
+    await openWith(null);
+
+    await user.click(await screen.findByRole('button', { name: /cancel/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: /create label/i })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('closes when Escape is pressed in the form', async () => {
+    const user = userEvent.setup();
+    await openWith(null);
+
+    const input = await screen.findByLabelText('Name');
+    input.focus();
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: /create label/i })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('submits the form via Enter when the name is valid', async () => {
+    const user = userEvent.setup();
+    const { saveHandler } = await openWith(null);
+
+    await user.type(await screen.findByLabelText('Name'), 'Bug{Enter}');
+
+    await waitFor(() =>
+      expect(saveHandler).toHaveBeenCalledWith({
+        name: 'Bug',
+        color: labelColors[0],
+        emoji: undefined,
+      }),
+    );
+  });
+
+  it('surfaces a generic error when saving fails and keeps the dialog open', async () => {
+    const user = userEvent.setup();
+    const saveHandler = vi.fn().mockRejectedValue(new Error('offline'));
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await openWith(null, saveHandler);
+
+    await user.type(await screen.findByLabelText('Name'), 'Bug');
+    await user.click(screen.getByRole('button', { name: /^create$/i }));
+
+    expect(await screen.findByText(/something went wrong/i)).toBeInTheDocument();
+    consoleError.mockRestore();
+  });
 });

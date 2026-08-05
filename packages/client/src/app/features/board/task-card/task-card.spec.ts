@@ -28,7 +28,9 @@ function setup(task: Task, labels: Label[] = [], collaborators: Collaborator[] =
   const setTaskCompleted = vi.fn().mockResolvedValue(undefined);
   return {
     setTaskCompleted,
-    providers: [{ provide: BoardStore, useValue: { collaborators: signal(collaborators), setTaskCompleted } }],
+    providers: [
+      { provide: BoardStore, useValue: { collaborators: signal(collaborators), setTaskCompleted } },
+    ],
     inputs: { task, labels },
   };
 }

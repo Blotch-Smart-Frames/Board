@@ -75,7 +75,10 @@ describe('SyncService', () => {
 
   describe('syncTaskToCalendar', () => {
     it('returns null when sync is disabled', async () => {
-      const result = await service.syncTaskToCalendar('board-1', fakeTask({ calendarSyncEnabled: false }));
+      const result = await service.syncTaskToCalendar(
+        'board-1',
+        fakeTask({ calendarSyncEnabled: false }),
+      );
       expect(result).toBeNull();
       expect(calendarService.createEvent).not.toHaveBeenCalled();
     });
@@ -112,7 +115,9 @@ describe('SyncService', () => {
     it('rethrows calendar API errors', async () => {
       calendarService.createEvent.mockRejectedValue(new Error('quota exceeded'));
 
-      await expect(service.syncTaskToCalendar('board-1', fakeTask())).rejects.toThrow('quota exceeded');
+      await expect(service.syncTaskToCalendar('board-1', fakeTask())).rejects.toThrow(
+        'quota exceeded',
+      );
     });
   });
 
@@ -159,7 +164,11 @@ describe('SyncService', () => {
       calendarService.syncEvents.mockResolvedValue({
         items: [
           { id: 'event-cancelled', status: 'cancelled' },
-          { id: 'event-active', summary: 'Updated title', start: { dateTime: '2026-06-02T00:00:00Z' } },
+          {
+            id: 'event-active',
+            summary: 'Updated title',
+            start: { dateTime: '2026-06-02T00:00:00Z' },
+          },
         ],
         nextSyncToken: 'next-token',
       });
@@ -197,12 +206,59 @@ describe('SyncService', () => {
 
       const result = await service.syncCalendarToTasks(
         'board-1',
-        [fakeTask({ id: 'task-a', calendarEventId: 'event-a' }), fakeTask({ id: 'task-b', calendarEventId: 'event-b' })],
+        [
+          fakeTask({ id: 'task-a', calendarEventId: 'event-a' }),
+          fakeTask({ id: 'task-b', calendarEventId: 'event-b' }),
+        ],
         'u1',
       );
 
       expect(result.errors).toEqual([{ taskId: 'task-a', error: 'write failed' }]);
       expect(result.updated).toEqual(['task-b']);
+    });
+
+    it('skips events with no matching task', async () => {
+      vi.mocked(getDoc).mockResolvedValue({ data: () => ({}) } as never);
+      calendarService.syncEvents.mockResolvedValue({
+        items: [{ id: 'orphan', summary: 'x', start: { dateTime: '2026-06-01T00:00:00Z' } }],
+      });
+
+      const result = await service.syncCalendarToTasks('board-1', [], 'u1');
+
+      expect(result.updated).toEqual([]);
+      expect(result.deleted).toEqual([]);
+      expect(boardService.updateTask).not.toHaveBeenCalled();
+    });
+
+    it('captures a non-Error thrown value as its string representation', async () => {
+      vi.mocked(getDoc).mockResolvedValue({ data: () => ({}) } as never);
+      calendarService.syncEvents.mockResolvedValue({
+        items: [{ id: 'event-a', summary: 'A', start: { date: '2026-06-01' } }],
+      });
+      boardService.updateTask.mockRejectedValueOnce('boom');
+
+      const result = await service.syncCalendarToTasks(
+        'board-1',
+        [fakeTask({ id: 'task-a', calendarEventId: 'event-a' })],
+        'u1',
+      );
+
+      expect(result.errors).toEqual([{ taskId: 'task-a', error: 'boom' }]);
+    });
+
+    it('logs but recovers when the calendar fetch itself throws', async () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.mocked(getDoc).mockResolvedValue({ data: () => ({}) } as never);
+      calendarService.syncEvents.mockRejectedValue(new Error('network down'));
+
+      const result = await service.syncCalendarToTasks('board-1', [], 'u1');
+
+      expect(result).toEqual({ created: [], updated: [], deleted: [], errors: [] });
+      expect(consoleError).toHaveBeenCalledWith(
+        'Failed to sync calendar to tasks:',
+        expect.any(Error),
+      );
+      consoleError.mockRestore();
     });
   });
 

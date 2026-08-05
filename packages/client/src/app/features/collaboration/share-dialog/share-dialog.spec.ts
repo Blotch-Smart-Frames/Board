@@ -132,9 +132,7 @@ describe('ShareDialog', () => {
     // The invite form escapes on the Escape key.
     await user.type(await screen.findByLabelText('Invite by email'), '{Escape}');
 
-    await waitFor(() =>
-      expect(screen.queryByLabelText('Invite by email')).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByLabelText('Invite by email')).not.toBeInTheDocument());
   });
 
   it('copies the current URL and surfaces a transient success banner', async () => {
@@ -180,6 +178,22 @@ describe('ShareDialog', () => {
     await user.click(await screen.findByRole('button', { name: /copy board link/i }));
 
     expect(await screen.findByText(/could not copy link/i)).toBeInTheDocument();
+  });
+
+  it('shows an error when removing a collaborator fails', async () => {
+    const user = userEvent.setup();
+    const removeCollaborator = vi.fn().mockRejectedValue(new Error('offline'));
+    await openWith({
+      collaborators: [
+        fakeCollaborator({ id: 'u1', name: 'Owner', isOwner: true }),
+        fakeCollaborator({ id: 'u2', name: 'Guest', isOwner: false }),
+      ],
+      boardService: { removeCollaborator },
+    });
+
+    await user.click(await screen.findByRole('button', { name: /remove guest/i }));
+
+    expect(await screen.findByText(/offline/i)).toBeInTheDocument();
   });
 
   it('clears any pending success timer when a new success arrives', async () => {

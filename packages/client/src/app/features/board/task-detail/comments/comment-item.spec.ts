@@ -123,4 +123,50 @@ describe('CommentItem', () => {
     expect(screen.queryByRole('textbox', { name: 'Edit comment' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit comment' })).toBeInTheDocument();
   });
+
+  it('cancels the edit and returns to the rendered view without saving', async () => {
+    const user = userEvent.setup();
+    const updateHandler = vi.fn().mockResolvedValue(undefined);
+    await render(CommentItem, {
+      inputs: {
+        comment: fakeComment({ id: 'c1', text: 'Original' }),
+        isOwnComment: true,
+        updateHandler,
+      },
+      providers: [provideMarkdown()],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Edit comment' }));
+    const textarea = screen.getByLabelText('Edit comment');
+    await user.clear(textarea);
+    await user.type(textarea, 'Never saved');
+    await user.click(screen.getByRole('button', { name: /^cancel$/i }));
+
+    expect(updateHandler).not.toHaveBeenCalled();
+    expect(screen.queryByRole('textbox', { name: 'Edit comment' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit comment' })).toBeInTheDocument();
+  });
+
+  it('formats the created-at timestamp when a Timestamp is provided', async () => {
+    const date = new Date(2026, 5, 15, 10, 30);
+    await render(CommentItem, {
+      inputs: {
+        comment: fakeComment({ createdAt: { toDate: () => date } as unknown as Timestamp }),
+        updateHandler: vi.fn().mockResolvedValue(undefined),
+      },
+      providers: [provideMarkdown()],
+    });
+
+    expect(
+      screen.getByText(
+        date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        }),
+      ),
+    ).toBeInTheDocument();
+  });
 });

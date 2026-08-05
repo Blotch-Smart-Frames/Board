@@ -430,5 +430,47 @@ describe('TaskDetailDialog', () => {
       ).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /move task/i })).toBeDisabled();
     });
+
+    it('closes the dialog when the migrate form emits migrated', async () => {
+      const user = userEvent.setup();
+      const { fixture } = await openWith(fakeTask());
+
+      await user.click(screen.getByRole('tab', { name: 'Advanced' }));
+
+      const migrate = fixture.debugElement.query((el) => el.name === 'app-task-migrate-form');
+      (migrate.componentInstance as { migrated: { emit: () => void } }).migrated.emit();
+
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { name: 'Existing task' })).not.toBeInTheDocument(),
+      );
+    });
+  });
+
+  it('closes the dialog when the footer Close button is clicked', async () => {
+    const user = userEvent.setup();
+    await openWith(fakeTask());
+
+    // The dialog also renders an icon-only "Close" button in the header, so
+    // find the footer's outline-variant Close (the last matching entry).
+    const closeButtons = await screen.findAllByRole('button', { name: /^close$/i });
+    await user.click(closeButtons[closeButtons.length - 1]);
+
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Existing task' })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('logs but does not throw when deleting fails', async () => {
+    const user = userEvent.setup();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { store } = await openWith(fakeTask());
+    store.deleteTask.mockRejectedValueOnce(new Error('offline'));
+
+    await user.click(await screen.findByRole('button', { name: /^delete$/i }));
+
+    await waitFor(() =>
+      expect(consoleError).toHaveBeenCalledWith('Task delete failed:', expect.any(Error)),
+    );
+    consoleError.mockRestore();
   });
 });

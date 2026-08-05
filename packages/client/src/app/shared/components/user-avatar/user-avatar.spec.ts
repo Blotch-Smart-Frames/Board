@@ -17,4 +17,16 @@ describe('UserAvatar', () => {
 
     expect(screen.getByText('CH')).toBeInTheDocument();
   });
+
+  it('renders the initials fallback even when a photoURL is provided (jsdom never loads the image)', async () => {
+    // The photoURL branch is executed; BrnAvatar only swaps in the projected
+    // <img> once it finishes loading, which never happens under jsdom. So this
+    // spec exercises the truthy photoURL branch while still asserting on the
+    // fallback the user actually sees.
+    await render(UserAvatar, {
+      inputs: { name: 'Jane Doe', photoURL: 'https://example.com/jane.png' },
+    });
+
+    expect(screen.getByText('JD')).toBeInTheDocument();
+  });
 });

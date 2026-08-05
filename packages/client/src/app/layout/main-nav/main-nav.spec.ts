@@ -5,7 +5,14 @@ import userEvent from '@testing-library/user-event';
 import { AuthStore } from '../../core/auth/auth.store';
 import { MainNav } from './main-nav';
 
-function setup(user: { uid: string; displayName?: string | null; email?: string | null; photoURL?: string | null } | null) {
+function setup(
+  user: {
+    uid: string;
+    displayName?: string | null;
+    email?: string | null;
+    photoURL?: string | null;
+  } | null,
+) {
   const logout = vi.fn().mockResolvedValue(undefined);
   return {
     logout,

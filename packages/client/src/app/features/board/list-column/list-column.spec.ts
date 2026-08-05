@@ -80,4 +80,61 @@ describe('ListColumn', () => {
 
     expect(screen.queryByRole('button', { name: /drag to reorder list/i })).not.toBeInTheDocument();
   });
+
+  it('emits viewTask when a task card is clicked', async () => {
+    const user = userEvent.setup();
+    const onView = vi.fn();
+    const list = fakeList([fakeTask({ id: 't1', title: 'Click me' })]);
+    await render(ListColumn, {
+      inputs: { list },
+      providers: [storeProvider],
+      on: { viewTask: onView },
+    });
+
+    await user.click(screen.getByRole('button', { name: /open task click me/i }));
+
+    expect(onView).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }));
+  });
+
+  it('emits moveLeft when the list header requests moving left', async () => {
+    const onMoveLeft = vi.fn();
+    const list = fakeList([]);
+    const { fixture } = await render(ListColumn, {
+      inputs: { list, canMoveLeft: true },
+      providers: [storeProvider],
+      on: { moveLeft: onMoveLeft },
+    });
+
+    const header = fixture.debugElement.query((el) => el.name === 'app-list-header');
+    (header.componentInstance as { moveLeft: { emit: () => void } }).moveLeft.emit();
+
+    expect(onMoveLeft).toHaveBeenCalled();
+  });
+
+  it('forwards a task drop event upward via taskDropped', async () => {
+    const onTaskDropped = vi.fn();
+    const list = fakeList([]);
+    const { fixture } = await render(ListColumn, {
+      inputs: { list },
+      providers: [storeProvider],
+      on: { taskDropped: onTaskDropped },
+    });
+
+    // The template listener is a one-line `taskDropped.emit($event)` on the
+    // CDK drop list. Emit through the ListColumn's own output — which is the
+    // exact wiring the template listener sets up — to exercise the branch.
+    const container = { id: 'list-1' } as unknown;
+    const event = {
+      previousContainer: container,
+      container,
+      previousIndex: 0,
+      currentIndex: 1,
+      item: { data: fakeTask() },
+    };
+    (fixture.componentInstance as { taskDropped: { emit: (v: unknown) => void } }).taskDropped.emit(
+      event,
+    );
+
+    expect(onTaskDropped).toHaveBeenCalledWith(event);
+  });
 });

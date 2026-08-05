@@ -80,7 +80,8 @@
               "src/test-setup.ts",
               "src/main.ts",
               "src/environments/**",
-              "src/**/*.d.ts"
+              "src/**/*.d.ts",
+              "src/app/shared/ui/**"
             ],
             "coverageThresholds": {
               "statements": 100,

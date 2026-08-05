@@ -115,4 +115,20 @@ describe('ActivityTimeline', () => {
 
     expect(view.container.querySelectorAll('li')).toHaveLength(2);
   });
+
+  it('shows "just now" for events under a minute old and a formatted date for older ones', async () => {
+    const now = Date.now();
+    const task = fakeTask();
+    const older = new Date(now - 30 * 86_400_000);
+    const { providers } = setup([
+      { id: 'e-now', kind: 'created', task, actorId: 'u1', timestamp: new Date(now - 5_000) },
+      { id: 'e-old', kind: 'created', task, actorId: 'u1', timestamp: older },
+    ]);
+    await render(ActivityTimeline, { providers });
+
+    expect(screen.getByText('just now')).toBeInTheDocument();
+    expect(
+      screen.getByText(older.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })),
+    ).toBeInTheDocument();
+  });
 });

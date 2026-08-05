@@ -177,4 +177,47 @@ describe('TaskMigrateForm', () => {
 
     expect(screen.getByRole('button', { name: /move task/i })).toBeDisabled();
   });
+
+  it('shows a "no longer available" error when the target board disappears mid-flow', async () => {
+    const user = userEvent.setup();
+    const { userBoardsStore, boardStore } = await renderForm({
+      boards: [fakeBoard('board-2', 'Other Board')],
+    });
+
+    await user.click(screen.getByRole('combobox', { name: 'Target board' }));
+    await user.click(await screen.findByRole('option', { name: 'Other Board' }));
+
+    emitListsFor('board-2', [fakeList('list-x', 'Backlog')]);
+
+    await user.click(screen.getByRole('combobox', { name: 'Target list' }));
+    await user.click(await screen.findByRole('option', { name: 'Backlog' }));
+
+    // Simulate the target board being deleted before submission.
+    userBoardsStore.boards.set([]);
+
+    await user.click(screen.getByRole('button', { name: /move task/i }));
+
+    expect(await screen.findByText(/target board is no longer available/i)).toBeInTheDocument();
+    expect(boardStore.migrateTaskToBoard).not.toHaveBeenCalled();
+  });
+
+  it('falls back to a generic error message when the store throws a non-Error value', async () => {
+    const user = userEvent.setup();
+    const { boardStore } = await renderForm({
+      boards: [fakeBoard('board-2', 'Other Board')],
+    });
+    boardStore.migrateTaskToBoard.mockRejectedValue('kaboom');
+
+    await user.click(screen.getByRole('combobox', { name: 'Target board' }));
+    await user.click(await screen.findByRole('option', { name: 'Other Board' }));
+
+    emitListsFor('board-2', [fakeList('list-x', 'Backlog')]);
+
+    await user.click(screen.getByRole('combobox', { name: 'Target list' }));
+    await user.click(await screen.findByRole('option', { name: 'Backlog' }));
+
+    await user.click(screen.getByRole('button', { name: /move task/i }));
+
+    expect(await screen.findByText(/failed to migrate task/i)).toBeInTheDocument();
+  });
 });

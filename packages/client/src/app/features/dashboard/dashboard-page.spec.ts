@@ -132,4 +132,52 @@ describe('DashboardPage', () => {
 
     expect(screen.getByText('5 still open')).toBeInTheDocument();
   });
+
+  it('greets the user in the morning', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 0, 1, 9, 0, 0));
+      const { providers, componentProviders } = setup();
+      await render(DashboardPage, { providers, componentProviders });
+
+      expect(screen.getByText(/good morning/i)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('greets the user in the afternoon', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 0, 1, 14, 0, 0));
+      const { providers, componentProviders } = setup();
+      await render(DashboardPage, { providers, componentProviders });
+
+      expect(screen.getByText(/good afternoon/i)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('greets the user in the evening', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 0, 1, 21, 0, 0));
+      const { providers, componentProviders } = setup();
+      await render(DashboardPage, { providers, componentProviders });
+
+      expect(screen.getByText(/good evening/i)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('falls back to "there" when there is no user info at all', async () => {
+    const { providers, componentProviders } = setup({
+      user: { displayName: null, email: null } as unknown as FirebaseUser,
+    });
+    await render(DashboardPage, { providers, componentProviders });
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('there');
+  });
 });

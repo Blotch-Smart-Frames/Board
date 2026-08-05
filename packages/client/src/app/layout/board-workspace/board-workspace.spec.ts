@@ -150,4 +150,33 @@ describe('BoardWorkspace', () => {
     expect(menu).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText(/^create board$/i)).toBeInTheDocument();
   });
+
+  it('opens the share dialog when the sidebar emits share', async () => {
+    const user = userEvent.setup();
+    stubMatchMedia();
+    const callbacks = new Map<string, (snapshot: unknown) => void>();
+    vi.mocked(onSnapshot).mockImplementation((ref: unknown, onNext: unknown) => {
+      const path = (ref as { path?: string }).path ?? (ref as { ref: { path: string } }).ref.path;
+      callbacks.set(path, onNext as (snapshot: unknown) => void);
+      return vi.fn();
+    });
+
+    await render(BoardWorkspace, {
+      providers: [
+        ...commonProviders('board-1'),
+        { provide: UserService, useValue: { getUsersByIds: vi.fn().mockResolvedValue([]) } },
+      ],
+    });
+
+    // Load a board so the Share button and the share dialog view child appear.
+    callbacks.get('boards/board-1')!({
+      exists: () => true,
+      id: 'board-1',
+      data: () => ({ title: 'My Board', ownerId: 'u1', collaborators: [] }),
+    });
+
+    await user.click(await screen.findByRole('button', { name: /share/i }));
+
+    expect(await screen.findByRole('heading', { name: /share "my board"/i })).toBeInTheDocument();
+  });
 });

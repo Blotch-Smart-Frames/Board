@@ -8,13 +8,7 @@ import { AuthStore } from '../../../../core/auth/auth.store';
 import { FIRESTORE_DB } from '../../../../core/firebase/firebase.config';
 import { LabelService } from '../../../../core/services/label.service';
 import { StorageService } from '../../../../core/services/storage.service';
-import type {
-  Attachment,
-  Collaborator,
-  Label,
-  List,
-  Task,
-} from '../../../../shared/types/board';
+import type { Attachment, Collaborator, Label, List, Task } from '../../../../shared/types/board';
 
 // TaskDetailsTab renders CommentsSection which subscribes via collectionSignal;
 // stubbing onSnapshot keeps the empty-state safe under jsdom.
@@ -83,7 +77,10 @@ function setup(task: Task, opts: SetupOpts = {}) {
       { provide: FIRESTORE_DB, useValue: {} },
       { provide: AuthStore, useValue: { user: signal({ uid: 'u1' }) } },
       { provide: LabelService, useValue: {} },
-      { provide: StorageService, useValue: { deleteTaskAttachment: vi.fn().mockResolvedValue(undefined) } },
+      {
+        provide: StorageService,
+        useValue: { deleteTaskAttachment: vi.fn().mockResolvedValue(undefined) },
+      },
     ],
   };
 }
@@ -194,7 +191,9 @@ describe('TaskDetailsTab', () => {
     await user.click(screen.getByRole('button', { name: 'Assignees' }));
     await user.click(screen.getByRole('checkbox', { name: 'Assign Bob' }));
 
-    await waitFor(() => expect(store.updateTask).toHaveBeenCalledWith('t1', { assignedTo: ['u2'] }));
+    await waitFor(() =>
+      expect(store.updateTask).toHaveBeenCalledWith('t1', { assignedTo: ['u2'] }),
+    );
   });
 
   it('hands the task back to its creator', async () => {
@@ -209,7 +208,9 @@ describe('TaskDetailsTab', () => {
 
     await user.click(screen.getByRole('button', { name: /hand back/i }));
 
-    await waitFor(() => expect(store.updateTask).toHaveBeenCalledWith('t1', { assignedTo: ['u1'] }));
+    await waitFor(() =>
+      expect(store.updateTask).toHaveBeenCalledWith('t1', { assignedTo: ['u1'] }),
+    );
   });
 
   it('is a no-op when handing back a task whose creator is not among collaborators', async () => {
@@ -243,7 +244,11 @@ describe('TaskDetailsTab', () => {
     // Pick a swatch (the color-picker exposes swatches as radio buttons).
     const swatches = screen.getAllByRole('radio');
     await user.click(swatches[0]);
-    await waitFor(() => expect(store.updateTask).toHaveBeenCalledWith('t1', { color: swatches[0].getAttribute('aria-label') }));
+    await waitFor(() =>
+      expect(store.updateTask).toHaveBeenCalledWith('t1', {
+        color: swatches[0].getAttribute('aria-label'),
+      }),
+    );
 
     store.updateTask.mockClear();
     await user.click(screen.getByRole('button', { name: /clear/i }));

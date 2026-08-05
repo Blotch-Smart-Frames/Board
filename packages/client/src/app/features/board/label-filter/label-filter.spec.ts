@@ -80,4 +80,25 @@ describe('LabelFilter', () => {
     // hidden via data-hidden when the select has a value.
     expect(screen.getByText('Filter by label')).toHaveAttribute('data-hidden', '');
   });
+
+  it('shows a "No labels yet" hint when the board has no labels', async () => {
+    const user = userEvent.setup();
+    await render(LabelFilter, { inputs: { labels: [] } });
+
+    await user.click(screen.getByRole('combobox'));
+
+    expect(await screen.findByText(/no labels yet/i)).toBeInTheDocument();
+  });
+
+  it('ignores non-array values dispatched to onValueChange (defensive fallback)', async () => {
+    const onChange = vi.fn();
+    const { fixture } = await render(LabelFilter, {
+      inputs: { labels: [fakeLabel()] },
+      on: { selectedLabelIdsChange: onChange },
+    });
+
+    fixture.componentInstance['onValueChange']('single-value');
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

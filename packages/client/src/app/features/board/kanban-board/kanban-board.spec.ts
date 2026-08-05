@@ -14,7 +14,10 @@ import type { Board, Task } from '../../../shared/types/board';
 // queries; stub the SDK so onSnapshot never fires instead of hitting real
 // Firebase (a misconfigured, key-less app in this test environment).
 vi.mock('firebase/firestore', () => ({
-  collection: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'collection', path: segments.join('/') })),
+  collection: vi.fn((_db: unknown, ...segments: string[]) => ({
+    type: 'collection',
+    path: segments.join('/'),
+  })),
   doc: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'doc', path: segments.join('/') })),
   query: vi.fn((ref: unknown, ...constraints: unknown[]) => ({ type: 'query', ref, constraints })),
   orderBy: vi.fn((field: string) => ({ orderBy: field })),
@@ -59,7 +62,9 @@ function setup() {
     sprints: signal([]),
     labelFilter: signal<string[]>([]),
     assigneeFilter: signal<string | null>(null),
-    listsWithTasks: signal([{ id: 'list-1', title: 'To Do', order: 'a0', createdAt: ts(), tasks: [fakeTask()] }]),
+    listsWithTasks: signal([
+      { id: 'list-1', title: 'To Do', order: 'a0', createdAt: ts(), tasks: [fakeTask()] },
+    ]),
     addList: vi.fn().mockResolvedValue(undefined),
     updateListTitle: vi.fn().mockResolvedValue(undefined),
     deleteList: vi.fn().mockResolvedValue(undefined),
@@ -127,7 +132,9 @@ describe('KanbanBoard', () => {
     await user.type(title, 'Renamed task');
     await user.tab();
 
-    await waitFor(() => expect(store.updateTask).toHaveBeenCalledWith('t1', { title: 'Renamed task' }));
+    await waitFor(() =>
+      expect(store.updateTask).toHaveBeenCalledWith('t1', { title: 'Renamed task' }),
+    );
   });
 
   it('reorders a list via the keyboard "Move right" action', async () => {
@@ -268,12 +275,47 @@ describe('KanbanBoard', () => {
     // Trigger outputs via DebugElement to hit the template listeners.
     const labelDebug = fixture.debugElement.query((el) => el.name === 'app-label-filter');
     const assigneeDebug = fixture.debugElement.query((el) => el.name === 'app-assignee-filter');
-    (labelDebug.componentInstance as { selectedLabelIdsChange: { emit: (v: string[]) => void } })
-      .selectedLabelIdsChange.emit(['l1']);
-    (assigneeDebug.componentInstance as { selectedAssigneeIdChange: { emit: (v: string | null) => void } })
-      .selectedAssigneeIdChange.emit('u1');
+    (
+      labelDebug.componentInstance as { selectedLabelIdsChange: { emit: (v: string[]) => void } }
+    ).selectedLabelIdsChange.emit(['l1']);
+    (
+      assigneeDebug.componentInstance as {
+        selectedAssigneeIdChange: { emit: (v: string | null) => void };
+      }
+    ).selectedAssigneeIdChange.emit('u1');
 
     expect(store.labelFilter()).toEqual(['l1']);
     expect(store.assigneeFilter()).toBe('u1');
+  });
+
+  it('forwards a task drop from a list-column to onTaskDrop → store.moveTaskToIndex', async () => {
+    const { store, providers } = setup();
+    const { fixture } = await render(KanbanBoard, { providers });
+
+    const column = fixture.debugElement.query((el) => el.name === 'app-list-column');
+    const container = { id: 'list-1' } as unknown;
+    (column.componentInstance as { taskDropped: { emit: (v: unknown) => void } }).taskDropped.emit({
+      previousContainer: container,
+      container: { id: 'list-2' } as unknown,
+      previousIndex: 0,
+      currentIndex: 1,
+      item: { data: fakeTask() },
+    });
+
+    expect(store.moveTaskToIndex).toHaveBeenCalledWith('t1', 'list-2', 1);
+  });
+
+  it('reorders a list one slot to the left when moveLeft is emitted from a column', async () => {
+    const { store, providers } = setup();
+    store.listsWithTasks.set([
+      { id: 'list-1', title: 'To Do', order: 'a0', createdAt: ts(), tasks: [] },
+      { id: 'list-2', title: 'Doing', order: 'a1', createdAt: ts(), tasks: [] },
+    ]);
+    const { fixture } = await render(KanbanBoard, { providers });
+
+    const columns = fixture.debugElement.queryAll((el) => el.name === 'app-list-column');
+    (columns[1].componentInstance as { moveLeft: { emit: () => void } }).moveLeft.emit();
+
+    expect(store.reorderListToIndex).toHaveBeenCalledWith('list-2', 0);
   });
 });

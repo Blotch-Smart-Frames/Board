@@ -138,4 +138,61 @@ describe('BackgroundImageUpload', () => {
 
     consoleError.mockRestore();
   });
+
+  it('opens the file picker when the "Upload new image" menu item is clicked', async () => {
+    const user = userEvent.setup();
+    const { providers } = setup();
+
+    const view = await render(BackgroundImageUpload, {
+      providers,
+      inputs: { boardId: 'board-1' },
+    });
+
+    const fileInput = view.container.querySelector('input[type=file]') as HTMLInputElement;
+    const click = vi.spyOn(fileInput, 'click').mockImplementation(() => {});
+
+    await user.click(screen.getByRole('button', { name: /board background options/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /upload new image/i }));
+
+    expect(click).toHaveBeenCalled();
+  });
+
+  it('is a no-op when the file input change fires without a selected file', async () => {
+    const { providers, uploadBoardBackground, updateBoard } = setup();
+
+    const view = await render(BackgroundImageUpload, {
+      providers,
+      inputs: { boardId: 'board-1' },
+    });
+
+    // Fire a native change event on the file input with no files.
+    const fileInput = view.container.querySelector('input[type=file]') as HTMLInputElement;
+    fileInput.dispatchEvent(new Event('change'));
+
+    expect(uploadBoardBackground).not.toHaveBeenCalled();
+    expect(updateBoard).not.toHaveBeenCalled();
+  });
+
+  it('logs and recovers when removing the background rejects', async () => {
+    const user = userEvent.setup();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { providers } = setup({
+      deleteBoardBackground: vi.fn().mockRejectedValue(new Error('offline')),
+    });
+
+    await render(BackgroundImageUpload, {
+      providers,
+      inputs: { boardId: 'board-1', hasBackground: true },
+    });
+
+    await user.click(screen.getByRole('button', { name: /board background options/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /remove background/i }));
+
+    await waitFor(() => expect(consoleError).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /board background options/i })).not.toBeDisabled(),
+    );
+
+    consoleError.mockRestore();
+  });
 });

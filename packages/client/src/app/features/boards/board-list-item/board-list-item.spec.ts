@@ -85,4 +85,19 @@ describe('BoardListItem', () => {
       screen.queryByRole('button', { name: /drag to reorder board/i }),
     ).not.toBeInTheDocument();
   });
+
+  it('emits moveUp when the "Move up" menu item is chosen', async () => {
+    const user = userEvent.setup();
+    const onMoveUp = vi.fn();
+    await render(BoardListItem, {
+      inputs: { board: fakeBoard(), canMoveUp: true, canMoveDown: false },
+      providers: [provideRouter([])],
+      on: { moveUp: onMoveUp },
+    });
+
+    await user.click(screen.getByRole('button', { name: /options for project alpha/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /move up/i }));
+
+    expect(onMoveUp).toHaveBeenCalled();
+  });
 });

@@ -94,4 +94,18 @@ describe('EmojiPicker', () => {
 
     expect(onChange).toHaveBeenCalledWith('');
   });
+
+  it('closes the popover when the emoji grid emits escape', async () => {
+    const user = userEvent.setup();
+    await render(EmojiPicker);
+
+    await user.click(screen.getByRole('button', { name: /pick an emoji/i }));
+    const search = await screen.findByPlaceholderText('Search emojis');
+
+    // The EmojiGrid emits escape when Escape is pressed on the search input.
+    await user.type(search, '{Escape}');
+
+    // The popover closes: the search field is no longer in the DOM.
+    expect(screen.queryByPlaceholderText('Search emojis')).not.toBeInTheDocument();
+  });
 });

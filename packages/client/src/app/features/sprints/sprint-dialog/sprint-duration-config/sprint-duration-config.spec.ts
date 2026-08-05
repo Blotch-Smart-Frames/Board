@@ -49,4 +49,25 @@ describe('SprintDurationConfig', () => {
 
     expect(saveHandler).not.toHaveBeenCalled();
   });
+
+  it('logs but does not throw when the save handler rejects', async () => {
+    const user = userEvent.setup();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const saveHandler = vi.fn().mockRejectedValue(new Error('offline'));
+
+    await render(SprintDurationConfig, {
+      inputs: { configuredDurationDays: 14, saveHandler },
+    });
+
+    const input = await screen.findByLabelText('Default sprint duration');
+    await user.clear(input);
+    await user.type(input, '21');
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() => expect(saveHandler).toHaveBeenCalledWith(21));
+    await waitFor(() =>
+      expect(consoleError).toHaveBeenCalledWith('Failed to save sprint config:', expect.any(Error)),
+    );
+    consoleError.mockRestore();
+  });
 });

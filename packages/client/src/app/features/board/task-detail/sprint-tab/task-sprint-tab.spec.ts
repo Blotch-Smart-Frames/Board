@@ -61,7 +61,10 @@ describe('TaskSprintTab', () => {
 
   it('shows the Clear button when start or due date is set, and clears both on click', async () => {
     const user = userEvent.setup();
-    const task = fakeTask({ startDate: ts(new Date(2026, 0, 1)), dueDate: ts(new Date(2026, 0, 5)) });
+    const task = fakeTask({
+      startDate: ts(new Date(2026, 0, 1)),
+      dueDate: ts(new Date(2026, 0, 5)),
+    });
     const { store, providers } = setup(task);
     await render(TaskSprintTab, { providers, inputs: { task, boardId: 'board-1' } });
 

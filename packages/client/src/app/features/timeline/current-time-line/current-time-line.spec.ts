@@ -33,4 +33,36 @@ describe('CurrentTimeLine', () => {
     expect(left).toBeGreaterThanOrEqual(0);
     expect(left).toBeLessThan(scale.valueToPixels(end - start));
   });
+
+  it('re-samples the current time on the interval tick', async () => {
+    vi.useFakeTimers();
+    try {
+      const initialNow = new Date(2026, 0, 1, 12, 0, 0).getTime();
+      vi.setSystemTime(initialNow);
+
+      const scale = new TimelineScaleService();
+      scale.range.set({ start: initialNow - 86_400_000, end: initialNow + 86_400_000 });
+      scale.dayWidthPx.set(100);
+
+      const { container, fixture } = await render(CurrentTimeLine, {
+        providers: [{ provide: TimelineScaleService, useValue: scale }],
+      });
+
+      const initialLeft = parseFloat(
+        (container.querySelector('[aria-hidden="true"]') as HTMLElement).style.left,
+      );
+
+      // Advance time by one interval — the map callback should re-emit a fresh Date.now().
+      vi.setSystemTime(initialNow + 3 * 60_000);
+      vi.advanceTimersByTime(60_001);
+      fixture.detectChanges();
+
+      const updatedLeft = parseFloat(
+        (container.querySelector('[aria-hidden="true"]') as HTMLElement).style.left,
+      );
+      expect(updatedLeft).toBeGreaterThan(initialLeft);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

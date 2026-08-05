@@ -471,10 +471,11 @@ describe('BoardService', () => {
     it('writes the provided fields plus updatedAt', async () => {
       await service.updateBoard('board-1', { title: 'Renamed', backgroundImageUrl: 'bg.png' });
 
-      expect(updateDoc).toHaveBeenCalledWith(
-        expect.objectContaining({ path: 'boards/board-1' }),
-        { title: 'Renamed', backgroundImageUrl: 'bg.png', updatedAt: 'SERVER_TIMESTAMP' },
-      );
+      expect(updateDoc).toHaveBeenCalledWith(expect.objectContaining({ path: 'boards/board-1' }), {
+        title: 'Renamed',
+        backgroundImageUrl: 'bg.png',
+        updatedAt: 'SERVER_TIMESTAMP',
+      });
     });
   });
 
@@ -487,7 +488,10 @@ describe('BoardService', () => {
         ],
       } as never);
       vi.mocked(addDoc).mockResolvedValue({ id: 'list-3' } as never);
-      vi.mocked(getDoc).mockResolvedValue({ id: 'list-3', data: () => ({ title: 'New', order: 'a2' }) } as never);
+      vi.mocked(getDoc).mockResolvedValue({
+        id: 'list-3',
+        data: () => ({ title: 'New', order: 'a2' }),
+      } as never);
 
       const list = await service.addList('board-1', { title: 'New' });
 

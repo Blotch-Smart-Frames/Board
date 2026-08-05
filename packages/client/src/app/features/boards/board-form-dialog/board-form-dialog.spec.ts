@@ -30,7 +30,9 @@ describe('BoardFormDialog', () => {
     await user.click(screen.getByRole('button', { name: /create/i }));
 
     expect(saveHandler).toHaveBeenCalledWith('New Board');
-    await waitFor(() => expect(screen.queryByRole('heading', { name: /create new board/i })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: /create new board/i })).not.toBeInTheDocument(),
+    );
   });
 
   it('does not call the save handler when the title is empty', async () => {
@@ -60,5 +62,39 @@ describe('BoardFormDialog', () => {
     expect(await screen.findByText(/something went wrong/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /create new board/i })).toBeInTheDocument();
     consoleError.mockRestore();
+  });
+
+  it('closes when the Cancel button is clicked', async () => {
+    const user = userEvent.setup();
+    await open('Existing');
+
+    await user.click(await screen.findByRole('button', { name: /cancel/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: /create new board/i })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('closes when Escape is pressed inside the title input', async () => {
+    const user = userEvent.setup();
+    await open('Existing');
+
+    const input = await screen.findByLabelText(/board title/i);
+    input.focus();
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: /create new board/i })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('submits the form via Enter in the input', async () => {
+    const user = userEvent.setup();
+    const { saveHandler } = await open();
+
+    const input = await screen.findByLabelText(/board title/i);
+    await user.type(input, 'New Board{Enter}');
+
+    await waitFor(() => expect(saveHandler).toHaveBeenCalledWith('New Board'));
   });
 });

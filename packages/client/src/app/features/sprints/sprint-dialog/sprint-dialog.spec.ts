@@ -163,4 +163,80 @@ describe('SprintDialog', () => {
 
     expect(screen.queryByLabelText('Default sprint duration')).not.toBeInTheDocument();
   });
+
+  it('closes when the Cancel button is clicked', async () => {
+    const user = userEvent.setup();
+    await openWith(fakeSprint());
+
+    await user.click(await screen.findByRole('button', { name: /cancel/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: /edit sprint/i })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('closes the loading-state Cancel button while defaults are pending', async () => {
+    const user = userEvent.setup();
+    let resolveDefaults!: (value: Defaults) => void;
+    const calculateNextSprintDates = vi.fn<() => Promise<Defaults>>(
+      () => new Promise((resolve) => (resolveDefaults = resolve)),
+    );
+    const { providers } = setup(calculateNextSprintDates);
+    const view = await render(SprintDialog, {
+      inputs: { boardId: 'board-1', saveHandler: vi.fn().mockResolvedValue(undefined) },
+      providers,
+    });
+
+    const opened = view.fixture.componentInstance.open(null);
+    view.fixture.detectChanges();
+
+    // The loading-state Cancel button is shown while defaults are pending.
+    await user.click(await screen.findByRole('button', { name: /cancel/i }));
+
+    resolveDefaults({
+      startDate: new Date(2026, 1, 1),
+      endDate: new Date(2026, 1, 14),
+      suggestedName: 'Sprint 2',
+    });
+    await opened;
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: /create sprint/i })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('logs a message but continues opening when computing sprint defaults fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const calculateNextSprintDates = vi
+      .fn<() => Promise<Defaults>>()
+      .mockRejectedValue(new Error('offline'));
+    const { providers } = setup(calculateNextSprintDates);
+    const view = await render(SprintDialog, {
+      inputs: { boardId: 'board-1', saveHandler: vi.fn().mockResolvedValue(undefined) },
+      providers,
+    });
+
+    await view.fixture.componentInstance.open(null);
+    view.fixture.detectChanges();
+    await view.fixture.whenStable();
+
+    expect(consoleError).toHaveBeenCalledWith(
+      'Failed to calculate sprint defaults:',
+      expect.any(Error),
+    );
+    // The Cancel button is present after loading finishes.
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+    consoleError.mockRestore();
+  });
+
+  it('surfaces a save error and keeps the dialog open when saving fails', async () => {
+    const user = userEvent.setup();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const saveHandler = vi.fn().mockRejectedValue(new Error('offline'));
+    await openWith(fakeSprint(), saveHandler);
+
+    await user.click(await screen.findByRole('button', { name: /^save$/i }));
+
+    expect(await screen.findByText(/something went wrong/i)).toBeInTheDocument();
+    consoleError.mockRestore();
+  });
 });
