@@ -52,7 +52,7 @@ describe('TaskMetadataSidebar', () => {
     expect(screen.queryByText('Backend')).not.toBeInTheDocument();
   });
 
-  it('opens the label picker when the Labels heading is clicked and emits changes', async () => {
+  it('opens the label picker when the edit labels button is clicked and emits changes', async () => {
     const user = userEvent.setup();
     const onLabelsChange = vi.fn();
     await render(TaskMetadataSidebar, {
@@ -64,7 +64,7 @@ describe('TaskMetadataSidebar', () => {
       on: { selectedLabelIdsChange: onLabelsChange },
     });
 
-    await user.click(screen.getByRole('button', { name: 'Labels' }));
+    await user.click(screen.getByRole('button', { name: 'Edit labels' }));
     await user.click(screen.getByRole('checkbox', { name: 'Toggle label Urgent' }));
 
     expect(onLabelsChange).toHaveBeenCalledWith(['l1']);
@@ -79,7 +79,7 @@ describe('TaskMetadataSidebar', () => {
     expect(screen.getByText('No assignees')).toBeInTheDocument();
   });
 
-  it('opens the assignee picker when the Assignees heading is clicked and emits changes', async () => {
+  it('opens the assignee picker when the edit assignees button is clicked and emits changes', async () => {
     const user = userEvent.setup();
     const onAssigneesChange = vi.fn();
     await render(TaskMetadataSidebar, {
@@ -91,7 +91,7 @@ describe('TaskMetadataSidebar', () => {
       on: { assignedUserIdsChange: onAssigneesChange },
     });
 
-    await user.click(screen.getByRole('button', { name: 'Assignees' }));
+    await user.click(screen.getByRole('button', { name: 'Edit assignees' }));
     await user.click(screen.getByRole('checkbox', { name: 'Assign Alice' }));
 
     expect(onAssigneesChange).toHaveBeenCalledWith(['u1']);

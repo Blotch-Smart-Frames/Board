@@ -18,8 +18,6 @@ src/
   scheduled/
     daily-cleanup.ts             Example scheduled (cron) function
     daily-cleanup.spec.ts        Vitest test for the handler
-scripts/
-  generate-dist-package-json.mjs Emits a slim package.json into dist/
 vite.config.ts                   Build + test config
 ```
 
@@ -34,9 +32,9 @@ The build:
 1. Vite bundles `src/index.ts` to `dist/index.js` (CJS, Node 22 target).
 2. `firebase-functions` and `firebase-admin` are kept external — they resolve
    at deploy time.
-3. `scripts/generate-dist-package-json.mjs` writes `dist/package.json` with
-   `main`, `engines`, and `dependencies` copied from the workspace
-   `package.json`.
+3. The `generateDistPackageJson` plugin from `@blotch/vite-plugins` writes
+   `dist/package.json` with `main`, `engines`, and `dependencies` copied from
+   the workspace `package.json`.
 
 Result: `dist/` is a self-contained folder that Firebase deploys.
 

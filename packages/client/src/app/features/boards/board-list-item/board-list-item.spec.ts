@@ -42,19 +42,42 @@ describe('BoardListItem', () => {
     expect(onRename).toHaveBeenCalled();
   });
 
-  it('emits deleted when the Delete menu item is chosen', async () => {
+  it('emits deleted when the owner chooses the Delete menu item', async () => {
     const user = userEvent.setup();
     const onDeleted = vi.fn();
+    const onLeave = vi.fn();
     await render(BoardListItem, {
-      inputs: { board: fakeBoard() },
+      inputs: { board: fakeBoard(), isOwner: true },
       providers: [provideRouter([])],
-      on: { deleted: onDeleted },
+      on: { deleted: onDeleted, leave: onLeave },
     });
 
     await user.click(screen.getByRole('button', { name: /options for project alpha/i }));
+    // Owners get "Delete", never "Leave board".
+    expect(screen.queryByRole('menuitem', { name: /leave board/i })).not.toBeInTheDocument();
     await user.click(await screen.findByRole('menuitem', { name: /delete/i }));
 
     expect(onDeleted).toHaveBeenCalled();
+    expect(onLeave).not.toHaveBeenCalled();
+  });
+
+  it('emits leave (and never delete) when a non-owner chooses Leave board', async () => {
+    const user = userEvent.setup();
+    const onDeleted = vi.fn();
+    const onLeave = vi.fn();
+    await render(BoardListItem, {
+      // isOwner defaults to false.
+      inputs: { board: fakeBoard() },
+      providers: [provideRouter([])],
+      on: { deleted: onDeleted, leave: onLeave },
+    });
+
+    await user.click(screen.getByRole('button', { name: /options for project alpha/i }));
+    expect(screen.queryByRole('menuitem', { name: /delete/i })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('menuitem', { name: /leave board/i }));
+
+    expect(onLeave).toHaveBeenCalled();
+    expect(onDeleted).not.toHaveBeenCalled();
   });
 
   it('exposes a keyboard drag handle and position-gated move options', async () => {

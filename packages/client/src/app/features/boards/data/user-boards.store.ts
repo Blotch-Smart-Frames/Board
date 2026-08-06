@@ -49,10 +49,10 @@ export class UserBoardsStore {
   private readonly boardService = inject(BoardService);
   private readonly boardOrderService = inject(BoardOrderService);
 
-  private readonly userId = computed(() => this.authStore.user()?.uid ?? null);
+  readonly currentUserId = computed(() => this.authStore.user()?.uid ?? null);
 
   private readonly ownedQuery = computed<Query | null>(() => {
-    const userId = this.userId();
+    const userId = this.currentUserId();
     return userId
       ? query(
           collection(this.db, 'boards'),
@@ -63,14 +63,14 @@ export class UserBoardsStore {
   });
 
   private readonly collaboratedQuery = computed<Query | null>(() => {
-    const userId = this.userId();
+    const userId = this.currentUserId();
     return userId
       ? query(collection(this.db, 'boards'), where('collaborators', 'array-contains', userId))
       : null;
   });
 
   private readonly orderDocRef = computed<DocumentReference | null>(() => {
-    const userId = this.userId();
+    const userId = this.currentUserId();
     return userId ? doc(this.db, 'users', userId, 'preferences', 'boardOrder') : null;
   });
 
@@ -86,7 +86,7 @@ export class UserBoardsStore {
     Map<string, string>
   >({ source: this.orderDoc, computation: () => new Map() });
 
-  readonly isLoading = computed(() => !!this.userId() && this.ownedBoards() === undefined);
+  readonly isLoading = computed(() => !!this.currentUserId() && this.ownedBoards() === undefined);
 
   readonly boards = computed<BoardWithOrder[]>(() => {
     /* v8 ignore start -- defensive: signals are seeded to concrete values before boards() is consumed @preserve */
@@ -99,7 +99,7 @@ export class UserBoardsStore {
   });
 
   async createBoard(input: CreateBoardInput): Promise<Board> {
-    const userId = this.userId();
+    const userId = this.currentUserId();
     if (!userId) throw new Error('Not authenticated');
     return this.boardService.createBoard(input, userId);
   }
@@ -112,16 +112,40 @@ export class UserBoardsStore {
     await this.boardService.deleteBoard(boardId);
   }
 
-  async reorderBoard(boardId: string, newOrder: string): Promise<void> {
-    const userId = this.userId();
+  /**
+   * Removes the current user from a board they collaborate on (but don't own).
+   * Owners delete boards; collaborators leave them. The board and its contents
+   * stay intact for everyone else.
+   */
+  async leaveBoard(boardId: string): Promise<void> {
+    const userId = this.currentUserId();
     if (!userId) throw new Error('Not authenticated');
-    this.orderOverrides.update((m) => new Map(m).set(boardId, newOrder));
+    await this.boardService.removeCollaborator(boardId, userId);
+  }
+
+  reorderBoard(boardId: string, newOrder: string): Promise<void> {
+    return this.reorderBoards(new Map([[boardId, newOrder]]));
+  }
+
+  /**
+   * Applies a batch of board order keys optimistically, then persists them,
+   * rolling back the overrides if the write fails.
+   */
+  async reorderBoards(orders: Map<string, string>): Promise<void> {
+    const userId = this.currentUserId();
+    if (!userId) throw new Error('Not authenticated');
+    if (orders.size === 0) return;
+    this.orderOverrides.update((m) => {
+      const next = new Map(m);
+      for (const [id, order] of orders) next.set(id, order);
+      return next;
+    });
     try {
-      await this.boardOrderService.setBoardOrder(userId, boardId, newOrder);
+      await this.boardOrderService.setBoardOrders(userId, Object.fromEntries(orders));
     } catch (error) {
       this.orderOverrides.update((m) => {
         const next = new Map(m);
-        next.delete(boardId);
+        for (const id of orders.keys()) next.delete(id);
         return next;
       });
       throw error;
@@ -130,8 +154,24 @@ export class UserBoardsStore {
 
   /** Computes the fractional order key for dropping a board at `targetIndex`, then reorders it. */
   reorderBoardToIndex(boardId: string, targetIndex: number): Promise<void> {
-    const others = this.boards().filter((b) => b.id !== boardId);
+    const current = this.boards();
+    const others = current.filter((b) => b.id !== boardId);
     const newOrder = getOrderAtIndex(others, targetIndex);
-    return this.reorderBoard(boardId, newOrder);
+
+    // Persist the moved board *and* pin any sibling that has no stored order
+    // yet. Un-stored boards get an "at the end" key synthesized on every render
+    // (see mergeBoards). If we saved only the moved board, those siblings would
+    // be re-synthesized past its new key and leapfrog it — which snaps a
+    // downward drag back toward the top. Saving their current key fixes them in
+    // place so the move sticks; once every board is stored this writes just the
+    // moved one.
+    const stored = this.orderDoc()?.boards ?? {};
+    const orders = new Map<string, string>([[boardId, newOrder]]);
+    for (const board of current) {
+      if (board.id !== boardId && stored[board.id] === undefined && board.order !== undefined) {
+        orders.set(board.id, board.order);
+      }
+    }
+    return this.reorderBoards(orders);
   }
 }

@@ -7,6 +7,7 @@ import {
   lucideEllipsisVertical,
   lucidePencil,
   lucideTrash2,
+  lucideLogOut,
   lucideGripVertical,
   lucideArrowUp,
   lucideArrowDown,
@@ -24,6 +25,7 @@ import type { BoardWithOrder } from '../data/user-boards.store';
       lucideEllipsisVertical,
       lucidePencil,
       lucideTrash2,
+      lucideLogOut,
       lucideGripVertical,
       lucideArrowUp,
       lucideArrowDown,
@@ -86,10 +88,17 @@ import type { BoardWithOrder } from '../data/user-boards.store';
               Move down
             </button>
           }
-          <button hlmDropdownMenuItem variant="destructive" (click)="deleted.emit()">
-            <ng-icon name="lucideTrash2" class="mr-2" />
-            Delete
-          </button>
+          @if (isOwner()) {
+            <button hlmDropdownMenuItem variant="destructive" (click)="deleted.emit()">
+              <ng-icon name="lucideTrash2" class="mr-2" />
+              Delete
+            </button>
+          } @else {
+            <button hlmDropdownMenuItem (click)="leave.emit()">
+              <ng-icon name="lucideLogOut" class="mr-2" />
+              Leave board
+            </button>
+          }
         </hlm-dropdown-menu>
       </ng-template>
     </div>
@@ -99,10 +108,15 @@ export class BoardListItem {
   readonly board = input.required<BoardWithOrder>();
   readonly canMoveUp = input(false);
   readonly canMoveDown = input(false);
+  // Owners can delete the board; collaborators can only leave it. Defaults to
+  // false so the non-destructive "Leave board" action is shown unless the parent
+  // explicitly marks the current user as the owner.
+  readonly isOwner = input(false);
   // Parent (BoardsSidebar) flips this on mobile/touch to hide the grip handle.
   readonly dragDisabled = input(false);
   readonly rename = output<void>();
   readonly deleted = output<void>();
+  readonly leave = output<void>();
   readonly moveUp = output<void>();
   readonly moveDown = output<void>();
 }

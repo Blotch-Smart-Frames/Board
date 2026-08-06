@@ -12,6 +12,7 @@ import {
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { HlmToggleGroupImports } from '@spartan-ng/helm/toggle-group';
+import { toast } from '@spartan-ng/brain/sonner';
 import { UserBoardsStore, type BoardWithOrder } from '../data/user-boards.store';
 import { BoardListItem } from '../board-list-item/board-list-item';
 import { BoardFormDialog } from '../board-form-dialog/board-form-dialog';
@@ -128,9 +129,11 @@ export type ViewMode = 'kanban' | 'timeline';
                 [board]="board"
                 [canMoveUp]="i > 0"
                 [canMoveDown]="i < count - 1"
+                [isOwner]="board.ownerId === store.currentUserId()"
                 [dragDisabled]="dragDisabled()"
                 (rename)="openRename(board)"
                 (deleted)="deleteBoard(board)"
+                (leave)="leaveBoard(board)"
                 (moveUp)="store.reorderBoardToIndex(board.id, i - 1)"
                 (moveDown)="store.reorderBoardToIndex(board.id, i + 1)"
               />
@@ -219,8 +222,29 @@ export class BoardsSidebar {
   }
 
   protected async deleteBoard(board: BoardWithOrder): Promise<void> {
-    await this.store.deleteBoard(board.id);
-    if (this.router.url === `/board/${board.id}`) {
+    try {
+      await this.store.deleteBoard(board.id);
+    } catch {
+      toast.error(`Couldn't delete "${board.title}". Please try again.`);
+      return;
+    }
+    await this.navigateAwayIfViewing(board.id);
+  }
+
+  protected async leaveBoard(board: BoardWithOrder): Promise<void> {
+    try {
+      await this.store.leaveBoard(board.id);
+    } catch {
+      toast.error(`Couldn't leave "${board.title}". Please try again.`);
+      return;
+    }
+    await this.navigateAwayIfViewing(board.id);
+  }
+
+  // When the board being removed is the one on screen, bounce back home so we're
+  // not left viewing a board that no longer exists or is no longer accessible.
+  private async navigateAwayIfViewing(boardId: string): Promise<void> {
+    if (this.router.url === `/board/${boardId}`) {
       await this.router.navigate(['/']);
     }
   }

@@ -16,7 +16,13 @@ export class BoardOrderService {
     return (data?.['boards'] as Record<string, string> | undefined) ?? {};
   }
 
-  async setBoardOrder(userId: string, boardId: string, order: string): Promise<void> {
-    await setDoc(this.boardOrderRef(userId), { boards: { [boardId]: order } }, { merge: true });
+  /**
+   * Persists one or more board order keys in a single merge write. Passing the
+   * full set of boards touched by a reorder (not just the moved one) lets the
+   * store pin boards that had no stored order yet, so they aren't re-synthesized
+   * to the end of the list on the next render. Untouched boards keep their keys.
+   */
+  async setBoardOrders(userId: string, orders: Record<string, string>): Promise<void> {
+    await setDoc(this.boardOrderRef(userId), { boards: orders }, { merge: true });
   }
 }

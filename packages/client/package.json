@@ -9,11 +9,13 @@
     "watch": "node scripts/with-version.mjs build --watch --configuration development",
     "test": "ng test",
     "test:coverage": "ng test --coverage --no-watch",
-    "test:ui": "ng test --ui --coverage"
+    "test:ui": "ng test --ui --coverage",
+    "cspell": "cspell ."
   },
   "private": true,
   "dependencies": {
     "@angular/cdk": "^22.0.6",
+    "@blotch/model": "*",
     "@angular/common": "^22.0.0",
     "@angular/compiler": "^22.0.0",
     "@angular/core": "^22.0.0",

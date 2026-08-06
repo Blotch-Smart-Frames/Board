@@ -1,0 +1,27 @@
+{
+  "version": "0.2",
+  "import": ["../../cspell.json"],
+  "words": [
+    "bandaid",
+    "capturable",
+    "checkmark",
+    "collab",
+    "computeds",
+    "creds",
+    "Gantt",
+    "gantt",
+    "gcal",
+    "katex",
+    "keymanager",
+    "moai",
+    "pickable",
+    "RRGGBB",
+    "tearoff",
+    "uncompleting",
+    "Unsuffixed",
+    "unsuffixed",
+    "viewports",
+    "Virtualizes"
+  ],
+  "ignorePaths": ["src/app/shared/ui/**", "public/version.json"]
+}

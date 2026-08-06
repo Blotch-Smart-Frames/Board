@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import type { Timestamp } from 'firebase/firestore';
+import { provideRouter, Router } from '@angular/router';
 import { render, screen, waitFor, within } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { provideMarkdown } from 'ngx-markdown';
@@ -141,6 +142,7 @@ function setup(task: Task, opts: SetupOpts = {}) {
     store,
     sprintService,
     providers: [
+      provideRouter([]),
       { provide: BoardStore, useValue: store },
       { provide: FIRESTORE_DB, useValue: {} },
       { provide: AuthStore, useValue: { user: signal({ uid: 'u1' }) } },
@@ -431,17 +433,70 @@ describe('TaskDetailDialog', () => {
       expect(screen.getByRole('button', { name: /move task/i })).toBeDisabled();
     });
 
-    it('closes the dialog when the migrate form emits migrated', async () => {
+    it('shows a success view when the migrate form emits migrated, without closing the dialog', async () => {
       const user = userEvent.setup();
       const { fixture } = await openWith(fakeTask());
 
       await user.click(screen.getByRole('tab', { name: 'Advanced' }));
 
       const migrate = fixture.debugElement.query((el) => el.name === 'app-task-migrate-form');
-      (migrate.componentInstance as { migrated: { emit: () => void } }).migrated.emit();
+      (
+        migrate.componentInstance as {
+          migrated: { emit: (v: { boardId: string; boardTitle: string }) => void };
+        }
+      ).migrated.emit({ boardId: 'board-2', boardTitle: 'Other Board' });
 
       await waitFor(() =>
-        expect(screen.queryByRole('heading', { name: 'Existing task' })).not.toBeInTheDocument(),
+        expect(screen.getByRole('heading', { name: /task moved/i })).toBeInTheDocument(),
+      );
+      expect(screen.getByRole('button', { name: /go to other board/i })).toBeInTheDocument();
+      // Original task heading is gone because the success branch replaces it.
+      expect(screen.queryByRole('heading', { name: 'Existing task' })).not.toBeInTheDocument();
+    });
+
+    it('navigates to the target board and closes when Go to X is clicked', async () => {
+      const user = userEvent.setup();
+      const { fixture } = await openWith(fakeTask());
+      const navigate = vi
+        .spyOn(fixture.debugElement.injector.get(Router), 'navigate')
+        .mockResolvedValue(true);
+
+      await user.click(screen.getByRole('tab', { name: 'Advanced' }));
+
+      const migrate = fixture.debugElement.query((el) => el.name === 'app-task-migrate-form');
+      (
+        migrate.componentInstance as {
+          migrated: { emit: (v: { boardId: string; boardTitle: string }) => void };
+        }
+      ).migrated.emit({ boardId: 'board-2', boardTitle: 'Other Board' });
+
+      const goTo = await screen.findByRole('button', { name: /go to other board/i });
+      await user.click(goTo);
+
+      await waitFor(() => expect(navigate).toHaveBeenCalledWith(['/board', 'board-2']));
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { name: /task moved/i })).not.toBeInTheDocument(),
+      );
+    });
+
+    it('closes when the success view Close button is clicked', async () => {
+      const user = userEvent.setup();
+      const { fixture } = await openWith(fakeTask());
+
+      await user.click(screen.getByRole('tab', { name: 'Advanced' }));
+
+      const migrate = fixture.debugElement.query((el) => el.name === 'app-task-migrate-form');
+      (
+        migrate.componentInstance as {
+          migrated: { emit: (v: { boardId: string; boardTitle: string }) => void };
+        }
+      ).migrated.emit({ boardId: 'board-2', boardTitle: 'Other Board' });
+
+      const closeButtons = await screen.findAllByRole('button', { name: /^close$/i });
+      await user.click(closeButtons[closeButtons.length - 1]);
+
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { name: /task moved/i })).not.toBeInTheDocument(),
       );
     });
   });

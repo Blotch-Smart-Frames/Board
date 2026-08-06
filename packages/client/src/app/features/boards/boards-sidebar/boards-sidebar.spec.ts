@@ -5,6 +5,11 @@ import { render, screen, waitFor } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { UserBoardsStore, type BoardWithOrder } from '../data/user-boards.store';
 import { BoardsSidebar } from './boards-sidebar';
+import { toast } from '@spartan-ng/brain/sonner';
+
+vi.mock('@spartan-ng/brain/sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
+}));
 
 function fakeBoard(id: string, title: string): BoardWithOrder {
   return {
@@ -21,9 +26,11 @@ function setup(boards: BoardWithOrder[], isLoading = false) {
   const store = {
     boards: signal(boards),
     isLoading: signal(isLoading),
+    currentUserId: signal<string | null>('u1'),
     createBoard: vi.fn().mockResolvedValue(fakeBoard('new-board', 'New Board')),
     renameBoard: vi.fn().mockResolvedValue(undefined),
     deleteBoard: vi.fn().mockResolvedValue(undefined),
+    leaveBoard: vi.fn().mockResolvedValue(undefined),
   };
   return {
     store,
@@ -113,6 +120,52 @@ describe('BoardsSidebar', () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith(['/']));
   });
 
+  it('offers "Leave board" (not Delete) for a board the user does not own, and leaves it', async () => {
+    const user = userEvent.setup();
+    const foreign = { ...fakeBoard('9', 'Shared'), ownerId: 'someone-else' };
+    const { store, providers } = setup([foreign]);
+    await render(BoardsSidebar, { providers });
+
+    await user.click(screen.getByRole('button', { name: /options for shared/i }));
+    expect(screen.queryByRole('menuitem', { name: /delete/i })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('menuitem', { name: /leave board/i }));
+
+    expect(store.leaveBoard).toHaveBeenCalledWith('9');
+  });
+
+  it('shows an error toast and stays put when deleting a board fails', async () => {
+    const user = userEvent.setup();
+    const { store, providers } = setup([fakeBoard('1', 'Alpha')]);
+    store.deleteBoard.mockRejectedValue(new Error('permission-denied'));
+    const { fixture } = await render(BoardsSidebar, { providers });
+    const navigate = vi
+      .spyOn(fixture.debugElement.injector.get(Router), 'navigate')
+      .mockResolvedValue(true);
+
+    await user.click(screen.getByRole('button', { name: /options for alpha/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /delete/i }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Alpha')),
+    );
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('shows an error toast when leaving a board fails', async () => {
+    const user = userEvent.setup();
+    const foreign = { ...fakeBoard('9', 'Shared'), ownerId: 'someone-else' };
+    const { store, providers } = setup([foreign]);
+    store.leaveBoard.mockRejectedValue(new Error('offline'));
+    await render(BoardsSidebar, { providers });
+
+    await user.click(screen.getByRole('button', { name: /options for shared/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /leave board/i }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Shared')),
+    );
+  });
+
   it('collapses and re-expands the sidebar when the menu button is toggled', async () => {
     const user = userEvent.setup();
     const { providers } = setup([fakeBoard('1', 'Alpha')]);
@@ -180,9 +233,11 @@ describe('BoardsSidebar', () => {
     const store = {
       boards: signal([fakeBoard('1', 'Alpha'), fakeBoard('2', 'Beta')]),
       isLoading: signal(false),
+      currentUserId: signal<string | null>('u1'),
       createBoard: vi.fn(),
       renameBoard: vi.fn(),
       deleteBoard: vi.fn(),
+      leaveBoard: vi.fn(),
       reorderBoardToIndex: vi.fn().mockResolvedValue(undefined),
     };
     await render(BoardsSidebar, {
@@ -201,9 +256,11 @@ describe('BoardsSidebar', () => {
     const store = {
       boards: signal([fakeBoard('1', 'Alpha'), fakeBoard('2', 'Beta')]),
       isLoading: signal(false),
+      currentUserId: signal<string | null>('u1'),
       createBoard: vi.fn(),
       renameBoard: vi.fn(),
       deleteBoard: vi.fn(),
+      leaveBoard: vi.fn(),
       reorderBoardToIndex: vi.fn().mockResolvedValue(undefined),
     };
     await render(BoardsSidebar, {
@@ -221,9 +278,11 @@ describe('BoardsSidebar', () => {
     const store = {
       boards: signal([fakeBoard('1', 'Alpha'), fakeBoard('2', 'Beta')]),
       isLoading: signal(false),
+      currentUserId: signal<string | null>('u1'),
       createBoard: vi.fn(),
       renameBoard: vi.fn(),
       deleteBoard: vi.fn(),
+      leaveBoard: vi.fn(),
       reorderBoardToIndex: vi.fn().mockResolvedValue(undefined),
     };
     void providers; // silence unused-var lint
@@ -283,9 +342,11 @@ describe('BoardsSidebar', () => {
     const store = {
       boards: signal([fakeBoard('1', 'Alpha'), fakeBoard('2', 'Beta')]),
       isLoading: signal(false),
+      currentUserId: signal<string | null>('u1'),
       createBoard: vi.fn(),
       renameBoard: vi.fn(),
       deleteBoard: vi.fn(),
+      leaveBoard: vi.fn(),
       reorderBoardToIndex: vi.fn().mockResolvedValue(undefined),
     };
     const view = await render(BoardsSidebar, {

@@ -82,7 +82,7 @@ describe('HistorySection', () => {
     expect(screen.getByText(/someone created this task/i)).toBeInTheDocument();
   });
 
-  it('renders a description for every recognised history action and falls back for unknown ones', async () => {
+  it('renders a description for every recognized history action and falls back for unknown ones', async () => {
     const collaborators: Collaborator[] = [
       { id: 'u1', email: 'alice@example.com', name: 'Alice', isOwner: true },
     ];
@@ -259,7 +259,7 @@ describe('HistorySection', () => {
     ];
     const stableTs = ts(new Date(2026, 0, 1));
 
-    // Same actions as the "recognised" test but every entry omits its metadata
+    // Same actions as the "recognized" test but every entry omits its metadata
     // so the "?? ''" fallback branches in describe() run.
     const entries: HistoryEntry[] = [
       { id: 'h1', action: 'label_added', userId: 'u1', createdAt: stableTs },

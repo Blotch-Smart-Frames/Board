@@ -1,13 +1,16 @@
 import { Component, computed, inject, input } from '@angular/core';
-import type { Timestamp } from 'firebase/firestore';
 import { FIRESTORE_DB } from '../../../../core/firebase/firebase.config';
 import { taskHistoryQuery } from '../../../../core/firebase/firestore-refs';
 import { collectionSignal } from '../../../../core/interop/signal-interop';
-import type { HistoryEntry, Collaborator } from '../../../../shared/types/board';
+import type {
+  HistoryEntry,
+  Collaborator,
+  FirestoreTimestamp,
+} from '../../../../shared/types/board';
 
 type Row = { id: string; description: string; when: string };
 
-function formatRelativeTime(timestamp: Timestamp | undefined): string {
+function formatRelativeTime(timestamp: FirestoreTimestamp | undefined): string {
   if (!timestamp?.toDate) return '';
   const date = timestamp.toDate();
   const diffMs = Date.now() - date.getTime();
@@ -80,7 +83,7 @@ export class HistorySection {
   readonly taskId = input.required<string>();
   readonly collaborators = input<Collaborator[]>([]);
   readonly createdBy = input<string | undefined>(undefined);
-  readonly createdAt = input<Timestamp | undefined>(undefined);
+  readonly createdAt = input<FirestoreTimestamp | undefined>(undefined);
 
   private readonly history = collectionSignal<HistoryEntry>(() =>
     taskHistoryQuery(this.db, this.boardId(), this.taskId()),

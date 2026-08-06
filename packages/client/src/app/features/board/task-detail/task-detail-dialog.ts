@@ -1,6 +1,8 @@
 import { Component, computed, inject, signal, viewChild } from '@angular/core';
+import { Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideTrash2 } from '@ng-icons/lucide';
+import { HlmAlert, HlmAlertDescription } from '@spartan-ng/helm/alert';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmDialogImports, HlmDialog } from '@spartan-ng/helm/dialog';
 import { HlmTabsImports } from '@spartan-ng/helm/tabs';
@@ -17,6 +19,8 @@ type TabId = 'details' | 'sprint' | 'history' | 'advanced';
 @Component({
   selector: 'app-task-detail-dialog',
   imports: [
+    HlmAlert,
+    HlmAlertDescription,
     HlmDialogImports,
     HlmButton,
     HlmTabsImports,
@@ -34,7 +38,25 @@ type TabId = 'details' | 'sprint' | 'history' | 'advanced';
         *hlmDialogPortal
         class="flex h-[85vh] flex-col sm:w-[85vw]! sm:max-w-[85vw]!"
       >
-        @if (task(); as task) {
+        @if (migrationResult(); as result) {
+          <hlm-dialog-header>
+            <h3 hlmDialogTitle>Task moved</h3>
+          </hlm-dialog-header>
+          <div class="flex flex-1 items-center justify-center">
+            <div hlmAlert class="max-w-md">
+              <p hlmAlertDescription>
+                Task moved to <strong>{{ result.boardTitle }}</strong
+                >.
+              </p>
+            </div>
+          </div>
+          <hlm-dialog-footer class="justify-end">
+            <button hlmBtn variant="outline" type="button" (click)="close()">Close</button>
+            <button hlmBtn type="button" (click)="goToTarget(result.boardId)">
+              Go to {{ result.boardTitle }}
+            </button>
+          </hlm-dialog-footer>
+        } @else if (task(); as task) {
           <hlm-dialog-header>
             <app-task-title-editor [title]="task.title" (titleChange)="onTitleChange($event)" />
           </hlm-dialog-header>
@@ -76,7 +98,7 @@ type TabId = 'details' | 'sprint' | 'history' | 'advanced';
                 <app-task-migrate-form
                   [taskId]="task.id"
                   [sourceBoardId]="boardId()"
-                  (migrated)="close()"
+                  (migrated)="onMigrated($event)"
                 />
               }
             </div>
@@ -98,11 +120,13 @@ type TabId = 'details' | 'sprint' | 'history' | 'advanced';
 })
 export class TaskDetailDialog {
   protected readonly store = inject(BoardStore);
+  private readonly router = inject(Router);
 
   private readonly dialog = viewChild.required<HlmDialog>('dialog');
 
   private readonly taskId = signal<string | null>(null);
   protected readonly activeTab = signal<TabId>('details');
+  protected readonly migrationResult = signal<{ boardId: string; boardTitle: string } | null>(null);
 
   protected readonly task = computed(() =>
     /* v8 ignore next -- defensive: tasks() is seeded to an array by the collection stream @preserve */
@@ -114,11 +138,21 @@ export class TaskDetailDialog {
   open(task: Task): void {
     this.taskId.set(task.id);
     this.activeTab.set('details');
+    this.migrationResult.set(null);
     this.dialog().open();
   }
 
   close(): void {
     this.dialog().close(undefined);
+  }
+
+  protected onMigrated(result: { boardId: string; boardTitle: string }): void {
+    this.migrationResult.set(result);
+  }
+
+  protected async goToTarget(boardId: string): Promise<void> {
+    await this.router.navigate(['/board', boardId]);
+    this.close();
   }
 
   protected onTitleChange(title: string): void {

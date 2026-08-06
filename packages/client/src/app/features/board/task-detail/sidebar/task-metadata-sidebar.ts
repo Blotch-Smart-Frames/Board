@@ -1,4 +1,6 @@
 import { Component, computed, input, output, signal } from '@angular/core';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucidePencil } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { ColorPicker } from '../../../../shared/components/color-picker/color-picker';
@@ -12,6 +14,7 @@ import type { Collaborator, Label } from '../../../../shared/types/board';
 @Component({
   selector: 'app-task-metadata-sidebar',
   imports: [
+    NgIcon,
     HlmButton,
     HlmFieldImports,
     LabelChip,
@@ -21,16 +24,23 @@ import type { Collaborator, Label } from '../../../../shared/types/board';
     AssigneePicker,
     TaskAssignees,
   ],
+  providers: [provideIcons({ lucidePencil })],
   template: `
     <div class="flex flex-col gap-5 sm:w-64">
       <div hlmField>
-        <button
-          type="button"
-          class="text-muted-foreground hover:text-foreground w-fit text-left text-sm font-medium"
-          (click)="toggleLabels()"
-        >
-          Labels
-        </button>
+        <div class="flex items-center justify-between">
+          <span hlmFieldLabel>Labels</span>
+          <button
+            hlmBtn
+            variant="ghost"
+            size="icon-sm"
+            type="button"
+            aria-label="Edit labels"
+            (click)="toggleLabels()"
+          >
+            <ng-icon name="lucidePencil" />
+          </button>
+        </div>
         @if (labelsExpanded()) {
           <app-label-picker
             [boardId]="boardId()"
@@ -51,13 +61,19 @@ import type { Collaborator, Label } from '../../../../shared/types/board';
 
       <div class="flex flex-row gap-4">
         <div hlmField class="flex-1">
-          <button
-            type="button"
-            class="text-muted-foreground hover:text-foreground w-fit text-left text-sm font-medium"
-            (click)="toggleAssignees()"
-          >
-            Assignees
-          </button>
+          <div class="flex items-center justify-between">
+            <span hlmFieldLabel>Assignees</span>
+            <button
+              hlmBtn
+              variant="ghost"
+              size="icon-sm"
+              type="button"
+              aria-label="Edit assignees"
+              (click)="toggleAssignees()"
+            >
+              <ng-icon name="lucidePencil" />
+            </button>
+          </div>
           @if (assigneesExpanded()) {
             <app-assignee-picker
               [collaborators]="collaborators()"

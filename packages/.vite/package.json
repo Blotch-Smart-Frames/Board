@@ -1,0 +1,26 @@
+{
+  "name": "@blotch/vite-plugins",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Internal Vite plugins for the board monorepo",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "types": "./src/index.ts",
+  "main": "./src/index.ts",
+  "scripts": {
+    "cspell": "cspell ."
+  },
+  "peerDependencies": {
+    "vite": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "~6.0.2",
+    "vite": "^7.0.0"
+  }
+}

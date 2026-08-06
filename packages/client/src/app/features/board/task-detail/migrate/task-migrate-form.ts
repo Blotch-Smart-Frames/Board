@@ -62,7 +62,7 @@ export class TaskMigrateForm {
 
   readonly taskId = input.required<string>();
   readonly sourceBoardId = input.required<string>();
-  readonly migrated = output<void>();
+  readonly migrated = output<{ boardId: string; boardTitle: string }>();
 
   protected readonly targetBoardId = signal<string | null>(null);
   // Reset the list selection whenever the target board changes so we never
@@ -106,7 +106,7 @@ export class TaskMigrateForm {
     this.error.set(null);
     try {
       await this.boardStore.migrateTaskToBoard(this.taskId(), boardId, listId, targetBoard.title);
-      this.migrated.emit();
+      this.migrated.emit({ boardId, boardTitle: targetBoard.title });
     } catch (err) {
       this.error.set(err instanceof Error ? err.message : 'Failed to migrate task');
     } finally {

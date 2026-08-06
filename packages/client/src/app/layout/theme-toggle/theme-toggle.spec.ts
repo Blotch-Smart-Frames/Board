@@ -20,7 +20,7 @@ describe('ThemeToggle', () => {
     expect(setMode).toHaveBeenCalledWith('dark');
   });
 
-  it('falls back to the "system" icon when the ThemeService reports an unrecognised mode', async () => {
+  it('falls back to the "system" icon when the ThemeService reports an unrecognized mode', async () => {
     // Signals in tests can hold any value; the fallback branch on currentIcon()
     // guards against a foreign mode string ever making it into the trigger icon.
     const mode = signal<string>('psychedelic');

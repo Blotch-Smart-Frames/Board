@@ -105,180 +105,23 @@ describe('BoardService', () => {
   });
 
   describe('deleteBoard', () => {
-    it('captures the board before deleting it, so background cleanup still knows about it', async () => {
-      // getBoard() is called first — must resolve with a real board, exists()=true.
-      vi.mocked(getDoc).mockResolvedValueOnce({
-        exists: () => true,
-        id: 'board-1',
-        data: () => ({
-          title: 'B',
-          ownerId: 'u1',
-          collaborators: [],
-          backgroundImageUrl: 'bg.png',
-        }),
-      } as never);
-
-      vi.mocked(getDocs).mockImplementation((ref: unknown) => {
-        const path = (ref as { path: string }).path;
-        if (path === 'boards/board-1/tasks') {
-          return Promise.resolve({
-            docs: [
-              {
-                id: 'task-1',
-                ref: collectionRef('boards/board-1/tasks/task-1'),
-                data: () => ({ attachments: [{ storagePath: 'att-1' }] }),
-              },
-            ],
-          } as never);
-        }
-        if (
-          path === 'boards/board-1/tasks/task-1/comments' ||
-          path === 'boards/board-1/tasks/task-1/history'
-        ) {
-          return Promise.resolve({ docs: [] } as never);
-        }
-        return Promise.resolve({ docs: [] } as never); // lists, labels, sprints
-      });
-
-      const batch = fakeBatch();
-      vi.mocked(writeBatch).mockReturnValue(batch as never);
-
+    it('deletes only the board doc — the cascade is handled by the cleanup Cloud Function', async () => {
       await service.deleteBoard('board-1');
 
-      // The board doc itself must be included in the deleted refs.
-      expect(batch.delete).toHaveBeenCalledWith(
+      expect(deleteDoc).toHaveBeenCalledTimes(1);
+      expect(deleteDoc).toHaveBeenCalledWith(
         expect.objectContaining({ path: 'boards/board-1' }),
       );
-      // Background image cleanup must fire, proving the pre-delete board data was captured.
-      expect(storageService.deleteBoardBackground).toHaveBeenCalledWith('board-1');
-      expect(storageService.deleteTaskAttachment).toHaveBeenCalledWith('att-1');
     });
 
-    it('skips background cleanup when the board never had a background image', async () => {
-      vi.mocked(getDoc).mockResolvedValueOnce({
-        exists: () => true,
-        id: 'board-1',
-        data: () => ({ title: 'B', ownerId: 'u1', collaborators: [] }),
-      } as never);
-      vi.mocked(getDocs).mockResolvedValue({ docs: [] } as never);
-      vi.mocked(writeBatch).mockReturnValue(fakeBatch() as never);
-
+    it('does no client-side cascade: no subcollection reads, batches, or storage cleanup', async () => {
       await service.deleteBoard('board-1');
 
+      expect(getDoc).not.toHaveBeenCalled();
+      expect(getDocs).not.toHaveBeenCalled();
+      expect(writeBatch).not.toHaveBeenCalled();
       expect(storageService.deleteBoardBackground).not.toHaveBeenCalled();
-    });
-
-    it('walks tasks with no attachments field without exploding on the ?? fallback', async () => {
-      vi.mocked(getDoc).mockResolvedValueOnce({
-        exists: () => true,
-        id: 'board-1',
-        data: () => ({ title: 'B', ownerId: 'u1', collaborators: [] }),
-      } as never);
-      vi.mocked(getDocs).mockImplementation((ref: unknown) => {
-        const path = (ref as { path: string }).path;
-        if (path === 'boards/board-1/tasks') {
-          return Promise.resolve({
-            docs: [
-              {
-                id: 'task-attachment-less',
-                ref: collectionRef('boards/board-1/tasks/task-attachment-less'),
-                // The task doc omits the attachments field entirely.
-                data: () => ({}),
-              },
-            ],
-          } as never);
-        }
-        return Promise.resolve({ docs: [] } as never);
-      });
-      vi.mocked(writeBatch).mockReturnValue(fakeBatch() as never);
-
-      await expect(service.deleteBoard('board-1')).resolves.toBeUndefined();
       expect(storageService.deleteTaskAttachment).not.toHaveBeenCalled();
-    });
-
-    it('splits deletes into chunks of 500 so no single batch exceeds the Firestore limit', async () => {
-      vi.mocked(getDoc).mockResolvedValueOnce({
-        exists: () => true,
-        id: 'board-1',
-        data: () => ({ title: 'B', ownerId: 'u1', collaborators: [] }),
-      } as never);
-
-      const manyLists = Array.from({ length: 750 }, (_, i) => ({
-        ref: collectionRef(`list-${i}`),
-      }));
-      vi.mocked(getDocs).mockImplementation((ref: unknown) => {
-        const path = (ref as { path: string }).path;
-        if (path === 'boards/board-1/lists') return Promise.resolve({ docs: manyLists } as never);
-        return Promise.resolve({ docs: [] } as never);
-      });
-
-      const batches = [fakeBatch(), fakeBatch()];
-      let call = 0;
-      vi.mocked(writeBatch).mockImplementation(() => batches[call++] as never);
-
-      await service.deleteBoard('board-1');
-
-      // 750 lists + 1 board doc = 751 refs -> ceil(751/500) = 2 batch commits.
-      expect(batches[0].commit).toHaveBeenCalledTimes(1);
-      expect(batches[1].commit).toHaveBeenCalledTimes(1);
-      expect(batches[0].delete).toHaveBeenCalledTimes(500);
-      expect(batches[1].delete).toHaveBeenCalledTimes(251);
-    });
-
-    it('best-effort cleans up storage even if individual deletions reject', async () => {
-      vi.mocked(getDoc).mockResolvedValueOnce({
-        exists: () => true,
-        id: 'board-1',
-        data: () => ({
-          title: 'B',
-          ownerId: 'u1',
-          collaborators: [],
-          backgroundImageUrl: 'bg.png',
-        }),
-      } as never);
-
-      vi.mocked(getDocs).mockImplementation((ref: unknown) => {
-        const path = (ref as { path: string }).path;
-        if (path === 'boards/board-1/tasks') {
-          return Promise.resolve({
-            docs: [
-              {
-                id: 'task-1',
-                ref: collectionRef('boards/board-1/tasks/task-1'),
-                data: () => ({ attachments: [{ storagePath: 'att-1' }] }),
-              },
-            ],
-          } as never);
-        }
-        if (path === 'boards/board-1/labels') {
-          return Promise.resolve({
-            docs: [{ id: 'l1', ref: collectionRef('boards/board-1/labels/l1') }],
-          } as never);
-        }
-        if (path === 'boards/board-1/sprints') {
-          return Promise.resolve({
-            docs: [{ id: 's1', ref: collectionRef('boards/board-1/sprints/s1') }],
-          } as never);
-        }
-        return Promise.resolve({ docs: [] } as never);
-      });
-
-      const batch = fakeBatch();
-      vi.mocked(writeBatch).mockReturnValue(batch as never);
-      storageService.deleteBoardBackground.mockRejectedValue(new Error('offline'));
-      storageService.deleteTaskAttachment.mockRejectedValue(new Error('offline'));
-
-      // Should not throw despite the storage rejects.
-      await expect(service.deleteBoard('board-1')).resolves.toBeUndefined();
-      expect(storageService.deleteBoardBackground).toHaveBeenCalledWith('board-1');
-      expect(storageService.deleteTaskAttachment).toHaveBeenCalledWith('att-1');
-      // The label + sprint refs are also included in the delete batch.
-      expect(batch.delete).toHaveBeenCalledWith(
-        expect.objectContaining({ path: 'boards/board-1/labels/l1' }),
-      );
-      expect(batch.delete).toHaveBeenCalledWith(
-        expect.objectContaining({ path: 'boards/board-1/sprints/s1' }),
-      );
     });
   });
 

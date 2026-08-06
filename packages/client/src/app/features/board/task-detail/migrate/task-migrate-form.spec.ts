@@ -78,11 +78,17 @@ function setup(opts: { boards?: BoardWithOrder[] } = {}) {
   };
 }
 
-async function renderForm(opts: { boards?: BoardWithOrder[] } = {}) {
+async function renderForm(
+  opts: {
+    boards?: BoardWithOrder[];
+    onMigrated?: (value: { boardId: string; boardTitle: string }) => void;
+  } = {},
+) {
   const { userBoardsStore, boardStore, providers } = setup(opts);
   const view = await render(TaskMigrateForm, {
     providers,
     inputs: { taskId: 't1', sourceBoardId: 'board-1' },
+    ...(opts.onMigrated ? { on: { migrated: opts.onMigrated } } : {}),
   });
   return { ...view, userBoardsStore, boardStore };
 }
@@ -108,8 +114,10 @@ describe('TaskMigrateForm', () => {
 
   it('disables Move task until both a board and list are picked, then delegates to the store', async () => {
     const user = userEvent.setup();
+    const migrated = vi.fn();
     const { boardStore } = await renderForm({
       boards: [fakeBoard('board-2', 'Other Board')],
+      onMigrated: migrated,
     });
 
     const submit = screen.getByRole('button', { name: /move task/i });
@@ -135,6 +143,7 @@ describe('TaskMigrateForm', () => {
         'Other Board',
       ),
     );
+    expect(migrated).toHaveBeenCalledWith({ boardId: 'board-2', boardTitle: 'Other Board' });
   });
 
   it('surfaces the store error when migration fails', async () => {

@@ -35,12 +35,22 @@ describe('BoardOrderService', () => {
   });
 
   it('merges a single board order key without touching siblings', async () => {
-    await service.setBoardOrder('u1', 'board-2', 'a1');
+    await service.setBoardOrders('u1', { 'board-2': 'a1' });
 
     expect(doc).toHaveBeenCalledWith(expect.anything(), 'users', 'u1', 'preferences', 'boardOrder');
     expect(setDoc).toHaveBeenCalledWith(
       expect.anything(),
       { boards: { 'board-2': 'a1' } },
+      { merge: true },
+    );
+  });
+
+  it('merges multiple board order keys in a single write', async () => {
+    await service.setBoardOrders('u1', { 'board-1': 'a0', 'board-2': 'a1', 'board-3': 'a2' });
+
+    expect(setDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      { boards: { 'board-1': 'a0', 'board-2': 'a1', 'board-3': 'a2' } },
       { merge: true },
     );
   });

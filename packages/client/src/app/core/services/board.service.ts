@@ -80,14 +80,6 @@ export class BoardService {
     return collection(this.db, 'boards', boardId, 'tasks', taskId, 'history');
   }
 
-  private labelsCollection(boardId: string) {
-    return collection(this.db, 'boards', boardId, 'labels');
-  }
-
-  private sprintsCollection(boardId: string) {
-    return collection(this.db, 'boards', boardId, 'sprints');
-  }
-
   // --- Boards ---
 
   async createBoard(input: CreateBoardInput, userId: string): Promise<Board> {
@@ -116,57 +108,16 @@ export class BoardService {
     await updateDoc(this.boardRef(boardId), { ...updates, updatedAt: serverTimestamp() });
   }
 
+  /**
+   * Deletes the board document only. The full cascade — every list, task (with
+   * its comments and history), label and sprint, plus all Storage objects under
+   * boards/{boardId}/ — is handled server-side by the `cleanupDeletedBoard`
+   * Cloud Function, which triggers on this doc's deletion and runs with Admin
+   * privileges. That avoids the client's member-permission limits and the
+   * Storage rule-ordering leak that previously orphaned attachments.
+   */
   async deleteBoard(boardId: string): Promise<void> {
-    const board = await this.getBoard(boardId);
-
-    const [listsSnapshot, tasksSnapshot, labelsSnapshot, sprintsSnapshot] = await Promise.all([
-      getDocs(this.listsCollection(boardId)),
-      getDocs(this.tasksCollection(boardId)),
-      getDocs(this.labelsCollection(boardId)),
-      getDocs(this.sprintsCollection(boardId)),
-    ]);
-
-    const attachmentPaths: string[] = [];
-    const subcollectionRefs: DocumentReference[] = [];
-
-    await Promise.all(
-      tasksSnapshot.docs.flatMap((taskDoc) => {
-        const task = taskDoc.data() as Task;
-        for (const attachment of task.attachments ?? []) {
-          attachmentPaths.push(attachment.storagePath);
-        }
-        return [
-          /* v8 ignore start -- comments/history snapshots iterate only when deleting a board with existing subcollection entries @preserve */
-          getDocs(this.commentsCollection(boardId, taskDoc.id)).then((snap) => {
-            snap.docs.forEach((d) => subcollectionRefs.push(d.ref));
-          }),
-          getDocs(this.historyCollection(boardId, taskDoc.id)).then((snap) => {
-            snap.docs.forEach((d) => subcollectionRefs.push(d.ref));
-          }),
-          /* v8 ignore stop -- @preserve */
-        ];
-      }),
-    );
-
-    const allRefs: DocumentReference[] = [
-      ...subcollectionRefs,
-      ...listsSnapshot.docs.map((d) => d.ref),
-      ...tasksSnapshot.docs.map((d) => d.ref),
-      ...labelsSnapshot.docs.map((d) => d.ref),
-      ...sprintsSnapshot.docs.map((d) => d.ref),
-      this.boardRef(boardId),
-    ];
-
-    await this.commitInChunks(allRefs);
-
-    await Promise.all([
-      board?.backgroundImageUrl
-        ? this.storageService.deleteBoardBackground(boardId).catch(() => {})
-        : Promise.resolve(),
-      ...attachmentPaths.map((path) =>
-        this.storageService.deleteTaskAttachment(path).catch(() => {}),
-      ),
-    ]);
+    await deleteDoc(this.boardRef(boardId));
   }
 
   async shareBoard(boardId: string, userId: string): Promise<void> {

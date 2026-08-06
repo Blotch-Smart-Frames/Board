@@ -33,11 +33,12 @@ function docSnapshot(id: string, data: Record<string, unknown> | undefined) {
 // order doc — in that field-declaration order — so registrations are tracked
 // positionally rather than by path (owned/collaborated both query "boards").
 describe('UserBoardsStore', () => {
-  let boardOrderService: { setBoardOrder: ReturnType<typeof vi.fn> };
+  let boardOrderService: { setBoardOrders: ReturnType<typeof vi.fn> };
   let boardService: {
     createBoard: ReturnType<typeof vi.fn>;
     updateBoard: ReturnType<typeof vi.fn>;
     deleteBoard: ReturnType<typeof vi.fn>;
+    removeCollaborator: ReturnType<typeof vi.fn>;
   };
   let registrations: SnapshotCallback[];
   let userSignal: ReturnType<typeof signal<{ uid: string } | null | undefined>>;
@@ -46,11 +47,12 @@ describe('UserBoardsStore', () => {
     vi.clearAllMocks();
     registrations = [];
     userSignal = signal({ uid: 'u1' });
-    boardOrderService = { setBoardOrder: vi.fn().mockResolvedValue(undefined) };
+    boardOrderService = { setBoardOrders: vi.fn().mockResolvedValue(undefined) };
     boardService = {
       createBoard: vi.fn(),
       updateBoard: vi.fn().mockResolvedValue(undefined),
       deleteBoard: vi.fn().mockResolvedValue(undefined),
+      removeCollaborator: vi.fn().mockResolvedValue(undefined),
     };
 
     vi.mocked(onSnapshot).mockImplementation((_ref: unknown, onNext: unknown) => {
@@ -132,7 +134,7 @@ describe('UserBoardsStore', () => {
 
     await store.reorderBoard('board-1', 'a1');
 
-    expect(boardOrderService.setBoardOrder).toHaveBeenCalledWith('u1', 'board-1', 'a1');
+    expect(boardOrderService.setBoardOrders).toHaveBeenCalledWith('u1', { 'board-1': 'a1' });
   });
 
   it('reorderBoardToIndex derives an order key for the target slot and reorders optimistically', async () => {
@@ -143,12 +145,39 @@ describe('UserBoardsStore', () => {
 
     await store.reorderBoardToIndex('c', 0);
 
-    const [userId, boardId, order] = boardOrderService.setBoardOrder.mock.calls[0];
+    const [userId, orders] = boardOrderService.setBoardOrders.mock.calls[0];
     expect(userId).toBe('u1');
-    expect(boardId).toBe('c');
-    expect(order < 'a0').toBe(true); // before board 'a'
+    // All boards already have a stored order, so only the moved board is written.
+    expect(Object.keys(orders)).toEqual(['c']);
+    expect(orders['c'] < 'a0').toBe(true); // before board 'a'
     // Optimistic overlay places 'c' first straight away.
     expect(store.boards().map((b) => b.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('pins boards with no stored order when reordering so a downward move sticks', async () => {
+    const store = injectStore();
+    // No order doc: every board's order is synthesized "at the end" on render.
+    registrations[0](collectionSnapshot([board('a'), board('b'), board('c'), board('d')]));
+    registrations[1](collectionSnapshot([]));
+    registrations[2](docSnapshot('boardOrder', undefined));
+
+    // Boards render in a stable synthesized order first.
+    expect(store.boards().map((b) => b.id)).toEqual(['a', 'b', 'c', 'd']);
+
+    // Drag 'a' down to index 2 (between 'c' and 'd'). Before the fix, the
+    // un-stored siblings were re-synthesized past 'a' and snapped it back up.
+    await store.reorderBoardToIndex('a', 2);
+
+    expect(store.boards().map((b) => b.id)).toEqual(['b', 'c', 'a', 'd']);
+
+    // The moved board and every previously-unstored sibling are persisted so the
+    // order is stable on the next render.
+    const [userId, orders] = boardOrderService.setBoardOrders.mock.calls[0];
+    expect(userId).toBe('u1');
+    expect(Object.keys(orders).sort()).toEqual(['a', 'b', 'c', 'd']);
+    expect(orders['b'] < orders['c']).toBe(true);
+    expect(orders['c'] < orders['a']).toBe(true);
+    expect(orders['a'] < orders['d']).toBe(true);
   });
 
   it('rolls back the optimistic order when persistence fails', async () => {
@@ -156,7 +185,7 @@ describe('UserBoardsStore', () => {
     registrations[0](collectionSnapshot([board('a'), board('b')]));
     registrations[1](collectionSnapshot([]));
     registrations[2](docSnapshot('boardOrder', { boards: { a: 'a0', b: 'a1' } }));
-    boardOrderService.setBoardOrder.mockRejectedValue(new Error('offline'));
+    boardOrderService.setBoardOrders.mockRejectedValue(new Error('offline'));
 
     await expect(store.reorderBoardToIndex('b', 0)).rejects.toThrow('offline');
 
@@ -179,12 +208,21 @@ describe('UserBoardsStore', () => {
     expect(boardService.deleteBoard).toHaveBeenCalledWith('board-1');
   });
 
+  it('leaveBoard removes the current user from the board collaborators', async () => {
+    const store = injectStore();
+
+    await store.leaveBoard('board-1');
+
+    expect(boardService.removeCollaborator).toHaveBeenCalledWith('board-1', 'u1');
+  });
+
   it('throws when acting while signed out', async () => {
     userSignal.set(null);
     const store = injectStore();
 
     await expect(store.createBoard({ title: 'x' })).rejects.toThrow('Not authenticated');
     await expect(store.reorderBoard('b1', 'a0')).rejects.toThrow('Not authenticated');
+    await expect(store.leaveBoard('b1')).rejects.toThrow('Not authenticated');
   });
 
   it('isLoading reports false immediately when signed out', () => {

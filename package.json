@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "packageManager": "npm@10.9.8",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/.vite"
   ],
   "scripts": {
     "dev": "turbo run dev --filter=@blotch/board-client",
@@ -22,7 +23,8 @@
     "deploy:functions": "npm run build:functions && firebase deploy --only functions",
     "build:all": "turbo run build",
     "test:all": "turbo run test",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "cspell": "turbo run cspell"
   },
   "devDependencies": {
     "turbo": "2.10.8"
