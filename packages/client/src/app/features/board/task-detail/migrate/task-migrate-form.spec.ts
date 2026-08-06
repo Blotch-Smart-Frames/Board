@@ -2,8 +2,7 @@ import { signal } from '@angular/core';
 import type { Timestamp } from 'firebase/firestore';
 import { render, screen, waitFor } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
-import { TaskMigrateForm } from './task-migrate-form';
-import { BoardStore } from '../../data/board.store';
+import { TaskMigrateForm, type MigrateSubmit } from './task-migrate-form';
 import { UserBoardsStore, type BoardWithOrder } from '../../../boards/data/user-boards.store';
 import { FIRESTORE_DB } from '../../../../core/firebase/firebase.config';
 import type { List } from '../../../../shared/types/board';
@@ -64,16 +63,11 @@ function emitListsFor(boardId: string, lists: List[]): void {
 function setup(opts: { boards?: BoardWithOrder[] } = {}) {
   listCallbacks.clear();
   const userBoardsStore = { boards: signal(opts.boards ?? []) };
-  const boardStore = {
-    migrateTaskToBoard: vi.fn().mockResolvedValue('new-task-id'),
-  };
   return {
     userBoardsStore,
-    boardStore,
     providers: [
       { provide: FIRESTORE_DB, useValue: {} },
       { provide: UserBoardsStore, useValue: userBoardsStore },
-      { provide: BoardStore, useValue: boardStore },
     ],
   };
 }
@@ -81,16 +75,22 @@ function setup(opts: { boards?: BoardWithOrder[] } = {}) {
 async function renderForm(
   opts: {
     boards?: BoardWithOrder[];
-    onMigrated?: (value: { boardId: string; boardTitle: string }) => void;
+    errorMessage?: string | null;
+    isSubmitting?: boolean;
+    onSubmit?: (value: MigrateSubmit) => void;
   } = {},
 ) {
-  const { userBoardsStore, boardStore, providers } = setup(opts);
+  const { userBoardsStore, providers } = setup(opts);
   const view = await render(TaskMigrateForm, {
     providers,
-    inputs: { taskId: 't1', sourceBoardId: 'board-1' },
-    ...(opts.onMigrated ? { on: { migrated: opts.onMigrated } } : {}),
+    inputs: {
+      sourceBoardId: 'board-1',
+      ...(opts.errorMessage !== undefined ? { errorMessage: opts.errorMessage } : {}),
+      ...(opts.isSubmitting !== undefined ? { isSubmitting: opts.isSubmitting } : {}),
+    },
+    ...(opts.onSubmit ? { on: { submitMigration: opts.onSubmit } } : {}),
   });
-  return { ...view, userBoardsStore, boardStore };
+  return { ...view, userBoardsStore };
 }
 
 describe('TaskMigrateForm', () => {
@@ -112,12 +112,12 @@ describe('TaskMigrateForm', () => {
     expect(screen.getByRole('combobox', { name: 'Target list' })).toBeDisabled();
   });
 
-  it('disables Move task until both a board and list are picked, then delegates to the store', async () => {
+  it('disables Move task until both a board and list are picked, then emits submitMigration', async () => {
     const user = userEvent.setup();
-    const migrated = vi.fn();
-    const { boardStore } = await renderForm({
+    const onSubmit = vi.fn();
+    await renderForm({
       boards: [fakeBoard('board-2', 'Other Board')],
-      onMigrated: migrated,
+      onSubmit,
     });
 
     const submit = screen.getByRole('button', { name: /move task/i });
@@ -135,35 +135,29 @@ describe('TaskMigrateForm', () => {
 
     await user.click(submit);
 
-    await waitFor(() =>
-      expect(boardStore.migrateTaskToBoard).toHaveBeenCalledWith(
-        't1',
-        'board-2',
-        'list-x',
-        'Other Board',
-      ),
-    );
-    expect(migrated).toHaveBeenCalledWith({ boardId: 'board-2', boardTitle: 'Other Board' });
+    expect(onSubmit).toHaveBeenCalledWith({
+      boardId: 'board-2',
+      listId: 'list-x',
+      boardTitle: 'Other Board',
+    });
   });
 
-  it('surfaces the store error when migration fails', async () => {
-    const user = userEvent.setup();
-    const { boardStore } = await renderForm({
-      boards: [fakeBoard('board-2', 'Other Board')],
+  it('surfaces the errorMessage input as a destructive alert', async () => {
+    await renderForm({
+      boards: [fakeBoard('board-2', 'Other')],
+      errorMessage: 'offline',
     });
-    boardStore.migrateTaskToBoard.mockRejectedValue(new Error('offline'));
-
-    await user.click(screen.getByRole('combobox', { name: 'Target board' }));
-    await user.click(await screen.findByRole('option', { name: 'Other Board' }));
-
-    emitListsFor('board-2', [fakeList('list-x', 'Backlog')]);
-
-    await user.click(screen.getByRole('combobox', { name: 'Target list' }));
-    await user.click(await screen.findByRole('option', { name: 'Backlog' }));
-
-    await user.click(screen.getByRole('button', { name: /move task/i }));
 
     expect(await screen.findByText('offline')).toBeInTheDocument();
+  });
+
+  it('disables Move task and shows a spinner while isSubmitting is true', async () => {
+    await renderForm({
+      boards: [fakeBoard('board-2', 'Other')],
+      isSubmitting: true,
+    });
+
+    expect(screen.getByRole('button', { name: /move task/i })).toBeDisabled();
   });
 
   it('resets the picked list when the target board changes', async () => {
@@ -189,8 +183,10 @@ describe('TaskMigrateForm', () => {
 
   it('shows a "no longer available" error when the target board disappears mid-flow', async () => {
     const user = userEvent.setup();
-    const { userBoardsStore, boardStore } = await renderForm({
+    const onSubmit = vi.fn();
+    const { userBoardsStore } = await renderForm({
       boards: [fakeBoard('board-2', 'Other Board')],
+      onSubmit,
     });
 
     await user.click(screen.getByRole('combobox', { name: 'Target board' }));
@@ -207,37 +203,19 @@ describe('TaskMigrateForm', () => {
     await user.click(screen.getByRole('button', { name: /move task/i }));
 
     expect(await screen.findByText(/target board is no longer available/i)).toBeInTheDocument();
-    expect(boardStore.migrateTaskToBoard).not.toHaveBeenCalled();
-  });
-
-  it('falls back to a generic error message when the store throws a non-Error value', async () => {
-    const user = userEvent.setup();
-    const { boardStore } = await renderForm({
-      boards: [fakeBoard('board-2', 'Other Board')],
-    });
-    boardStore.migrateTaskToBoard.mockRejectedValue('kaboom');
-
-    await user.click(screen.getByRole('combobox', { name: 'Target board' }));
-    await user.click(await screen.findByRole('option', { name: 'Other Board' }));
-
-    emitListsFor('board-2', [fakeList('list-x', 'Backlog')]);
-
-    await user.click(screen.getByRole('combobox', { name: 'Target list' }));
-    await user.click(await screen.findByRole('option', { name: 'Backlog' }));
-
-    await user.click(screen.getByRole('button', { name: /move task/i }));
-
-    expect(await screen.findByText(/failed to migrate task/i)).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('is a no-op when submit is called without both a board and list selected', async () => {
-    const { boardStore, fixture } = await renderForm({
+    const onSubmit = vi.fn();
+    const { fixture } = await renderForm({
       boards: [fakeBoard('board-2', 'Other')],
+      onSubmit,
     });
 
     // No selections yet — submit early-returns.
-    await fixture.componentInstance['submit']();
+    fixture.componentInstance['submit']();
 
-    expect(boardStore.migrateTaskToBoard).not.toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

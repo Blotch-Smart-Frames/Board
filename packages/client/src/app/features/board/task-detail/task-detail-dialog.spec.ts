@@ -126,6 +126,7 @@ function setup(task: Task, opts: SetupOpts = {}) {
     updateTask: vi.fn().mockResolvedValue(undefined),
     moveTaskToList: vi.fn().mockResolvedValue(undefined),
     deleteTask: vi.fn().mockResolvedValue(undefined),
+    migrateTaskToBoard: vi.fn().mockResolvedValue('new-task-id'),
   };
   const sprintService = {
     calculateNextSprintDates: vi.fn().mockResolvedValue({
@@ -433,25 +434,146 @@ describe('TaskDetailDialog', () => {
       expect(screen.getByRole('button', { name: /move task/i })).toBeDisabled();
     });
 
-    it('shows a success view when the migrate form emits migrated, without closing the dialog', async () => {
-      const user = userEvent.setup();
-      const { fixture } = await openWith(fakeTask());
-
-      await user.click(screen.getByRole('tab', { name: 'Advanced' }));
-
+    // Helper: dispatch the migrate form's submit as if the user had picked a
+    // board + list. We poke the output directly so the specs don't have to walk
+    // the picker comboboxes on every migration test.
+    function emitMigrateSubmit(
+      fixture: ReturnType<typeof openWith> extends Promise<infer V>
+        ? V extends { fixture: infer F }
+          ? F
+          : never
+        : never,
+      payload: { boardId: string; listId: string; boardTitle: string },
+    ): void {
       const migrate = fixture.debugElement.query((el) => el.name === 'app-task-migrate-form');
       (
         migrate.componentInstance as {
-          migrated: { emit: (v: { boardId: string; boardTitle: string }) => void };
+          submitMigration: {
+            emit: (v: { boardId: string; listId: string; boardTitle: string }) => void;
+          };
         }
-      ).migrated.emit({ boardId: 'board-2', boardTitle: 'Other Board' });
+      ).submitMigration.emit(payload);
+    }
 
+    it('shows a success view after the store migration resolves, without closing the dialog', async () => {
+      const user = userEvent.setup();
+      const { fixture, store } = await openWith(fakeTask());
+
+      await user.click(screen.getByRole('tab', { name: 'Advanced' }));
+
+      emitMigrateSubmit(fixture, {
+        boardId: 'board-2',
+        listId: 'list-x',
+        boardTitle: 'Other Board',
+      });
+
+      await waitFor(() =>
+        expect(store.migrateTaskToBoard).toHaveBeenCalledWith(
+          't1',
+          'board-2',
+          'list-x',
+          'Other Board',
+        ),
+      );
       await waitFor(() =>
         expect(screen.getByRole('heading', { name: /task moved/i })).toBeInTheDocument(),
       );
       expect(screen.getByRole('button', { name: /go to other board/i })).toBeInTheDocument();
       // Original task heading is gone because the success branch replaces it.
       expect(screen.queryByRole('heading', { name: 'Existing task' })).not.toBeInTheDocument();
+    });
+
+    it('shows a "moving" spinner view while the store call is in flight, then swaps to success', async () => {
+      const user = userEvent.setup();
+      const { fixture, store } = await openWith(fakeTask());
+      // Keep the store call pending until we resolve it manually, so the
+      // in-progress branch stays on screen long enough to assert on.
+      let resolveMigrate: (value: string) => void = () => {};
+      store.migrateTaskToBoard.mockImplementationOnce(
+        () => new Promise<string>((resolve) => (resolveMigrate = resolve)),
+      );
+
+      await user.click(screen.getByRole('tab', { name: 'Advanced' }));
+
+      emitMigrateSubmit(fixture, {
+        boardId: 'board-2',
+        listId: 'list-x',
+        boardTitle: 'Other Board',
+      });
+
+      expect(await screen.findByRole('heading', { name: /moving task/i })).toBeInTheDocument();
+      expect(screen.getByText(/moving to other board/i)).toBeInTheDocument();
+
+      resolveMigrate('new-id');
+
+      await waitFor(() =>
+        expect(screen.getByRole('heading', { name: /task moved/i })).toBeInTheDocument(),
+      );
+    });
+
+    it('still reaches the success view if the source task vanishes from tasks() mid-flight', async () => {
+      // Regression: previously the source task disappearing (Firestore snapshot
+      // firing after the deletes) destroyed the migrate form before its
+      // migrated emit reached the dialog, leaving the modal blank. The dialog
+      // now owns the async call, so migrationResult still gets set.
+      const user = userEvent.setup();
+      const { fixture, store } = await openWith(fakeTask());
+      let resolveMigrate: (value: string) => void = () => {};
+      store.migrateTaskToBoard.mockImplementationOnce(
+        () => new Promise<string>((resolve) => (resolveMigrate = resolve)),
+      );
+
+      await user.click(screen.getByRole('tab', { name: 'Advanced' }));
+
+      emitMigrateSubmit(fixture, {
+        boardId: 'board-2',
+        listId: 'list-x',
+        boardTitle: 'Other Board',
+      });
+
+      // Simulate the source-board snapshot dropping the migrated task.
+      store.tasks.set([]);
+
+      resolveMigrate('new-id');
+
+      await waitFor(() =>
+        expect(screen.getByRole('heading', { name: /task moved/i })).toBeInTheDocument(),
+      );
+      expect(screen.getByRole('button', { name: /go to other board/i })).toBeInTheDocument();
+    });
+
+    it('surfaces the store error to the migrate form when the migration fails', async () => {
+      const user = userEvent.setup();
+      const { fixture, store } = await openWith(fakeTask());
+      store.migrateTaskToBoard.mockRejectedValueOnce(new Error('offline'));
+
+      await user.click(screen.getByRole('tab', { name: 'Advanced' }));
+
+      emitMigrateSubmit(fixture, {
+        boardId: 'board-2',
+        listId: 'list-x',
+        boardTitle: 'Other Board',
+      });
+
+      expect(await screen.findByText('offline')).toBeInTheDocument();
+      // We're back on the task view (no success heading rendered).
+      expect(screen.queryByRole('heading', { name: /task moved/i })).not.toBeInTheDocument();
+    });
+
+    it('falls back to a generic error message when the store throws a non-Error value', async () => {
+      const user = userEvent.setup();
+      const { fixture, store } = await openWith(fakeTask());
+      store.migrateTaskToBoard.mockRejectedValueOnce('kaboom');
+
+      await user.click(screen.getByRole('tab', { name: 'Advanced' }));
+
+      emitMigrateSubmit(fixture, {
+        boardId: 'board-2',
+        listId: 'list-x',
+        boardTitle: 'Other Board',
+      });
+
+      expect(await screen.findByText(/failed to migrate task/i)).toBeInTheDocument();
     });
 
     it('navigates to the target board and closes when Go to X is clicked', async () => {
@@ -463,12 +585,11 @@ describe('TaskDetailDialog', () => {
 
       await user.click(screen.getByRole('tab', { name: 'Advanced' }));
 
-      const migrate = fixture.debugElement.query((el) => el.name === 'app-task-migrate-form');
-      (
-        migrate.componentInstance as {
-          migrated: { emit: (v: { boardId: string; boardTitle: string }) => void };
-        }
-      ).migrated.emit({ boardId: 'board-2', boardTitle: 'Other Board' });
+      emitMigrateSubmit(fixture, {
+        boardId: 'board-2',
+        listId: 'list-x',
+        boardTitle: 'Other Board',
+      });
 
       const goTo = await screen.findByRole('button', { name: /go to other board/i });
       await user.click(goTo);
@@ -485,12 +606,11 @@ describe('TaskDetailDialog', () => {
 
       await user.click(screen.getByRole('tab', { name: 'Advanced' }));
 
-      const migrate = fixture.debugElement.query((el) => el.name === 'app-task-migrate-form');
-      (
-        migrate.componentInstance as {
-          migrated: { emit: (v: { boardId: string; boardTitle: string }) => void };
-        }
-      ).migrated.emit({ boardId: 'board-2', boardTitle: 'Other Board' });
+      emitMigrateSubmit(fixture, {
+        boardId: 'board-2',
+        listId: 'list-x',
+        boardTitle: 'Other Board',
+      });
 
       const closeButtons = await screen.findAllByRole('button', { name: /^close$/i });
       await user.click(closeButtons[closeButtons.length - 1]);

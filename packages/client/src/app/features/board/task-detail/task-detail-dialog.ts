@@ -5,9 +5,10 @@ import { lucideTrash2 } from '@ng-icons/lucide';
 import { HlmAlert, HlmAlertDescription } from '@spartan-ng/helm/alert';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmDialogImports, HlmDialog } from '@spartan-ng/helm/dialog';
+import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { HlmTabsImports } from '@spartan-ng/helm/tabs';
 import { HistorySection } from './history/history-section';
-import { TaskMigrateForm } from './migrate/task-migrate-form';
+import { TaskMigrateForm, type MigrateSubmit } from './migrate/task-migrate-form';
 import { TaskDetailsTab } from './details-tab/task-details-tab';
 import { TaskSprintTab } from './sprint-tab/task-sprint-tab';
 import { TaskTitleEditor } from './title/task-title-editor';
@@ -23,6 +24,7 @@ type TabId = 'details' | 'sprint' | 'history' | 'advanced';
     HlmAlertDescription,
     HlmDialogImports,
     HlmButton,
+    HlmSpinner,
     HlmTabsImports,
     NgIcon,
     HistorySection,
@@ -56,6 +58,14 @@ type TabId = 'details' | 'sprint' | 'history' | 'advanced';
               Go to {{ result.boardTitle }}
             </button>
           </hlm-dialog-footer>
+        } @else if (migrationInProgress(); as pending) {
+          <hlm-dialog-header>
+            <h3 hlmDialogTitle>Moving task…</h3>
+          </hlm-dialog-header>
+          <div class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-3">
+            <hlm-spinner class="text-[2rem]" />
+            <p class="text-sm">Moving to {{ pending.boardTitle }}…</p>
+          </div>
         } @else if (task(); as task) {
           <hlm-dialog-header>
             <app-task-title-editor [title]="task.title" (titleChange)="onTitleChange($event)" />
@@ -96,9 +106,9 @@ type TabId = 'details' | 'sprint' | 'history' | 'advanced';
             <div hlmTabsContent="advanced" class="overflow-y-auto py-2">
               @if (activeTab() === 'advanced') {
                 <app-task-migrate-form
-                  [taskId]="task.id"
                   [sourceBoardId]="boardId()"
-                  (migrated)="onMigrated($event)"
+                  [errorMessage]="migrationError()"
+                  (submitMigration)="onMigrateSubmit($event)"
                 />
               }
             </div>
@@ -127,6 +137,8 @@ export class TaskDetailDialog {
   private readonly taskId = signal<string | null>(null);
   protected readonly activeTab = signal<TabId>('details');
   protected readonly migrationResult = signal<{ boardId: string; boardTitle: string } | null>(null);
+  protected readonly migrationInProgress = signal<{ boardTitle: string } | null>(null);
+  protected readonly migrationError = signal<string | null>(null);
 
   protected readonly task = computed(() =>
     /* v8 ignore next -- defensive: tasks() is seeded to an array by the collection stream @preserve */
@@ -139,6 +151,8 @@ export class TaskDetailDialog {
     this.taskId.set(task.id);
     this.activeTab.set('details');
     this.migrationResult.set(null);
+    this.migrationInProgress.set(null);
+    this.migrationError.set(null);
     this.dialog().open();
   }
 
@@ -146,8 +160,25 @@ export class TaskDetailDialog {
     this.dialog().close(undefined);
   }
 
-  protected onMigrated(result: { boardId: string; boardTitle: string }): void {
-    this.migrationResult.set(result);
+  protected async onMigrateSubmit(payload: MigrateSubmit): Promise<void> {
+    const currentTask = this.task();
+    /* v8 ignore next 2 -- defensive: the form is only visible when task() is defined @preserve */
+    if (!currentTask) return;
+    this.migrationInProgress.set({ boardTitle: payload.boardTitle });
+    this.migrationError.set(null);
+    try {
+      await this.store.migrateTaskToBoard(
+        currentTask.id,
+        payload.boardId,
+        payload.listId,
+        payload.boardTitle,
+      );
+      this.migrationResult.set({ boardId: payload.boardId, boardTitle: payload.boardTitle });
+    } catch (err) {
+      this.migrationError.set(err instanceof Error ? err.message : 'Failed to migrate task');
+    } finally {
+      this.migrationInProgress.set(null);
+    }
   }
 
   protected async goToTarget(boardId: string): Promise<void> {

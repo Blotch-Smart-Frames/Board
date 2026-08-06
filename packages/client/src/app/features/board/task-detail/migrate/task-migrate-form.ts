@@ -3,9 +3,10 @@ import { HlmAlert, HlmAlertDescription } from '@spartan-ng/helm/alert';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { UserBoardsStore } from '../../../boards/data/user-boards.store';
-import { BoardStore } from '../../data/board.store';
 import { MigrateBoardPicker } from './migrate-board-picker/migrate-board-picker';
 import { MigrateListPicker } from './migrate-list-picker/migrate-list-picker';
+
+export type MigrateSubmit = { boardId: string; listId: string; boardTitle: string };
 
 @Component({
   selector: 'app-task-migrate-form',
@@ -39,15 +40,15 @@ import { MigrateListPicker } from './migrate-list-picker/migrate-list-picker';
         (valueChange)="onListChange($event)"
       />
 
-      @if (error()) {
+      @if (displayedError(); as err) {
         <div hlmAlert variant="destructive">
-          <p hlmAlertDescription>{{ error() }}</p>
+          <p hlmAlertDescription>{{ err }}</p>
         </div>
       }
 
       <div class="flex items-center gap-2">
         <button hlmBtn type="button" [disabled]="!canSubmit()" (click)="submit()">
-          @if (isMigrating()) {
+          @if (isSubmitting()) {
             <hlm-spinner class="mr-2 size-4" />
           }
           Move task
@@ -58,11 +59,11 @@ import { MigrateListPicker } from './migrate-list-picker/migrate-list-picker';
 })
 export class TaskMigrateForm {
   private readonly userBoardsStore = inject(UserBoardsStore);
-  private readonly boardStore = inject(BoardStore);
 
-  readonly taskId = input.required<string>();
   readonly sourceBoardId = input.required<string>();
-  readonly migrated = output<{ boardId: string; boardTitle: string }>();
+  readonly isSubmitting = input(false);
+  readonly errorMessage = input<string | null>(null);
+  readonly submitMigration = output<MigrateSubmit>();
 
   protected readonly targetBoardId = signal<string | null>(null);
   // Reset the list selection whenever the target board changes so we never
@@ -71,46 +72,39 @@ export class TaskMigrateForm {
     source: this.targetBoardId,
     computation: () => null,
   });
-  protected readonly isMigrating = signal(false);
-  protected readonly error = signal<string | null>(null);
+  protected readonly localError = signal<string | null>(null);
+
+  protected readonly displayedError = computed(() => this.localError() ?? this.errorMessage());
 
   protected readonly availableBoards = computed(() =>
     this.userBoardsStore.boards().filter((b) => b.id !== this.sourceBoardId()),
   );
 
   protected readonly canSubmit = computed(
-    () => !!this.targetBoardId() && !!this.targetListId() && !this.isMigrating(),
+    () => !!this.targetBoardId() && !!this.targetListId() && !this.isSubmitting(),
   );
 
   protected onBoardChange(value: string | null): void {
     this.targetBoardId.set(value);
-    this.error.set(null);
+    this.localError.set(null);
   }
 
   protected onListChange(value: string | null): void {
     this.targetListId.set(value);
   }
 
-  protected async submit(): Promise<void> {
+  protected submit(): void {
     const boardId = this.targetBoardId();
     const listId = this.targetListId();
     if (!boardId || !listId) return;
 
     const targetBoard = this.userBoardsStore.boards().find((b) => b.id === boardId);
     if (!targetBoard) {
-      this.error.set('Target board is no longer available');
+      this.localError.set('Target board is no longer available');
       return;
     }
 
-    this.isMigrating.set(true);
-    this.error.set(null);
-    try {
-      await this.boardStore.migrateTaskToBoard(this.taskId(), boardId, listId, targetBoard.title);
-      this.migrated.emit({ boardId, boardTitle: targetBoard.title });
-    } catch (err) {
-      this.error.set(err instanceof Error ? err.message : 'Failed to migrate task');
-    } finally {
-      this.isMigrating.set(false);
-    }
+    this.localError.set(null);
+    this.submitMigration.emit({ boardId, listId, boardTitle: targetBoard.title });
   }
 }
