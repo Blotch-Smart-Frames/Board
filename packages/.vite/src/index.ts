@@ -2,4 +2,4 @@ export {
   generateDistPackageJson,
   type GenerateDistPackageJsonOptions,
   type SourcePackageJson,
-} from "./generate-dist-package-json";
+} from "./generate-dist-package-json.ts";

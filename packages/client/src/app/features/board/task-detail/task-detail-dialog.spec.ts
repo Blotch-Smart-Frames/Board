@@ -193,7 +193,7 @@ describe('TaskDetailDialog', () => {
 
     expect(screen.getByText('No assignees')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Assignees' }));
+    await user.click(screen.getByRole('button', { name: 'Edit assignees' }));
     await user.click(screen.getByRole('checkbox', { name: 'Assign Bob' }));
 
     expect(store.updateTask).toHaveBeenCalledWith('t1', { assignedTo: ['u9'] });

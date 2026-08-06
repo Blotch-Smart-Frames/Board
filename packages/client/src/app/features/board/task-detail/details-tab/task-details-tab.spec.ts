@@ -173,7 +173,7 @@ describe('TaskDetailsTab', () => {
     const { store, providers } = setup(task, { labels: [label] });
     await render(TaskDetailsTab, { providers, inputs: { task, boardId: 'board-1' } });
 
-    await user.click(screen.getByRole('button', { name: 'Labels' }));
+    await user.click(screen.getByRole('button', { name: 'Edit labels' }));
     await user.click(screen.getByRole('checkbox', { name: 'Toggle label Urgent' }));
 
     await waitFor(() => expect(store.updateTask).toHaveBeenCalledWith('t1', { labelIds: ['l1'] }));
@@ -188,7 +188,7 @@ describe('TaskDetailsTab', () => {
     const { store, providers } = setup(task, { collaborators });
     await render(TaskDetailsTab, { providers, inputs: { task, boardId: 'board-1' } });
 
-    await user.click(screen.getByRole('button', { name: 'Assignees' }));
+    await user.click(screen.getByRole('button', { name: 'Edit assignees' }));
     await user.click(screen.getByRole('checkbox', { name: 'Assign Bob' }));
 
     await waitFor(() =>
