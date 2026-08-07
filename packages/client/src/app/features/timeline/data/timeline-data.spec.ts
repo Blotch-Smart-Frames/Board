@@ -23,6 +23,7 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     title: 'Task',
     order: 'a0',
     calendarSyncEnabled: false,
+    archive: false,
     createdBy: 'u1',
     createdAt: {} as Timestamp,
     updatedAt: {} as Timestamp,

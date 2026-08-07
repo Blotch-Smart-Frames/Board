@@ -15,6 +15,7 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     title: 'Write tests',
     order: 'a0',
     calendarSyncEnabled: false,
+    archive: false,
     createdBy: 'u1',
     createdAt: {} as Timestamp,
     updatedAt: {} as Timestamp,
@@ -162,24 +163,6 @@ describe('diffTaskChanges', () => {
     ]);
   });
 
-  it('produces a completed entry when completedAt transitions from unset to a date', () => {
-    const oldTask = fakeTask();
-    const context = fakeContext();
-
-    const entries = diffTaskChanges(oldTask, { completedAt: new Date(2026, 0, 1) }, context);
-
-    expect(entries).toEqual([{ action: 'completed', userId: 'u1' }]);
-  });
-
-  it('produces a reopened entry when completedAt transitions from set to null', () => {
-    const oldTask = fakeTask({ completedAt: ts(new Date(2026, 0, 1)) });
-    const context = fakeContext();
-
-    const entries = diffTaskChanges(oldTask, { completedAt: null }, context);
-
-    expect(entries).toEqual([{ action: 'reopened', userId: 'u1' }]);
-  });
-
   it('produces a field_changed entry when the title changes', () => {
     const oldTask = fakeTask({ title: 'Old title' });
     const context = fakeContext();
@@ -244,25 +227,6 @@ describe('diffTaskChanges', () => {
       { action: 'assignee_added', userId: 'u1', metadata: { userName: 'ghost-2' } },
       { action: 'assignee_removed', userId: 'u1', metadata: { userName: 'ghost-1' } },
     ]);
-  });
-
-  it('does not produce a completed entry when completedAt was already set', () => {
-    const oldTask = fakeTask({ completedAt: ts(new Date(2026, 0, 1)) });
-    const context = fakeContext();
-
-    const entries = diffTaskChanges(oldTask, { completedAt: new Date(2026, 0, 2) }, context);
-
-    // Same "completed" status — no entry.
-    expect(entries.filter((e) => e.action === 'completed' || e.action === 'reopened')).toEqual([]);
-  });
-
-  it('does not produce a reopened entry when the task was already open', () => {
-    const oldTask = fakeTask();
-    const context = fakeContext();
-
-    const entries = diffTaskChanges(oldTask, { completedAt: null }, context);
-
-    expect(entries.filter((e) => e.action === 'reopened')).toEqual([]);
   });
 
   it('produces a field_changed entry when startDate changes and formats both dates', () => {

@@ -24,7 +24,7 @@ export type StatusBreakdownRow = {
 
 export type ActivityEvent = {
   id: string;
-  kind: 'created' | 'completed';
+  kind: 'created';
   task: EnrichedTask;
   actorId: string;
   timestamp: Date;
@@ -36,7 +36,6 @@ const URGENT_WINDOW_DAYS = 3;
 
 /* v8 ignore start -- called from urgentCount/urgentTickets computeds but V8 attributes function coverage inconsistently @preserve */
 function isUrgentTask(task: EnrichedTask, now: number): boolean {
-  if (task.completedAt) return false;
   const due = task.dueDate?.toDate?.().getTime();
   if (!due) return false;
   return due - now <= URGENT_WINDOW_DAYS * MS_PER_DAY;
@@ -149,8 +148,6 @@ export class DashboardStore {
   private readonly now = computed(() => Date.now());
 
   readonly totalCount = computed(() => this.userTasks().length);
-  readonly openCount = computed(() => this.userTasks().filter((t) => !t.completedAt).length);
-  readonly answeredCount = computed(() => this.userTasks().filter((t) => !!t.completedAt).length);
   readonly urgentCount = computed(() => {
     const now = this.now();
     return this.userTasks().filter((t) => isUrgentTask(t, now)).length;
@@ -196,9 +193,9 @@ export class DashboardStore {
   });
 
   /**
-   * Merges task create/complete events across every board into a single reverse-chronological feed.
-   * Uses `createdAt` / `completedAt` timestamps we already have on the task doc rather than
-   * spinning up a collectionGroup listener over per-task /history subcollections.
+   * Reverse-chronological feed of task creation events across every board.
+   * Sourced from `createdAt` on the task doc so we don't need per-task listeners
+   * on /history subcollections.
    */
   readonly recentActivity = computed<ActivityEvent[]>(() => {
     const events: ActivityEvent[] = [];
@@ -211,16 +208,6 @@ export class DashboardStore {
           task,
           actorId: task.createdBy,
           timestamp: createdAt,
-        });
-      }
-      const completedAt = task.completedAt?.toDate?.();
-      if (completedAt) {
-        events.push({
-          id: `${task.id}-completed`,
-          kind: 'completed',
-          task,
-          actorId: task.createdBy,
-          timestamp: completedAt,
         });
       }
     }

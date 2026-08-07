@@ -44,10 +44,10 @@ function describe(entry: HistoryEntry, collaborators: Collaborator[]): string {
       return `${user} moved from ${meta?.fromListName ?? ''} to ${meta?.toListName ?? ''}`;
     case 'board_migrated':
       return `${user} migrated this task from ${meta?.fromBoardName ?? ''} to ${meta?.toBoardName ?? ''}`;
-    case 'completed':
-      return `${user} marked as complete`;
-    case 'reopened':
-      return `${user} reopened`;
+    case 'archived':
+      return `${user} archived to ${meta?.toListName ?? ''}`;
+    case 'unarchived':
+      return `${user} restored to ${meta?.toListName ?? ''}`;
     case 'field_changed':
       return `${user} changed ${entry.field ?? 'a field'}`;
     default:

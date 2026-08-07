@@ -145,8 +145,20 @@ describe('HistorySection', () => {
         metadata: { fromBoardName: 'A', toBoardName: 'B' },
         createdAt: stableTs,
       },
-      { id: 'h9', action: 'completed', userId: 'u1', createdAt: stableTs },
-      { id: 'h10', action: 'reopened', userId: 'u1', createdAt: stableTs },
+      {
+        id: 'h9',
+        action: 'archived',
+        userId: 'u1',
+        metadata: { toListName: 'Done' },
+        createdAt: stableTs,
+      },
+      {
+        id: 'h10',
+        action: 'unarchived',
+        userId: 'u1',
+        metadata: { toListName: 'To Do' },
+        createdAt: stableTs,
+      },
       { id: 'h11', action: 'field_changed', userId: 'u1', field: 'title', createdAt: stableTs },
       { id: 'h12', action: 'field_changed', userId: 'u1', createdAt: stableTs },
       {
@@ -177,8 +189,8 @@ describe('HistorySection', () => {
     expect(screen.getByText('Alice removed attachment plan.pdf')).toBeInTheDocument();
     expect(screen.getByText('Alice moved from To Do to Done')).toBeInTheDocument();
     expect(screen.getByText('Alice migrated this task from A to B')).toBeInTheDocument();
-    expect(screen.getByText('Alice marked as complete')).toBeInTheDocument();
-    expect(screen.getByText('Alice reopened')).toBeInTheDocument();
+    expect(screen.getByText('Alice archived to Done')).toBeInTheDocument();
+    expect(screen.getByText('Alice restored to To Do')).toBeInTheDocument();
     expect(screen.getByText('Alice changed title')).toBeInTheDocument();
     expect(screen.getByText('Alice changed a field')).toBeInTheDocument();
     expect(screen.getByText('Someone made a change')).toBeInTheDocument();
@@ -196,37 +208,37 @@ describe('HistorySection', () => {
       const entries: HistoryEntry[] = [
         {
           id: 'now',
-          action: 'completed',
+          action: 'archived',
           userId: 'u1',
           createdAt: ts(new Date(now.getTime() - 5_000)),
         },
         {
           id: 'minutes',
-          action: 'completed',
+          action: 'archived',
           userId: 'u1',
           createdAt: ts(new Date(now.getTime() - 5 * 60_000)),
         },
         {
           id: 'hours',
-          action: 'completed',
+          action: 'archived',
           userId: 'u1',
           createdAt: ts(new Date(now.getTime() - 3 * 3_600_000)),
         },
         {
           id: 'days',
-          action: 'completed',
+          action: 'archived',
           userId: 'u1',
           createdAt: ts(new Date(now.getTime() - 2 * 86_400_000)),
         },
         {
           id: 'oldest',
-          action: 'completed',
+          action: 'archived',
           userId: 'u1',
           createdAt: ts(new Date(now.getTime() - 30 * 86_400_000)),
         },
         {
           id: 'no-timestamp',
-          action: 'completed',
+          action: 'archived',
           userId: 'u1',
           createdAt: undefined as unknown as Timestamp,
         },
@@ -247,7 +259,7 @@ describe('HistorySection', () => {
       expect(
         screen.getByText(new Date(now.getTime() - 30 * 86_400_000).toLocaleDateString()),
       ).toBeInTheDocument();
-      expect(screen.getAllByText('Alice marked as complete').length).toBe(entries.length);
+      expect(screen.getAllByText(/^Alice archived to\s*$/).length).toBe(entries.length);
     } finally {
       vi.useRealTimers();
     }

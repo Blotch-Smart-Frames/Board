@@ -105,15 +105,6 @@ export const diffTaskChanges = (
     }
   }
 
-  // Completion status
-  if (updates.completedAt !== undefined) {
-    if (updates.completedAt && !oldTask.completedAt) {
-      entries.push({ action: 'completed', userId });
-    } else if (!updates.completedAt && oldTask.completedAt) {
-      entries.push({ action: 'reopened', userId });
-    }
-  }
-
   // Field changes
   const fieldChecks: {
     key: keyof UpdateTaskInput;

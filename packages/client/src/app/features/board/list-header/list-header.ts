@@ -6,6 +6,7 @@ import {
   lucideTrash2,
   lucideArrowLeft,
   lucideArrowRight,
+  lucideArchive,
 } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmInput } from '@spartan-ng/helm/input';
@@ -21,6 +22,7 @@ import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
       lucideTrash2,
       lucideArrowLeft,
       lucideArrowRight,
+      lucideArchive,
     }),
   ],
   template: `
@@ -57,6 +59,14 @@ import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
         </div>
       }
 
+      @if (isArchival()) {
+        <ng-icon
+          name="lucideArchive"
+          class="text-muted-foreground"
+          aria-label="Archive list"
+          title="Archive list"
+        />
+      }
       <button
         hlmBtn
         variant="ghost"
@@ -96,6 +106,7 @@ import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
 export class ListHeader {
   readonly title = input.required<string>();
   readonly taskCount = input(0);
+  readonly isArchival = input(false);
   readonly canMoveLeft = input(false);
   readonly canMoveRight = input(false);
   readonly updateTitle = output<string>();

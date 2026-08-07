@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { provideIcons } from '@ng-icons/core';
-import { lucideCircleCheckBig, lucideCircleDot, lucideFlame, lucideTicket } from '@ng-icons/lucide';
+import { lucideFlame, lucideTicket } from '@ng-icons/lucide';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { AuthStore } from '../../core/auth/auth.store';
 import { UserAvatar } from '../../shared/components/user-avatar/user-avatar';
@@ -23,10 +23,7 @@ function computeGreeting(now: Date): string {
 @Component({
   selector: 'app-dashboard-page',
   imports: [HlmSpinner, MetricCard, StatusBreakdown, UrgentTickets, ActivityTimeline, UserAvatar],
-  providers: [
-    DashboardStore,
-    provideIcons({ lucideCircleCheckBig, lucideCircleDot, lucideFlame, lucideTicket }),
-  ],
+  providers: [DashboardStore, provideIcons({ lucideFlame, lucideTicket })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="h-full overflow-y-auto">
@@ -64,27 +61,13 @@ function computeGreeting(now: Date): string {
           </div>
         } @else {
           <!-- Metric grid -->
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <app-metric-card
               label="Total tickets"
               [value]="store.totalCount()"
               icon="lucideTicket"
               tone="primary"
-              [hint]="totalHint()"
-            />
-            <app-metric-card
-              label="Open"
-              [value]="store.openCount()"
-              icon="lucideCircleDot"
-              tone="warning"
-              hint="In progress or waiting"
-            />
-            <app-metric-card
-              label="Answered"
-              [value]="store.answeredCount()"
-              icon="lucideCircleCheckBig"
-              tone="success"
-              hint="Completed by you"
+              hint="Active tickets across your boards"
             />
             <app-metric-card
               label="Urgent"
@@ -125,8 +108,4 @@ export class DashboardPage {
   protected readonly userPhoto = computed(() => this.authStore.user()?.photoURL ?? null);
   protected readonly boardCount = computed(() => this.store.boards().length);
   protected readonly isLoading = computed(() => this.store.isLoadingBoards());
-  protected readonly totalHint = computed(() => {
-    const open = this.store.openCount();
-    return `${open} still open`;
-  });
 }

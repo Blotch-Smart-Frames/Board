@@ -140,10 +140,20 @@ export class TaskDetailDialog {
   protected readonly migrationInProgress = signal<{ boardTitle: string } | null>(null);
   protected readonly migrationError = signal<string | null>(null);
 
-  protected readonly task = computed(() =>
+  protected readonly task = computed(() => {
+    const id = this.taskId();
+    if (!id) return undefined;
     /* v8 ignore next -- defensive: tasks() is seeded to an array by the collection stream @preserve */
-    (this.store.tasks() ?? []).find((t) => t.id === this.taskId()),
-  );
+    const active = (this.store.tasks() ?? []).find((t) => t.id === id);
+    if (active) return active;
+    // Archived tasks aren't in tasks() (filtered at the query), so also search
+    // the archived-preview streams so an archival card opens with real data.
+    for (const previews of this.store.archivedPreviewByListId().values()) {
+      const found = previews.find((t) => t.id === id);
+      if (found) return found;
+    }
+    return undefined;
+  });
   /* v8 ignore next -- defensive: boardId() is set before this dialog can open @preserve */
   protected readonly boardId = computed(() => this.store.boardId() ?? '');
 
