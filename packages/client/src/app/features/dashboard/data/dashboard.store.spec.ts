@@ -49,6 +49,8 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     title: 'Task',
     order: 'a0',
     calendarSyncEnabled: false,
+    archive: false,
+    archivedAt: null,
     createdBy: 'u1',
     createdAt: ts(new Date(2026, 0, 1)),
     updatedAt: ts(new Date(2026, 0, 1)),
@@ -266,21 +268,18 @@ describe('DashboardStore', () => {
       feedLists('b1', [{ id: 'l1', data: { title: 'To Do', order: 'a0' } }]);
     });
 
-    it('reports total = open + answered for the signed-in user', async () => {
+    it('reports total for the signed-in user’s tasks', async () => {
       feedTasks('b1', [
         { id: 't1', data: fakeTask({ assignedTo: ['u1'] }) },
-        { id: 't2', data: fakeTask({ assignedTo: ['u1'], completedAt: ts(new Date()) }) },
+        { id: 't2', data: fakeTask({ assignedTo: ['u1'] }) },
         { id: 't3', data: fakeTask({ assignedTo: ['u2'] }) }, // not the user's
       ]);
 
       const store = TestBed.inject(DashboardStore);
       expect(store.totalCount()).toBe(2);
-      expect(store.openCount()).toBe(1);
-      expect(store.answeredCount()).toBe(1);
-      expect(store.totalCount()).toBe(store.openCount() + store.answeredCount());
     });
 
-    it('counts a task as urgent only when it is not completed AND due within 3 days', async () => {
+    it('counts a task as urgent when it is due within 3 days', async () => {
       const now = Date.now();
       const dayMs = 86_400_000;
       feedTasks('b1', [
@@ -297,15 +296,6 @@ describe('DashboardStore', () => {
           data: fakeTask({ id: 't3', assignedTo: ['u1'], dueDate: ts(new Date(now + 10 * dayMs)) }),
         }, // due in 10d → not urgent
         { id: 't4', data: fakeTask({ id: 't4', assignedTo: ['u1'] }) }, // no due date → not urgent
-        {
-          id: 't5',
-          data: fakeTask({
-            id: 't5',
-            assignedTo: ['u1'],
-            dueDate: ts(new Date(now - dayMs)),
-            completedAt: ts(new Date()),
-          }),
-        }, // overdue but done → not urgent
       ]);
 
       const store = TestBed.inject(DashboardStore);
@@ -318,8 +308,6 @@ describe('DashboardStore', () => {
 
       const store = TestBed.inject(DashboardStore);
       expect(store.totalCount()).toBe(0);
-      expect(store.openCount()).toBe(0);
-      expect(store.answeredCount()).toBe(0);
     });
   });
 
@@ -408,7 +396,7 @@ describe('DashboardStore', () => {
   });
 
   describe('recentActivity', () => {
-    it('emits a "created" event per task and a "completed" event when the task is done', async () => {
+    it('emits a "created" event per task', async () => {
       boardsSignal.set([fakeBoard({ id: 'b1' })]);
       TestBed.inject(DashboardStore);
       await settle();
@@ -416,23 +404,14 @@ describe('DashboardStore', () => {
 
       const t1Created = new Date(2026, 0, 1);
       const t2Created = new Date(2026, 0, 2);
-      const t2Completed = new Date(2026, 0, 3);
       feedTasks('b1', [
         { id: 't1', data: fakeTask({ id: 't1', createdAt: ts(t1Created) }) },
-        {
-          id: 't2',
-          data: fakeTask({
-            id: 't2',
-            createdAt: ts(t2Created),
-            completedAt: ts(t2Completed),
-          }),
-        },
+        { id: 't2', data: fakeTask({ id: 't2', createdAt: ts(t2Created) }) },
       ]);
 
       const store = TestBed.inject(DashboardStore);
       const events = store.recentActivity();
       expect(events.map((e) => `${e.id}:${e.kind}`)).toEqual([
-        't2-completed:completed',
         't2-created:created',
         't1-created:created',
       ]);
@@ -630,13 +609,13 @@ describe('DashboardStore', () => {
       expect(store.myUrgentTickets()).toEqual([]);
     });
 
-    it('recentActivity skips tasks with no createdAt or completedAt timestamps', async () => {
+    it('recentActivity skips tasks with no createdAt timestamp', async () => {
       boardsSignal.set([fakeBoard({ id: 'b1' })]);
       const store = TestBed.inject(DashboardStore);
       await settle();
       feedLists('b1', [{ id: 'l1', data: { title: 'To Do', order: 'a0' } }]);
 
-      // Tasks whose createdAt/completedAt lack `toDate` contribute no events.
+      // Tasks whose createdAt lacks `toDate` contribute no events.
       feedTasks('b1', [{ id: 't-no-time', data: { title: 'X', listId: 'l1', createdBy: 'u1' } }]);
 
       expect(store.recentActivity()).toEqual([]);

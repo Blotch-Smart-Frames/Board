@@ -10,8 +10,6 @@ function fakeStore(
     boards: unknown[];
     isLoadingBoards: boolean;
     totalCount: number;
-    openCount: number;
-    answeredCount: number;
     urgentCount: number;
     statusBreakdown: unknown[];
     urgentTickets: unknown[];
@@ -24,8 +22,6 @@ function fakeStore(
     boards: signal(overrides.boards ?? []),
     isLoadingBoards: signal(overrides.isLoadingBoards ?? false),
     totalCount: signal(overrides.totalCount ?? 0),
-    openCount: signal(overrides.openCount ?? 0),
-    answeredCount: signal(overrides.answeredCount ?? 0),
     urgentCount: signal(overrides.urgentCount ?? 0),
     statusBreakdown: signal(overrides.statusBreakdown ?? []),
     urgentTickets: signal(overrides.urgentTickets ?? []),
@@ -103,12 +99,10 @@ describe('DashboardPage', () => {
     expect(screen.queryByText('Urgent')).not.toBeInTheDocument();
   });
 
-  it('renders the four metric cards with the store’s counts once loaded', async () => {
+  it('renders the two metric cards with the store’s counts once loaded', async () => {
     const { providers, componentProviders } = setup({
       store: fakeStore({
         totalCount: 12,
-        openCount: 7,
-        answeredCount: 5,
         urgentCount: 3,
       }),
     });
@@ -116,21 +110,8 @@ describe('DashboardPage', () => {
 
     expect(screen.getByText('Total tickets')).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
-    expect(screen.getByText('Open')).toBeInTheDocument();
-    expect(screen.getByText('7')).toBeInTheDocument();
-    expect(screen.getByText('Answered')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
     expect(screen.getByText('Urgent')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
-  });
-
-  it("populates the 'Total' hint from the open count", async () => {
-    const { providers, componentProviders } = setup({
-      store: fakeStore({ totalCount: 8, openCount: 5 }),
-    });
-    await render(DashboardPage, { providers, componentProviders });
-
-    expect(screen.getByText('5 still open')).toBeInTheDocument();
   });
 
   it('greets the user in the morning', async () => {

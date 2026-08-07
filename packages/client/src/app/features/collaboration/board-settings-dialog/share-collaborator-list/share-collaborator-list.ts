@@ -4,6 +4,8 @@ import { lucideTrash2 } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
+import { HlmScrollAreaImports } from '@spartan-ng/helm/scroll-area';
+import { NgScrollbar } from 'ngx-scrollbar';
 import { UserAvatar } from '../../../../shared/components/user-avatar/user-avatar';
 import type { Collaborator } from '../../../../shared/types/board';
 
@@ -16,49 +18,57 @@ import type { Collaborator } from '../../../../shared/types/board';
  */
 @Component({
   selector: 'app-share-collaborator-list',
-  imports: [HlmButton, HlmBadge, HlmSpinner, NgIcon, UserAvatar],
+  imports: [HlmButton, HlmBadge, HlmSpinner, HlmScrollAreaImports, NgScrollbar, NgIcon, UserAvatar],
   providers: [provideIcons({ lucideTrash2 })],
   template: `
     <div>
       <p class="text-muted-foreground mb-2 text-sm font-medium">People with access</p>
-      <ul class="flex flex-col gap-2">
-        @for (person of collaborators(); track person.id) {
-          <li class="flex items-center gap-3">
-            <app-user-avatar
-              [name]="person.name"
-              [photoURL]="person.photoURL"
-              size="medium"
-              [showTooltip]="false"
-            />
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="truncate text-sm font-medium">{{ person.name }}</span>
-                @if (person.isOwner) {
-                  <span hlmBadge>Owner</span>
-                }
+      <ng-scrollbar
+        hlm
+        class="max-h-64"
+        appearance="compact"
+        orientation="vertical"
+        style="--_scrollbar-content-width: 100%"
+      >
+        <ul class="flex flex-col gap-2 pr-2" scrollViewport>
+          @for (person of collaborators(); track person.id) {
+            <li class="flex items-center gap-3">
+              <app-user-avatar
+                [name]="person.name"
+                [photoURL]="person.photoURL"
+                size="medium"
+                [showTooltip]="false"
+              />
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-sm font-medium">{{ person.name }}</span>
+                  @if (person.isOwner) {
+                    <span hlmBadge>Owner</span>
+                  }
+                </div>
+                <p class="text-muted-foreground truncate text-xs">{{ person.email }}</p>
               </div>
-              <p class="text-muted-foreground truncate text-xs">{{ person.email }}</p>
-            </div>
-            @if (!person.isOwner) {
-              <button
-                hlmBtn
-                variant="ghost"
-                size="icon"
-                type="button"
-                [attr.aria-label]="'Remove ' + person.name"
-                [disabled]="removingId() === person.id"
-                (click)="onRemove(person.id)"
-              >
-                @if (removingId() === person.id) {
-                  <hlm-spinner class="size-4" />
-                } @else {
-                  <ng-icon name="lucideTrash2" />
-                }
-              </button>
-            }
-          </li>
-        }
-      </ul>
+              @if (!person.isOwner) {
+                <button
+                  hlmBtn
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  [attr.aria-label]="'Remove ' + person.name"
+                  [disabled]="removingId() === person.id"
+                  (click)="onRemove(person.id)"
+                >
+                  @if (removingId() === person.id) {
+                    <hlm-spinner class="size-4" />
+                  } @else {
+                    <ng-icon name="lucideTrash2" />
+                  }
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      </ng-scrollbar>
     </div>
   `,
 })

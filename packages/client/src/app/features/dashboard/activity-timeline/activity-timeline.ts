@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideActivity, lucideCircleCheckBig, lucideCirclePlus } from '@ng-icons/lucide';
+import { lucideActivity, lucideCirclePlus } from '@ng-icons/lucide';
 import {
   HlmCard,
   HlmCardContent,
@@ -24,9 +24,9 @@ function relativeTime(date: Date, now: number): string {
 }
 
 /**
- * Vertical activity feed showing recent task-level events (created, completed)
- * merged across every board the user belongs to. Sourced from task doc
- * timestamps rather than the /history subcollections to keep read cost bounded.
+ * Vertical activity feed showing recent task creation events merged across every
+ * board the user belongs to. Sourced from task doc timestamps rather than the
+ * /history subcollections to keep read cost bounded.
  */
 @Component({
   selector: 'app-activity-timeline',
@@ -39,7 +39,7 @@ function relativeTime(date: Date, now: number): string {
     NgIcon,
     UserAvatar,
   ],
-  providers: [provideIcons({ lucideActivity, lucideCircleCheckBig, lucideCirclePlus })],
+  providers: [provideIcons({ lucideActivity, lucideCirclePlus })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
@@ -68,24 +68,14 @@ function relativeTime(date: Date, now: number): string {
             @for (event of events(); track event.id) {
               <li class="relative flex items-start gap-3">
                 <span
-                  class="ring-background absolute -start-8 top-0 flex size-7 items-center justify-center rounded-full ring-4"
-                  [class.bg-emerald-500]="event.kind === 'completed'"
-                  [class.text-white]="event.kind === 'completed'"
-                  [class.bg-primary]="event.kind === 'created'"
-                  [class.text-primary-foreground]="event.kind === 'created'"
+                  class="bg-primary text-primary-foreground ring-background absolute -start-8 top-0 flex size-7 items-center justify-center rounded-full ring-4"
                 >
-                  @if (event.kind === 'completed') {
-                    <ng-icon name="lucideCircleCheckBig" />
-                  } @else {
-                    <ng-icon name="lucideCirclePlus" />
-                  }
+                  <ng-icon name="lucideCirclePlus" />
                 </span>
                 <div class="min-w-0 flex-1">
                   <p class="text-sm">
                     <span class="font-medium">{{ event.actorName }}</span>
-                    <span class="text-muted-foreground">
-                      {{ event.kind === 'completed' ? 'completed' : 'created' }}
-                    </span>
+                    <span class="text-muted-foreground"> created </span>
                     <span class="font-medium">{{ event.title }}</span>
                   </p>
                   <p
@@ -122,7 +112,6 @@ export class ActivityTimeline {
       const actor = resolve(event.actorId);
       return {
         id: event.id,
-        kind: event.kind,
         title: event.task.title,
         boardTitle: event.task.boardTitle,
         listTitle: event.task.listTitle,

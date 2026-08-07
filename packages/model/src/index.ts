@@ -133,7 +133,9 @@ export type Task = {
    * (Every task written by the app carries this field — see BoardService.addTask
    * and the one-off backfill — so `where('archive','==',false)` matches them.)
    */
-  archive?: boolean;
+  archive: boolean;
+  /** When the task was last archived. `null` on tasks that are not currently archived. */
+  archivedAt: FirestoreTimestamp | null;
   createdBy: string;
   assignedTo?: string[];
   labelIds?: string[];
@@ -142,7 +144,6 @@ export type Task = {
   commentCount?: number;
   createdAt: FirestoreTimestamp;
   updatedAt: FirestoreTimestamp;
-  completedAt?: FirestoreTimestamp;
   /** Current escalation level for a past-due ticket. Absent means `none`. */
   escalation?: EscalationLevel;
 };
@@ -193,7 +194,6 @@ export type UpdateTaskInput = {
   assignedTo?: string[];
   labelIds?: string[];
   color?: string | null;
-  completedAt?: Date | null;
   attachments?: Attachment[];
   escalation?: EscalationLevel;
 };
@@ -231,8 +231,8 @@ export type HistoryAction =
   | 'attachment_removed'
   | 'moved'
   | 'board_migrated'
-  | 'completed'
-  | 'reopened'
+  | 'archived'
+  | 'unarchived'
   | 'field_changed';
 
 export type HistoryEntry = {

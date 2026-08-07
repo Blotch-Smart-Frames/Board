@@ -34,6 +34,8 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     title: 'Design review',
     order: 'a0',
     calendarSyncEnabled: false,
+    archive: false,
+    archivedAt: null,
     createdBy: 'u1',
     createdAt: {} as Task['createdAt'],
     updatedAt: {} as Task['updatedAt'],

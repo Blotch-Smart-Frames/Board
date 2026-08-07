@@ -174,7 +174,7 @@ describe("runEscalatePastDue", () => {
     );
   });
 
-  it("skips completed, not-yet-due, and already-max tickets", async () => {
+  it("skips archived, not-yet-due, and already-max tickets", async () => {
     const send = vi.fn(async () => undefined);
     const { db, docs } = makeDb({
       tasks: [
@@ -184,7 +184,7 @@ describe("runEscalatePastDue", () => {
           data: {
             title: "Done",
             dueDate: past(),
-            completedAt: past(),
+            archive: true,
             assignedTo: ["u1"],
           },
         },

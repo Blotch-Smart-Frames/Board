@@ -45,7 +45,8 @@ export type ListWithTasks = List & { tasks: Task[] };
         <div class="flex-1">
           <app-list-header
             [title]="list().title"
-            [taskCount]="activeTasks().length"
+            [taskCount]="tasks().length"
+            [isArchival]="isArchival()"
             [canMoveLeft]="canMoveLeft()"
             [canMoveRight]="canMoveRight()"
             (updateTitle)="updateTitle.emit($event)"
@@ -56,67 +57,64 @@ export type ListWithTasks = List & { tasks: Task[] };
         </div>
       </div>
 
-      <ng-scrollbar
-        hlm
-        class="min-h-0 flex-1"
-        appearance="compact"
-        orientation="vertical"
-        style="--_scrollbar-content-width: 100%"
-      >
-        <div
-          class="space-y-2 p-2"
-          scrollViewport
-          cdkDropList
-          [id]="list().id"
-          [cdkDropListData]="activeTasks()"
-          [cdkDropListConnectedTo]="connectedListIds()"
-          [cdkDropListDisabled]="dragDisabled()"
-          (cdkDropListDropped)="taskDropped.emit($event)"
+      @if (!isArchival()) {
+        <ng-scrollbar
+          hlm
+          class="min-h-0 flex-1"
+          appearance="compact"
+          orientation="vertical"
+          style="--_scrollbar-content-width: 100%"
         >
-          @for (task of activeTasks(); track task.id) {
-            <div cdkDrag [cdkDragData]="task" [cdkDragDisabled]="dragDisabled()">
-              <app-task-card [task]="task" [labels]="labels()" (view)="viewTask.emit($event)" />
-            </div>
-          } @empty {
-            <p class="text-muted-foreground py-4 text-center text-sm">No tasks yet</p>
-          }
-        </div>
-      </ng-scrollbar>
-
-      @if (completedTasks().length > 0) {
-        <details class="px-2 pb-2">
-          <summary class="text-muted-foreground cursor-pointer px-1 py-1 text-sm">
-            Completed ({{ completedTasks().length }})
-          </summary>
-          <div class="mt-2 space-y-2">
-            @for (task of completedTasks(); track task.id) {
-              <app-task-card [task]="task" [labels]="labels()" (view)="viewTask.emit($event)" />
+          <div
+            class="space-y-2 p-2"
+            scrollViewport
+            cdkDropList
+            [id]="list().id"
+            [cdkDropListData]="tasks()"
+            [cdkDropListConnectedTo]="connectedListIds()"
+            [cdkDropListDisabled]="dragDisabled()"
+            (cdkDropListDropped)="taskDropped.emit($event)"
+          >
+            @for (task of tasks(); track task.id) {
+              <div cdkDrag [cdkDragData]="task" [cdkDragDisabled]="dragDisabled()">
+                <app-task-card [task]="task" [labels]="labels()" (view)="viewTask.emit($event)" />
+              </div>
+            } @empty {
+              <p class="text-muted-foreground py-4 text-center text-sm">No tasks yet</p>
             }
           </div>
-        </details>
+        </ng-scrollbar>
       }
 
       <!--
         Archival lists show a bounded, faded peek at their most-recently-archived
         tasks. The bottom gradient mask hints "there could be more" without
-        loading the full archive. Cards stay clickable so a task can be opened
-        (and moved back out of the archive, which un-archives it).
+        loading the full archive. The container is still a cdkDropList so tasks
+        dragged in from other columns get archived, and preview cards stay
+        draggable so dragging one back to a non-archival list un-archives it.
       -->
-      @if (isArchival() && archivedPreview().length > 0) {
-        <div class="px-2 pb-2">
-          <p class="text-muted-foreground px-1 py-1 text-xs font-medium">Archived</p>
-          <div
-            class="space-y-2 opacity-65"
-            style="mask-image: linear-gradient(to bottom, black 55%, transparent); -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent)"
-          >
-            @for (task of archivedPreview(); track task.id) {
+      @if (isArchival()) {
+        <div
+          class="min-h-0 flex-1 space-y-2 overflow-y-auto p-2"
+          style="mask-image: linear-gradient(to bottom, black 55%, transparent); -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent)"
+          cdkDropList
+          [id]="list().id"
+          [cdkDropListData]="archivedPreview()"
+          [cdkDropListConnectedTo]="connectedListIds()"
+          [cdkDropListDisabled]="dragDisabled()"
+          (cdkDropListDropped)="taskDropped.emit($event)"
+        >
+          @for (task of archivedPreview(); track task.id) {
+            <div cdkDrag [cdkDragData]="task" [cdkDragDisabled]="dragDisabled()" class="opacity-65">
               <app-task-card [task]="task" [labels]="labels()" (view)="viewTask.emit($event)" />
-            }
-          </div>
+            </div>
+          }
         </div>
       }
 
-      <app-add-task-form (addTask)="addTask.emit($event)" />
+      @if (!isArchival()) {
+        <app-add-task-form (addTask)="addTask.emit($event)" />
+      }
     </div>
   `,
 })
@@ -142,8 +140,5 @@ export class ListColumn {
   readonly moveLeft = output<void>();
   readonly moveRight = output<void>();
 
-  protected readonly activeTasks = computed(() => this.list().tasks.filter((t) => !t.completedAt));
-  protected readonly completedTasks = computed(() =>
-    this.list().tasks.filter((t) => t.completedAt),
-  );
+  protected readonly tasks = computed(() => this.list().tasks);
 }

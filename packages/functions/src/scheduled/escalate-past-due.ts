@@ -91,9 +91,9 @@ export async function runEscalatePastDue(
     scanned++;
     const task = { id: doc.id, ...doc.data() } as Task;
 
-    // Defensive: skip completed tickets and anything not actually past due —
+    // Defensive: skip archived tickets and anything not actually past due —
     // null dueDate values can slip past the inequality filter on some SDKs.
-    if (task.completedAt) continue;
+    if (task.archive) continue;
     if (!task.dueDate || task.dueDate.toMillis() >= now.toMillis()) continue;
 
     const next = nextEscalationLevel(task.escalation);

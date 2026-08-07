@@ -199,6 +199,7 @@ export class BoardService {
       calendarEventId: null,
       calendarSyncEnabled: input.calendarSyncEnabled ?? false,
       archive: input.archive ?? false,
+      archivedAt: null,
       createdBy: userId,
       assignedTo: input.assignedTo ?? [],
       labelIds: input.labelIds ?? [],
@@ -218,7 +219,7 @@ export class BoardService {
 
     for (const [key, value] of Object.entries(updates)) {
       if (value === undefined) continue;
-      if ((key === 'startDate' || key === 'dueDate' || key === 'completedAt') && value !== null) {
+      if ((key === 'startDate' || key === 'dueDate') && value !== null) {
         payload[key] = Timestamp.fromDate(value as Date);
       } else {
         payload[key] = value;
@@ -245,8 +246,9 @@ export class BoardService {
   /**
    * Moves a task within/across lists. When `archive` is provided the flag is
    * written in the same update, so dropping a task into (or out of) an archival
-   * list flips its archived state atomically with the move. Passing `undefined`
-   * leaves the existing `archive` value untouched.
+   * list flips its archived state atomically with the move. `archivedAt` is
+   * stamped alongside on archive, cleared on unarchive. Passing `undefined`
+   * for either leaves the existing value untouched.
    */
   async moveTask(
     boardId: string,
@@ -258,7 +260,7 @@ export class BoardService {
     await updateDoc(this.taskRef(boardId, taskId), {
       listId: newListId,
       order: newOrder,
-      ...(archive === undefined ? {} : { archive }),
+      ...(archive === undefined ? {} : { archive, archivedAt: archive ? serverTimestamp() : null }),
       updatedAt: serverTimestamp(),
     });
   }
@@ -316,6 +318,7 @@ export class BoardService {
       calendarEventId: source.calendarEventId ?? null,
       calendarSyncEnabled: source.calendarSyncEnabled ?? false,
       archive: source.archive ?? false,
+      archivedAt: source.archivedAt ?? null,
       createdBy: source.createdBy,
       assignedTo: source.assignedTo ?? [],
       // Labels belong to the source board's collections — dropped.
@@ -323,7 +326,6 @@ export class BoardService {
       color: source.color ?? null,
       attachments: source.attachments ?? [],
       commentCount: source.commentCount ?? 0,
-      completedAt: source.completedAt ?? null,
       createdAt: source.createdAt,
       updatedAt: serverTimestamp(),
     });

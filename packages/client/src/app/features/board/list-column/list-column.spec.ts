@@ -13,6 +13,8 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     title: 'Task 1',
     order: 'a0',
     calendarSyncEnabled: false,
+    archive: false,
+    archivedAt: null,
     createdBy: 'u1',
     createdAt: {} as Timestamp,
     updatedAt: {} as Timestamp,
@@ -27,19 +29,19 @@ function fakeList(tasks: Task[]): ListWithTasks {
 // TaskCard injects BoardStore; provide a minimal fake for the whole column.
 const storeProvider = {
   provide: BoardStore,
-  useValue: { collaborators: signal([]), setTaskCompleted: vi.fn() },
+  useValue: { collaborators: signal([]) },
 };
 
 describe('ListColumn', () => {
-  it('renders active tasks and hides completed ones behind a disclosure', async () => {
+  it('renders every task in the list', async () => {
     const list = fakeList([
-      fakeTask({ id: 't1', title: 'Active task' }),
-      fakeTask({ id: 't2', title: 'Done task', completedAt: {} as Timestamp }),
+      fakeTask({ id: 't1', title: 'Task one' }),
+      fakeTask({ id: 't2', title: 'Task two' }),
     ]);
     await render(ListColumn, { inputs: { list }, providers: [storeProvider] });
 
-    expect(screen.getByText('Active task')).toBeInTheDocument();
-    expect(screen.getByText('Completed (1)')).toBeInTheDocument();
+    expect(screen.getByText('Task one')).toBeInTheDocument();
+    expect(screen.getByText('Task two')).toBeInTheDocument();
   });
 
   it('shows an empty state when there are no active tasks', async () => {
@@ -138,25 +140,6 @@ describe('ListColumn', () => {
     expect(onTaskDropped).toHaveBeenCalledWith(event);
   });
 
-  it('opens a completed task from the disclosure via viewTask', async () => {
-    const user = userEvent.setup();
-    const onView = vi.fn();
-    const list = fakeList([
-      fakeTask({ id: 't-done', title: 'Completed one', completedAt: {} as Timestamp }),
-    ]);
-    await render(ListColumn, {
-      inputs: { list },
-      providers: [storeProvider],
-      on: { viewTask: onView },
-    });
-
-    // Open the completed disclosure so its inner task card is rendered.
-    await user.click(screen.getByText(/completed \(1\)/i));
-    await user.click(screen.getByRole('button', { name: /open task completed one/i }));
-
-    expect(onView).toHaveBeenCalledWith(expect.objectContaining({ id: 't-done' }));
-  });
-
   it('renders a faded archived preview on archival lists and opens those cards', async () => {
     const user = userEvent.setup();
     const onView = vi.fn();
@@ -170,7 +153,7 @@ describe('ListColumn', () => {
       on: { viewTask: onView },
     });
 
-    expect(screen.getByText('Archived')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open task archived one/i })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /open task archived one/i }));
 
     expect(onView).toHaveBeenCalledWith(expect.objectContaining({ id: 'a1' }));

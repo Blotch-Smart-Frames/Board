@@ -281,25 +281,6 @@ describe('BoardStore', () => {
       );
     });
 
-    it('setTaskCompleted writes completedAt and a completed history entry', async () => {
-      const store = TestBed.inject(BoardStore);
-      TestBed.flushEffects();
-      onSnapshotCallbacks.get('boards/board-1/tasks')!(
-        collectionSnapshot([{ id: 't1', data: { title: 'X', listId: 'list-1' } }]),
-      );
-
-      await store.setTaskCompleted('t1', true);
-
-      expect(boardService.updateTask).toHaveBeenCalledWith(
-        'board-1',
-        't1',
-        expect.objectContaining({ completedAt: expect.any(Date) }),
-      );
-      expect(boardService.addTaskHistory).toHaveBeenCalledWith('board-1', 't1', [
-        { action: 'completed', userId: 'u1' },
-      ]);
-    });
-
     it('moveTask logs a moved entry when the list changes', async () => {
       const store = TestBed.inject(BoardStore);
       TestBed.flushEffects();
@@ -721,76 +702,6 @@ describe('BoardStore', () => {
       consoleError.mockRestore();
     });
 
-    it('setTaskCompleted does not log history when nothing changed', async () => {
-      const store = TestBed.inject(BoardStore);
-      TestBed.flushEffects();
-      onSnapshotCallbacks.get('boards/board-1/tasks')!(
-        collectionSnapshot([
-          {
-            id: 't1',
-            data: { title: 'X', listId: 'list-1', completedAt: { toDate: () => new Date() } },
-          },
-        ]),
-      );
-
-      // Task is already completed — flipping to completed again is a no-op.
-      await store.setTaskCompleted('t1', true);
-
-      expect(boardService.addTaskHistory).not.toHaveBeenCalled();
-    });
-
-    it('setTaskCompleted writes a "reopened" entry when toggling a completed task back open', async () => {
-      const store = TestBed.inject(BoardStore);
-      TestBed.flushEffects();
-      onSnapshotCallbacks.get('boards/board-1/tasks')!(
-        collectionSnapshot([
-          {
-            id: 't1',
-            data: { title: 'X', listId: 'list-1', completedAt: { toDate: () => new Date() } },
-          },
-        ]),
-      );
-
-      await store.setTaskCompleted('t1', false);
-
-      expect(boardService.addTaskHistory).toHaveBeenCalledWith('board-1', 't1', [
-        { action: 'reopened', userId: 'u1' },
-      ]);
-      // completedAt: null is written when uncompleting.
-      expect(boardService.updateTask).toHaveBeenCalledWith(
-        'board-1',
-        't1',
-        expect.objectContaining({ completedAt: null }),
-      );
-    });
-
-    it('setTaskCompleted skips history when no user is signed in', async () => {
-      TestBed.resetTestingModule();
-      TestBed.configureTestingModule({
-        providers: [
-          { provide: FIRESTORE_DB, useValue: {} },
-          { provide: ActivatedRoute, useValue: { paramMap: paramMap$ } },
-          { provide: AuthStore, useValue: { user: signal(null) } },
-          { provide: BoardService, useValue: boardService },
-          { provide: SyncService, useValue: syncService },
-          { provide: UserService, useValue: { getUsersByIds: vi.fn().mockResolvedValue([]) } },
-          BoardStore,
-        ],
-      });
-
-      const store = TestBed.inject(BoardStore);
-      TestBed.flushEffects();
-      onSnapshotCallbacks.get('boards/board-1/tasks')!(
-        collectionSnapshot([{ id: 't1', data: { title: 'X', listId: 'list-1' } }]),
-      );
-
-      await store.setTaskCompleted('t1', true);
-
-      // updateTask still fires; history does not.
-      expect(boardService.updateTask).toHaveBeenCalled();
-      expect(boardService.addTaskHistory).not.toHaveBeenCalled();
-    });
-
     it('moveTask does not log a history entry when the task is unknown', async () => {
       const store = TestBed.inject(BoardStore);
       TestBed.flushEffects();
@@ -978,6 +889,12 @@ describe('BoardStore', () => {
         'a5',
         true,
       );
+      expect(boardService.addTaskHistory).toHaveBeenCalledWith('board-1', 't-active', [
+        expect.objectContaining({
+          action: 'archived',
+          metadata: { fromListName: 'To Do', toListName: 'Done' },
+        }),
+      ]);
     });
 
     it('restores a task dragged out of an archival list (found via the preview)', async () => {
@@ -992,6 +909,12 @@ describe('BoardStore', () => {
       await store.moveTask('a1', 'list-1', 'a9');
 
       expect(boardService.moveTask).toHaveBeenCalledWith('board-1', 'a1', 'list-1', 'a9', false);
+      expect(boardService.addTaskHistory).toHaveBeenCalledWith('board-1', 'a1', [
+        expect.objectContaining({
+          action: 'unarchived',
+          metadata: { fromListName: 'Done', toListName: 'To Do' },
+        }),
+      ]);
     });
 
     it('leaves the archive flag untouched when moving between archival lists', async () => {

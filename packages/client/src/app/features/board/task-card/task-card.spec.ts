@@ -17,6 +17,8 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     title: 'Write tests',
     order: 'a0',
     calendarSyncEnabled: false,
+    archive: false,
+    archivedAt: null,
     createdBy: 'u1',
     createdAt: {} as Timestamp,
     updatedAt: {} as Timestamp,
@@ -25,12 +27,8 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
 }
 
 function setup(task: Task, labels: Label[] = [], collaborators: Collaborator[] = []) {
-  const setTaskCompleted = vi.fn().mockResolvedValue(undefined);
   return {
-    setTaskCompleted,
-    providers: [
-      { provide: BoardStore, useValue: { collaborators: signal(collaborators), setTaskCompleted } },
-    ],
+    providers: [{ provide: BoardStore, useValue: { collaborators: signal(collaborators) } }],
     inputs: { task, labels },
   };
 }
@@ -71,25 +69,6 @@ describe('TaskCard', () => {
     await user.click(screen.getByRole('button', { name: /open task write tests/i }));
 
     expect(onView).toHaveBeenCalled();
-  });
-
-  it('toggles completion via the checkbox without opening the card', async () => {
-    const user = userEvent.setup();
-    const onView = vi.fn();
-    const { providers, inputs, setTaskCompleted } = setup(fakeTask());
-    await render(TaskCard, { providers, inputs, on: { view: onView } });
-
-    await user.click(screen.getByRole('checkbox', { name: /mark write tests complete/i }));
-
-    expect(setTaskCompleted).toHaveBeenCalledWith('t1', true);
-    expect(onView).not.toHaveBeenCalled();
-  });
-
-  it('shows completed tasks with a strikethrough title', async () => {
-    const { providers, inputs } = setup(fakeTask({ completedAt: ts(new Date()) }));
-    await render(TaskCard, { providers, inputs });
-
-    expect(screen.getByText('Write tests')).toHaveClass('line-through');
   });
 
   it('shows the description, attachment count, and comment count when the task has them', async () => {

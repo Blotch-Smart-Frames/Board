@@ -16,6 +16,8 @@ function fakeTask(overrides: Partial<EnrichedTask> = {}): EnrichedTask {
     title: 'Fix login bug',
     order: 'a0',
     calendarSyncEnabled: false,
+    archive: false,
+    archivedAt: null,
     createdBy: 'u1',
     createdAt: ts(new Date(2026, 0, 1)),
     updatedAt: ts(new Date(2026, 0, 1)),
@@ -65,18 +67,6 @@ describe('ActivityTimeline', () => {
     expect(screen.getByText('To Do')).toBeInTheDocument();
   });
 
-  it('uses "completed" wording for completion events', async () => {
-    const task = fakeTask({ title: 'Ship v1' });
-    const { providers } = setup(
-      [{ id: 'e1', kind: 'completed', task, actorId: 'u1', timestamp: new Date() }],
-      [{ id: 'u1', email: '', name: 'Alice', photoURL: null, isOwner: false }],
-    );
-    await render(ActivityTimeline, { providers });
-
-    expect(screen.getByText(/completed/)).toBeInTheDocument();
-    expect(screen.getByText('Ship v1')).toBeInTheDocument();
-  });
-
   it('formats relative time buckets (minutes / hours / days)', async () => {
     const now = Date.now();
     const task = fakeTask();
@@ -109,7 +99,7 @@ describe('ActivityTimeline', () => {
     const now = new Date();
     const { providers } = setup([
       { id: 'e1', kind: 'created', task, actorId: 'u1', timestamp: now },
-      { id: 'e2', kind: 'completed', task, actorId: 'u1', timestamp: now },
+      { id: 'e2', kind: 'created', task, actorId: 'u1', timestamp: now },
     ]);
     const view = await render(ActivityTimeline, { providers });
 

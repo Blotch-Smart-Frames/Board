@@ -323,26 +323,6 @@ export class BoardStore {
     return this.boardService.deleteTask(this.requireBoardId(), taskId);
   }
 
-  /** Toggles completion and records a completed/reopened history entry. */
-  async setTaskCompleted(taskId: string, completed: boolean): Promise<void> {
-    const boardId = this.requireBoardId();
-    /* v8 ignore next -- defensive: tasks() is seeded to an array by the collection stream @preserve */
-    const existing = (this.tasks() ?? []).find((t) => t.id === taskId);
-    const wasCompleted = !!existing?.completedAt;
-    await this.boardService.updateTask(boardId, taskId, {
-      completedAt: completed ? new Date() : null,
-    });
-
-    const userId = this.authStore.user()?.uid;
-    if (userId && wasCompleted !== completed) {
-      /* v8 ignore start -- history writes are fire-and-forget @preserve */
-      this.boardService
-        .addTaskHistory(boardId, taskId, [{ action: completed ? 'completed' : 'reopened', userId }])
-        .catch(() => {});
-      /* v8 ignore stop -- @preserve */
-    }
-  }
-
   async moveTask(taskId: string, newListId: string, newOrder: string): Promise<void> {
     const boardId = this.requireBoardId();
     const task = this.findTask(taskId);
@@ -375,11 +355,15 @@ export class BoardStore {
       const lists = this.lists() ?? [];
       const fromList = lists.find((l) => l.id === task.listId);
       const toList = lists.find((l) => l.id === newListId);
+      // An archive flip is logged as `archived`/`unarchived` rather than `moved`
+      // so the timeline reflects the semantic transition, not just the list swap.
+      const action: 'archived' | 'unarchived' | 'moved' =
+        archive === true ? 'archived' : archive === false ? 'unarchived' : 'moved';
       /* v8 ignore start -- history writes are fire-and-forget @preserve */
       this.boardService
         .addTaskHistory(boardId, taskId, [
           {
-            action: 'moved',
+            action,
             userId,
             metadata: { fromListName: fromList?.title ?? '', toListName: toList?.title ?? '' },
           },
@@ -454,7 +438,7 @@ export class BoardStore {
    */
   moveTaskToIndex(taskId: string, destListId: string, targetIndex: number): Promise<void> {
     const destList = this.listsWithTasks().find((l) => l.id === destListId);
-    const destTasks = (destList?.tasks ?? []).filter((t) => t.id !== taskId && !t.completedAt);
+    const destTasks = (destList?.tasks ?? []).filter((t) => t.id !== taskId);
     const newOrder = getOrderAtIndex(destTasks, targetIndex);
     return this.moveTask(taskId, destListId, newOrder);
   }

@@ -288,8 +288,8 @@ describe('BoardService', () => {
       vi.mocked(writeBatch).mockReturnValue(batch as never);
 
       await service.addTaskHistory('board-1', 'task-1', [
-        { action: 'completed', userId: 'u1' },
-        { action: 'reopened', userId: 'u1' },
+        { action: 'archived', userId: 'u1' },
+        { action: 'unarchived', userId: 'u1' },
       ]);
 
       expect(batch.set).toHaveBeenCalledTimes(2);
@@ -483,12 +483,33 @@ describe('BoardService', () => {
       );
     });
 
-    it('includes the archive flag in the same write when provided', async () => {
+    it('includes the archive flag and stamps archivedAt in the same write when archiving', async () => {
       await service.moveTask('board-1', 'task-1', 'list-2', 'b0', true);
 
       expect(updateDoc).toHaveBeenCalledWith(
         expect.objectContaining({ path: 'boards/board-1/tasks/task-1' }),
-        { listId: 'list-2', order: 'b0', archive: true, updatedAt: 'SERVER_TIMESTAMP' },
+        {
+          listId: 'list-2',
+          order: 'b0',
+          archive: true,
+          archivedAt: 'SERVER_TIMESTAMP',
+          updatedAt: 'SERVER_TIMESTAMP',
+        },
+      );
+    });
+
+    it('clears archivedAt when unarchiving', async () => {
+      await service.moveTask('board-1', 'task-1', 'list-2', 'b0', false);
+
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'boards/board-1/tasks/task-1' }),
+        {
+          listId: 'list-2',
+          order: 'b0',
+          archive: false,
+          archivedAt: null,
+          updatedAt: 'SERVER_TIMESTAMP',
+        },
       );
     });
   });
@@ -592,7 +613,7 @@ describe('BoardService', () => {
         color: null,
         attachments: [],
         commentCount: 0,
-        completedAt: null,
+        archivedAt: null,
       });
     });
   });

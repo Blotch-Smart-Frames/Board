@@ -31,7 +31,7 @@ import type { Collaborator } from '../../../shared/types/board';
           </hlm-select-values-content>
         </ng-template>
       </hlm-select-trigger>
-      <hlm-select-content *hlmSelectPortal class="w-64">
+      <hlm-select-content *hlmSelectPortal showScroll class="max-h-96 w-64">
         @if (collaborators().length === 0) {
           <p class="text-muted-foreground p-2 text-sm">No collaborators</p>
         }

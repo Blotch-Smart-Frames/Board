@@ -76,6 +76,8 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     title: 'Existing task',
     order: 'a0',
     calendarSyncEnabled: false,
+    archive: false,
+    archivedAt: null,
     createdBy: 'u1',
     createdAt: ts(new Date(2026, 0, 1)),
     updatedAt: ts(new Date(2026, 0, 1)),
@@ -120,6 +122,7 @@ function setup(task: Task, opts: SetupOpts = {}) {
     collaborators: signal<Collaborator[]>(opts.collaborators ?? []),
     sprints: signal<Sprint[]>(opts.sprints ?? []),
     board: signal<Board | null>(opts.board ?? null),
+    archivedPreviewByListId: signal<Map<string, Task[]>>(new Map()),
     listsWithTasks: signal(
       (opts.lists ?? [fakeList('list-1', 'To Do', 'a0')]).map((l) => ({ ...l, tasks: [] })),
     ),
