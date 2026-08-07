@@ -19,6 +19,7 @@ function fakeTask(overrides: Partial<EnrichedTask> = {}): EnrichedTask {
     title: 'Fix login bug',
     order: 'a0',
     calendarSyncEnabled: false,
+    archive: false,
     createdBy: 'u1',
     createdAt: ts(new Date(2026, 0, 1)),
     updatedAt: ts(new Date(2026, 0, 1)),
