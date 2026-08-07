@@ -9,6 +9,7 @@
     "watch": "node scripts/with-version.mjs build --watch --configuration development",
     "test": "ng test",
     "test:coverage": "ng test --coverage --no-watch",
+    "test:ci:coverage": "ng test --coverage --no-watch",
     "test:ui": "ng test --ui --coverage",
     "cspell": "cspell .",
     "format": "prettier --write .",
