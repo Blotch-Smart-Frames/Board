@@ -55,6 +55,7 @@ function fakeTask(): Task {
     order: 'a0',
     calendarSyncEnabled: false,
     archive: false,
+    archivedAt: null,
     createdBy: 'u1',
     createdAt: ts(),
     updatedAt: ts(),

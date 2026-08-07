@@ -134,8 +134,8 @@ export type Task = {
    * and the one-off backfill — so `where('archive','==',false)` matches them.)
    */
   archive: boolean;
-  /** When the task was last archived (dragged into an archive list). Cleared on unarchive. */
-  archivedAt?: FirestoreTimestamp;
+  /** When the task was last archived. `null` on tasks that are not currently archived. */
+  archivedAt: FirestoreTimestamp | null;
   createdBy: string;
   assignedTo?: string[];
   labelIds?: string[];

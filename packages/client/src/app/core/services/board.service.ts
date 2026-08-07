@@ -199,6 +199,7 @@ export class BoardService {
       calendarEventId: null,
       calendarSyncEnabled: input.calendarSyncEnabled ?? false,
       archive: input.archive ?? false,
+      archivedAt: null,
       createdBy: userId,
       assignedTo: input.assignedTo ?? [],
       labelIds: input.labelIds ?? [],
