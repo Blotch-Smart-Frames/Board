@@ -690,4 +690,28 @@ describe('TaskDetailDialog', () => {
 
     expect(store.deleteTask).not.toHaveBeenCalled();
   });
+
+  it('resolves archived tasks through the archived-preview streams when the active tasks list has been filtered out', async () => {
+    // An archival card can be opened even though the archived task is filtered
+    // out of tasks() (it's only in the archivedPreviewByListId map). This
+    // exercises the fallback loop in the task() computed. Seed a preceding
+    // entry that doesn't contain the target so we also hit the loop-continue
+    // (found = undefined) branch before finding the match.
+    const archived = fakeTask({ id: 'archived-1', title: 'Archived task', archive: true });
+    const otherArchived = fakeTask({ id: 'archived-2', title: 'Other', archive: true });
+    const { store, providers } = setup(archived);
+    store.tasks.set([]);
+    store.archivedPreviewByListId.set(
+      new Map([
+        ['list-99', [otherArchived]],
+        ['list-1', [archived]],
+      ]),
+    );
+    const view = await render(TaskDetailDialog, { providers });
+    view.fixture.componentInstance.open(archived);
+    view.fixture.detectChanges();
+    await view.fixture.whenStable();
+
+    expect(await screen.findByRole('heading', { name: 'Archived task' })).toBeInTheDocument();
+  });
 });

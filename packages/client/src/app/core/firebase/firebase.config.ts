@@ -8,6 +8,7 @@ import {
   type Auth,
 } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getFunctions, type Functions } from 'firebase/functions';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import { environment } from '../../../environments/environment';
 
@@ -45,6 +46,13 @@ export const FIRESTORE_DB = new InjectionToken<Firestore>('FIRESTORE_DB', {
 export const FIREBASE_STORAGE = new InjectionToken<FirebaseStorage>('FIREBASE_STORAGE', {
   providedIn: 'root',
   factory: () => getStorage(inject(FIREBASE_APP)),
+});
+
+// Callable Cloud Functions are pinned to us-central1 to match the region the
+// server-side callables (see packages/functions/src/callable) deploy to.
+export const FIREBASE_FUNCTIONS = new InjectionToken<Functions>('FIREBASE_FUNCTIONS', {
+  providedIn: 'root',
+  factory: () => getFunctions(inject(FIREBASE_APP), 'us-central1'),
 });
 
 export const GOOGLE_AUTH_PROVIDER = new InjectionToken<GoogleAuthProvider>('GOOGLE_AUTH_PROVIDER', {

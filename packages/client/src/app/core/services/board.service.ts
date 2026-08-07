@@ -15,10 +15,10 @@ import {
   arrayUnion,
   arrayRemove,
   Timestamp,
-  type DocumentReference,
   type FieldValue,
 } from 'firebase/firestore';
-import { FIRESTORE_DB } from '../firebase/firebase.config';
+import { httpsCallable } from 'firebase/functions';
+import { FIREBASE_FUNCTIONS, FIRESTORE_DB } from '../firebase/firebase.config';
 import { LabelService } from './label.service';
 import { StorageService } from './storage.service';
 import { getOrderAtEnd } from '../../shared/utils/ordering';
@@ -36,11 +36,19 @@ import type {
   UpdateCommentInput,
 } from '../../shared/types/board';
 
-const BATCH_LIMIT = 500;
+type MigrateTaskPayload = {
+  sourceBoardId: string;
+  taskId: string;
+  targetBoardId: string;
+  targetListId: string;
+};
+
+type MigrateTaskResult = { newTaskId: string };
 
 @Service()
 export class BoardService {
   private readonly db = inject(FIRESTORE_DB);
+  private readonly functions = inject(FIREBASE_FUNCTIONS);
   private readonly labelService = inject(LabelService);
   private readonly storageService = inject(StorageService);
 
@@ -267,100 +275,35 @@ export class BoardService {
 
   /**
    * Moves a task (with its comments and history) from one board to another.
-   * The source and target boards may have different labels/sprints, so those
-   * per-board references are dropped rather than carried over. Attachments keep
-   * their storage path (which encodes the source boardId) — the user is
-   * assumed to remain a member of the source board's storage bucket.
    *
-   * A `board_migrated` history entry is appended so the target task's timeline
-   * records where it came from.
+   * Delegated to the `migrateTask` Cloud Function so the copy runs with admin
+   * privileges and bypasses the per-comment `authorId` create rule (which would
+   * otherwise reject any comment the migrator didn't author) and the
+   * owner-only source-history delete rule. Membership on both boards is
+   * enforced server-side.
+   *
+   * `userId` and `metadata` are ignored — the server derives them from the
+   * authenticated caller and the freshly-read board titles. They stay in the
+   * signature only to preserve the store's existing call site.
    */
   async migrateTaskToBoard(
     sourceBoardId: string,
     taskId: string,
     targetBoardId: string,
     targetListId: string,
-    userId: string,
-    metadata: { fromBoardName: string; toBoardName: string },
+    _userId: string,
+    _metadata: { fromBoardName: string; toBoardName: string },
   ): Promise<string> {
     if (sourceBoardId === targetBoardId) {
       throw new Error('Cannot migrate task to the same board');
     }
 
-    const [taskSnap, commentsSnap, historySnap, targetTasksSnap] = await Promise.all([
-      getDoc(this.taskRef(sourceBoardId, taskId)),
-      getDocs(this.commentsCollection(sourceBoardId, taskId)),
-      getDocs(this.historyCollection(sourceBoardId, taskId)),
-      getDocs(query(this.tasksCollection(targetBoardId), where('listId', '==', targetListId))),
-    ]);
-
-    if (!taskSnap.exists()) {
-      throw new Error('Task not found');
-    }
-
-    const source = taskSnap.data() as Task;
-    /* v8 ignore next -- only fires when the target board's list already has tasks; tests default to empty @preserve */
-    const newOrder = getOrderAtEnd(targetTasksSnap.docs.map((d) => d.data() as Task));
-    const newTaskRef = doc(this.tasksCollection(targetBoardId));
-
-    // Split into two batches: writes (new task + copied subcollections + migration history) then deletes.
-    // Comments and history document limits stay under 500 in practice; if a task
-    // has thousands of entries this would need chunking, but that's not the
-    // shape we see today.
-    const writeBatchRef = writeBatch(this.db);
-    writeBatchRef.set(newTaskRef, {
-      listId: targetListId,
-      title: source.title,
-      description: source.description ?? '',
-      order: newOrder,
-      startDate: source.startDate ?? null,
-      dueDate: source.dueDate ?? null,
-      calendarEventId: source.calendarEventId ?? null,
-      calendarSyncEnabled: source.calendarSyncEnabled ?? false,
-      archive: source.archive ?? false,
-      archivedAt: source.archivedAt ?? null,
-      createdBy: source.createdBy,
-      assignedTo: source.assignedTo ?? [],
-      // Labels belong to the source board's collections — dropped.
-      labelIds: [],
-      color: source.color ?? null,
-      attachments: source.attachments ?? [],
-      commentCount: source.commentCount ?? 0,
-      createdAt: source.createdAt,
-      updatedAt: serverTimestamp(),
-    });
-
-    for (const commentDoc of commentsSnap.docs) {
-      writeBatchRef.set(
-        doc(this.commentsCollection(targetBoardId, newTaskRef.id), commentDoc.id),
-        commentDoc.data(),
-      );
-    }
-
-    for (const historyDoc of historySnap.docs) {
-      writeBatchRef.set(
-        doc(this.historyCollection(targetBoardId, newTaskRef.id), historyDoc.id),
-        historyDoc.data(),
-      );
-    }
-
-    writeBatchRef.set(doc(this.historyCollection(targetBoardId, newTaskRef.id)), {
-      action: 'board_migrated',
-      userId,
-      metadata,
-      createdAt: serverTimestamp(),
-    });
-
-    await writeBatchRef.commit();
-
-    const deleteRefs: DocumentReference[] = [
-      ...commentsSnap.docs.map((d) => d.ref),
-      ...historySnap.docs.map((d) => d.ref),
-      this.taskRef(sourceBoardId, taskId),
-    ];
-    await this.commitInChunks(deleteRefs);
-
-    return newTaskRef.id;
+    const call = httpsCallable<MigrateTaskPayload, MigrateTaskResult>(
+      this.functions,
+      'migrateTask',
+    );
+    const result = await call({ sourceBoardId, taskId, targetBoardId, targetListId });
+    return result.data.newTaskId;
   }
 
   // --- Comments ---
@@ -418,17 +361,5 @@ export class BoardService {
       });
     }
     await batch.commit();
-  }
-
-  // --- Internal helpers ---
-
-  private async commitInChunks(refs: DocumentReference[]): Promise<void> {
-    for (let i = 0; i < refs.length; i += BATCH_LIMIT) {
-      const batch = writeBatch(this.db);
-      for (const ref of refs.slice(i, i + BATCH_LIMIT)) {
-        batch.delete(ref);
-      }
-      await batch.commit();
-    }
   }
 }

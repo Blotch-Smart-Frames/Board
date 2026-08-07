@@ -137,6 +137,14 @@ describe('UserBoardsStore', () => {
     expect(boardOrderService.setBoardOrders).toHaveBeenCalledWith('u1', { 'board-1': 'a1' });
   });
 
+  it('reorderBoards is a no-op when the orders map is empty', async () => {
+    const store = injectStore();
+
+    await store.reorderBoards(new Map());
+
+    expect(boardOrderService.setBoardOrders).not.toHaveBeenCalled();
+  });
+
   it('reorderBoardToIndex derives an order key for the target slot and reorders optimistically', async () => {
     const store = injectStore();
     registrations[0](collectionSnapshot([board('a'), board('b'), board('c')]));

@@ -282,6 +282,9 @@ describe('HistorySection', () => {
       { id: 'h6', action: 'attachment_removed', userId: 'u1', createdAt: stableTs },
       { id: 'h7', action: 'moved', userId: 'u1', createdAt: stableTs },
       { id: 'h8', action: 'board_migrated', userId: 'u1', createdAt: stableTs },
+      // The `archived` case's fallback is already covered by the "formats
+      // relative time" test — only the `unarchived` `??` branch needs to run.
+      { id: 'h9', action: 'unarchived', userId: 'u1', createdAt: stableTs },
     ];
 
     const { detectChanges } = await render(HistorySection, {
@@ -301,5 +304,6 @@ describe('HistorySection', () => {
     expect(screen.getByText(/^Alice removed attachment\s*$/)).toBeInTheDocument();
     expect(screen.getByText(/^Alice moved from\s+to\s*$/)).toBeInTheDocument();
     expect(screen.getByText(/^Alice migrated this task from\s+to\s*$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Alice restored to\s*$/)).toBeInTheDocument();
   });
 });

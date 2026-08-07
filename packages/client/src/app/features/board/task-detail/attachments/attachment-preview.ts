@@ -11,7 +11,7 @@ import type { Attachment } from '../../../../shared/types/board';
   providers: [provideIcons({ lucideFileVideo, lucideTrash2 })],
   template: `
     <div hlmAttachment class="w-full" orientation="vertical">
-      <div hlmAttachmentMedia [variant]="isImage() ? 'image' : 'icon'">
+      <div hlmAttachmentMedia [variant]="isImage() ? 'image' : 'icon'" class="bg-background">
         @if (isImage()) {
           <img
             [src]="attachment().downloadUrl"
@@ -23,16 +23,6 @@ import type { Attachment } from '../../../../shared/types/board';
         }
       </div>
       <div hlmAttachmentContent>
-        <a
-          hlmAttachmentTitle
-          hlmAttachmentTrigger
-          class="text-primary truncate underline"
-          [href]="attachment().downloadUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {{ attachment().fileName }}
-        </a>
         <span hlmAttachmentDescription class="text-muted-foreground text-xs">{{ size() }}</span>
       </div>
       <div hlmAttachmentActions>

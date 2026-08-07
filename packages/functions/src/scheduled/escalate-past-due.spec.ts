@@ -297,6 +297,160 @@ describe("runEscalatePastDue", () => {
       expect.objectContaining({ escalation: "level-1" }),
     );
   });
+
+  it("caches the board title across tasks that share a board", async () => {
+    const send = vi.fn(async () => undefined);
+    let boardReads = 0;
+    // Custom db so we can count how many times the board doc is read.
+    const taskDocs = [
+      {
+        id: "t1",
+        data: () => ({
+          title: "First",
+          dueDate: past(),
+          escalation: "none",
+          assignedTo: ["u1"],
+        }),
+        ref: {
+          parent: { parent: { id: "b1" } },
+          update: vi.fn(async () => undefined),
+        },
+      },
+      {
+        id: "t2",
+        data: () => ({
+          title: "Second",
+          dueDate: past(),
+          escalation: "none",
+          assignedTo: ["u1"],
+        }),
+        ref: {
+          parent: { parent: { id: "b1" } },
+          update: vi.fn(async () => undefined),
+        },
+      },
+    ];
+    const db = {
+      collectionGroup: () => ({
+        where: () => ({ get: async () => ({ docs: taskDocs }) }),
+      }),
+      collection: (name: string) => ({
+        doc: (id: string) => ({
+          get: async () => {
+            if (name === "boards") {
+              boardReads++;
+              return { exists: true, data: () => ({ title: "Cached" }) };
+            }
+            return {
+              exists: true,
+              id,
+              data: () => ({
+                escalationContacts: [
+                  { name: "Me", number: "+111", escalation: "level-1" },
+                ],
+              }),
+            };
+          },
+        }),
+      }),
+    } as unknown as Firestore;
+
+    await runEscalatePastDue(makeEvent(), { db, sendWhatsApp: send });
+
+    expect(boardReads).toBe(1); // second task hits the cache
+    expect(send).toHaveBeenCalledTimes(2);
+    for (const call of send.mock.calls) {
+      expect(call[1]).toContain("Cached");
+    }
+  });
+
+  it("logs and keeps going when a WhatsApp send throws", async () => {
+    const send = vi.fn(async () => {
+      throw new Error("twilio down");
+    });
+    const { db, docs } = makeDb({
+      tasks: [
+        {
+          id: "t1",
+          boardId: "b1",
+          data: {
+            title: "Broken",
+            dueDate: past(),
+            escalation: "none",
+            assignedTo: ["u1"],
+          },
+        },
+      ],
+      users: {
+        u1: {
+          escalationContacts: [
+            { name: "Me", number: "+111", escalation: "level-1" },
+          ],
+        },
+      },
+    });
+
+    await runEscalatePastDue(makeEvent(), { db, sendWhatsApp: send });
+
+    expect(logger.error).toHaveBeenCalledWith(
+      "Failed to send WhatsApp escalation",
+      expect.objectContaining({ error: "twilio down" }),
+    );
+    // The task is still bumped even when the message fails.
+    expect(docs.get("t1")!.ref.update).toHaveBeenCalledWith(
+      expect.objectContaining({ escalation: "level-1" }),
+    );
+  });
+
+  it("stringifies non-Error rejections in the failure log", async () => {
+    const send = vi.fn(async () => {
+      // eslint-disable-next-line @typescript-eslint/no-throw-literal
+      throw "boom" as unknown as Error;
+    });
+    const { db } = makeDb({
+      tasks: [
+        {
+          id: "t1",
+          boardId: "b1",
+          data: {
+            title: "Broken",
+            dueDate: past(),
+            escalation: "none",
+            assignedTo: ["u1"],
+          },
+        },
+      ],
+      users: {
+        u1: {
+          escalationContacts: [
+            { name: "Me", number: "+111", escalation: "level-1" },
+          ],
+        },
+      },
+    });
+
+    await runEscalatePastDue(makeEvent(), { db, sendWhatsApp: send });
+
+    expect(logger.error).toHaveBeenCalledWith(
+      "Failed to send WhatsApp escalation",
+      expect.objectContaining({ error: "boom" }),
+    );
+  });
+
+  it("exposes escalatePastDue as a scheduled function that delegates to runEscalatePastDue", async () => {
+    const send = vi.fn(async () => undefined);
+    const { db } = makeDb({ tasks: [] });
+    // The mocked onSchedule just returns the handler, so calling
+    // escalatePastDue hits the same code path as runEscalatePastDue.
+    await expect(
+      (
+        escalatePastDue as unknown as (
+          event: ScheduledEvent,
+          deps: { db: Firestore; sendWhatsApp: typeof send },
+        ) => Promise<void>
+      )(makeEvent(), { db, sendWhatsApp: send }),
+    ).resolves.toBeUndefined();
+  });
 });
 
 describe("escalatePastDue export", () => {

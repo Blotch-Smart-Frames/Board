@@ -12,7 +12,8 @@ import {
   writeBatch,
   Timestamp,
 } from 'firebase/firestore';
-import { FIRESTORE_DB } from '../firebase/firebase.config';
+import { httpsCallable } from 'firebase/functions';
+import { FIREBASE_FUNCTIONS, FIRESTORE_DB } from '../firebase/firebase.config';
 import { LabelService } from './label.service';
 import { StorageService } from './storage.service';
 import { BoardService } from './board.service';
@@ -53,6 +54,10 @@ vi.mock('firebase/firestore', () => ({
   },
 }));
 
+vi.mock('firebase/functions', () => ({
+  httpsCallable: vi.fn(),
+}));
+
 describe('BoardService', () => {
   let service: BoardService;
   let labelService: { initializeDefaultLabels: ReturnType<typeof vi.fn> };
@@ -71,6 +76,7 @@ describe('BoardService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: FIRESTORE_DB, useValue: {} },
+        { provide: FIREBASE_FUNCTIONS, useValue: { __fake: 'functions' } },
         { provide: LabelService, useValue: labelService },
         { provide: StorageService, useValue: storageService },
       ],
@@ -298,7 +304,10 @@ describe('BoardService', () => {
   });
 
   describe('migrateTaskToBoard', () => {
-    it('rejects a migration to the same board without touching Firestore', async () => {
+    it('rejects a migration to the same board without invoking the callable', async () => {
+      const call = vi.fn();
+      vi.mocked(httpsCallable).mockReturnValue(call as never);
+
       await expect(
         service.migrateTaskToBoard('board-1', 'task-1', 'board-1', 'list-x', 'u1', {
           fromBoardName: 'A',
@@ -306,51 +315,13 @@ describe('BoardService', () => {
         }),
       ).rejects.toThrow(/same board/i);
 
-      expect(getDoc).not.toHaveBeenCalled();
-      expect(writeBatch).not.toHaveBeenCalled();
+      expect(httpsCallable).not.toHaveBeenCalled();
+      expect(call).not.toHaveBeenCalled();
     });
 
-    it('copies the task, its comments and history, appends a board_migrated entry, and deletes the source', async () => {
-      const batch = fakeBatch();
-      vi.mocked(writeBatch).mockReturnValue(batch as never);
-      // The real `doc(collection)` call generates an auto-id we later read via
-      // `.id`; the shared mock only returns `{ path }`, so extend it for this
-      // scope to include an id.
-      let autoIdCounter = 0;
-      vi.mocked(doc).mockImplementation((_ref: unknown, ...segments: string[]) => {
-        const id = segments.length > 0 ? segments[segments.length - 1] : `auto-${autoIdCounter++}`;
-        return { path: segments.join('/'), id } as never;
-      });
-      // Source task read.
-      vi.mocked(getDoc).mockResolvedValue({
-        exists: () => true,
-        data: () => ({
-          listId: 'list-src',
-          title: 'Move me',
-          description: 'D',
-          order: 'a0',
-          startDate: null,
-          dueDate: null,
-          calendarSyncEnabled: false,
-          createdBy: 'u1',
-          assignedTo: ['u2'],
-          labelIds: ['l1'],
-          color: '#fff',
-          attachments: [],
-          commentCount: 1,
-          createdAt: { seconds: 1 },
-          updatedAt: { seconds: 2 },
-        }),
-      } as never);
-      // Comments, history, target-list tasks reads.
-      vi.mocked(getDocs)
-        .mockResolvedValueOnce({
-          docs: [{ id: 'c1', data: () => ({ text: 'Hi' }), ref: { path: 'c1' } }],
-        } as never)
-        .mockResolvedValueOnce({
-          docs: [{ id: 'h1', data: () => ({ action: 'completed' }), ref: { path: 'h1' } }],
-        } as never)
-        .mockResolvedValueOnce({ docs: [] } as never);
+    it('delegates the migration to the migrateTask Cloud Function', async () => {
+      const call = vi.fn().mockResolvedValue({ data: { newTaskId: 'new-id' } });
+      vi.mocked(httpsCallable).mockReturnValue(call as never);
 
       const newId = await service.migrateTaskToBoard(
         'board-1',
@@ -361,45 +332,30 @@ describe('BoardService', () => {
         { fromBoardName: 'Source', toBoardName: 'Target' },
       );
 
-      expect(typeof newId).toBe('string');
-
-      // The new task, the copied comment, the copied history entry, and the
-      // migration entry all go through the first batch.set.
-      expect(batch.set).toHaveBeenCalledTimes(4);
-      // Target task is written without labels (source-board scoped) and inherits assignees.
-      const firstSetPayload = batch.set.mock.calls[0][1];
-      expect(firstSetPayload).toMatchObject({
-        listId: 'list-dst',
-        title: 'Move me',
-        assignedTo: ['u2'],
-        labelIds: [],
+      expect(newId).toBe('new-id');
+      // The callable is registered against the injected Functions instance and
+      // the deployed function's exported name.
+      expect(httpsCallable).toHaveBeenCalledWith({ __fake: 'functions' }, 'migrateTask');
+      // Only the four IDs cross the wire — the user id and board titles are
+      // resolved server-side from the auth context and freshly-read board docs.
+      expect(call).toHaveBeenCalledWith({
+        sourceBoardId: 'board-1',
+        taskId: 'task-1',
+        targetBoardId: 'board-2',
+        targetListId: 'list-dst',
       });
-      expect(firstSetPayload).not.toHaveProperty('sprintId');
-      // Migration history entry is one of the batch.set calls.
-      const migrationEntry = batch.set.mock.calls.find(
-        (c) => (c[1] as { action?: string }).action === 'board_migrated',
-      );
-      expect(migrationEntry).toBeDefined();
-      expect(migrationEntry![1]).toMatchObject({
-        action: 'board_migrated',
-        userId: 'u1',
-        metadata: { fromBoardName: 'Source', toBoardName: 'Target' },
-      });
-
-      // Two batches commit: one for writes, one for the source-side deletes.
-      expect(batch.commit).toHaveBeenCalledTimes(2);
     });
 
-    it('throws when the source task no longer exists', async () => {
-      vi.mocked(getDoc).mockResolvedValue({ exists: () => false } as never);
-      vi.mocked(getDocs).mockResolvedValue({ docs: [] } as never);
+    it('propagates errors returned by the callable', async () => {
+      const call = vi.fn().mockRejectedValue(new Error('permission-denied'));
+      vi.mocked(httpsCallable).mockReturnValue(call as never);
 
       await expect(
-        service.migrateTaskToBoard('board-1', 'gone', 'board-2', 'list', 'u1', {
+        service.migrateTaskToBoard('board-1', 'task-1', 'board-2', 'list-dst', 'u1', {
           fromBoardName: 'A',
           toBoardName: 'B',
         }),
-      ).rejects.toThrow(/task not found/i);
+      ).rejects.toThrow(/permission-denied/);
     });
   });
 
@@ -565,56 +521,6 @@ describe('BoardService', () => {
       const [, payload] = vi.mocked(updateDoc).mock.calls[0];
       expect(payload).toEqual({ color: null, updatedAt: 'SERVER_TIMESTAMP' });
       expect(Timestamp.fromDate).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('migrateTaskToBoard minimal source task', () => {
-    it('falls back to null/empty defaults for every optional field on the source task', async () => {
-      const batch = fakeBatch();
-      vi.mocked(writeBatch).mockReturnValue(batch as never);
-      let autoIdCounter = 0;
-      vi.mocked(doc).mockImplementation((_ref: unknown, ...segments: string[]) => {
-        const id = segments.length > 0 ? segments[segments.length - 1] : `auto-${autoIdCounter++}`;
-        return { path: segments.join('/'), id } as never;
-      });
-
-      // A source task with none of the optional fields present.
-      vi.mocked(getDoc).mockResolvedValue({
-        exists: () => true,
-        data: () => ({
-          listId: 'list-src',
-          title: 'Minimal',
-          order: 'a0',
-          createdBy: 'u1',
-          createdAt: { seconds: 1 },
-        }),
-      } as never);
-      vi.mocked(getDocs)
-        .mockResolvedValueOnce({ docs: [] } as never)
-        .mockResolvedValueOnce({ docs: [] } as never)
-        .mockResolvedValueOnce({ docs: [] } as never);
-
-      await service.migrateTaskToBoard('board-1', 'task-1', 'board-2', 'list-dst', 'u1', {
-        fromBoardName: 'Source',
-        toBoardName: 'Target',
-      });
-
-      const firstSetPayload = batch.set.mock.calls[0][1];
-      expect(firstSetPayload).toMatchObject({
-        listId: 'list-dst',
-        title: 'Minimal',
-        description: '',
-        startDate: null,
-        dueDate: null,
-        calendarEventId: null,
-        calendarSyncEnabled: false,
-        assignedTo: [],
-        labelIds: [],
-        color: null,
-        attachments: [],
-        commentCount: 0,
-        archivedAt: null,
-      });
     });
   });
 });

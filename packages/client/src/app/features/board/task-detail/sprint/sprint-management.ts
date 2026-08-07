@@ -1,8 +1,9 @@
 import { Component, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucidePlus } from '@ng-icons/lucide';
+import { lucideCalendarClock, lucidePlus } from '@ng-icons/lucide';
 import { HlmAlert, HlmAlertDescription } from '@spartan-ng/helm/alert';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmEmptyImports } from '@spartan-ng/helm/empty';
 import { SprintService } from '../../../../core/services/sprint.service';
 import { compareOrder } from '../../../../shared/utils/ordering';
 import { SprintDialog } from '../../../sprints/sprint-dialog/sprint-dialog';
@@ -11,8 +12,16 @@ import type { CreateSprintInput, Sprint } from '../../../../shared/types/board';
 
 @Component({
   selector: 'app-sprint-management',
-  imports: [HlmAlert, HlmAlertDescription, HlmButton, NgIcon, SprintDialog, SprintListItem],
-  providers: [provideIcons({ lucidePlus })],
+  imports: [
+    HlmAlert,
+    HlmAlertDescription,
+    HlmButton,
+    HlmEmptyImports,
+    NgIcon,
+    SprintDialog,
+    SprintListItem,
+  ],
+  providers: [provideIcons({ lucideCalendarClock, lucidePlus })],
   template: `
     <div class="flex min-w-0 flex-1 flex-col gap-4">
       <div>
@@ -31,7 +40,17 @@ import type { CreateSprintInput, Sprint } from '../../../../shared/types/board';
         }
 
         @if (sortedSprints().length === 0) {
-          <p class="text-muted-foreground text-sm">No sprints created yet</p>
+          <hlm-empty>
+            <hlm-empty-header>
+              <hlm-empty-media variant="icon">
+                <ng-icon name="lucideCalendarClock" />
+              </hlm-empty-media>
+              <div hlmEmptyTitle>No sprints created yet</div>
+              <div hlmEmptyDescription>
+                Create a sprint to group tasks into time-boxed iterations.
+              </div>
+            </hlm-empty-header>
+          </hlm-empty>
         } @else {
           <div class="flex flex-col gap-2">
             @for (sprint of sortedSprints(); track sprint.id) {

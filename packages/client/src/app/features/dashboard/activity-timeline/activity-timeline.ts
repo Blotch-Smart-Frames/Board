@@ -72,7 +72,7 @@ function relativeTime(date: Date, now: number): string {
                 >
                   <ng-icon name="lucideCirclePlus" />
                 </span>
-                <div class="min-w-0 flex-1">
+                <div class="min-w-0 flex-1 pl-1">
                   <p class="text-sm">
                     <span class="font-medium">{{ event.actorName }}</span>
                     <span class="text-muted-foreground"> created </span>
