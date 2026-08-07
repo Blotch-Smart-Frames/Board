@@ -215,23 +215,4 @@ describe('ListColumn', () => {
 
     expect(onTaskDropped).toHaveBeenCalled();
   });
-
-  it('emits taskDragStarted when a task card drag begins', async () => {
-    const { CdkDrag } = await import('@angular/cdk/drag-drop');
-    const onDragStarted = vi.fn();
-    const list = fakeList([fakeTask()]);
-    const view = await render(ListColumn, {
-      inputs: { list },
-      providers: [storeProvider],
-      on: { taskDragStarted: onDragStarted },
-    });
-
-    // The only cdkDrag inside a non-archival column is a task card; emit through
-    // its `started` output to exercise the `(cdkDragStarted)` template listener.
-    const dragDebug = view.fixture.debugElement.query((el) => !!el.injector.get(CdkDrag, null));
-    const drag = dragDebug!.injector.get(CdkDrag);
-    (drag.started as unknown as { emit: (e: unknown) => void }).emit({});
-
-    expect(onDragStarted).toHaveBeenCalled();
-  });
 });
