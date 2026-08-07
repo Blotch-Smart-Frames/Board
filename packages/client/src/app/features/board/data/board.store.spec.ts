@@ -2,7 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
-import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, doc, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { FIRESTORE_DB } from '../../../core/firebase/firebase.config';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { BoardService } from '../../../core/services/board.service';
@@ -20,6 +20,8 @@ vi.mock('firebase/firestore', () => ({
   doc: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'doc', path: segments.join('/') })),
   query: vi.fn((ref: unknown, ...constraints: unknown[]) => ({ type: 'query', ref, constraints })),
   orderBy: vi.fn((field: string) => ({ orderBy: field })),
+  where: vi.fn((field: string, op: string, value: unknown) => ({ where: [field, op, value] })),
+  limit: vi.fn((count: number) => ({ limit: count })),
   onSnapshot: vi.fn(),
 }));
 
@@ -45,6 +47,7 @@ describe('BoardStore', () => {
     moveTask: ReturnType<typeof vi.fn>;
     migrateTaskToBoard: ReturnType<typeof vi.fn>;
     addTaskHistory: ReturnType<typeof vi.fn>;
+    updateBoard: ReturnType<typeof vi.fn>;
   };
   let syncService: {
     syncTaskToCalendar: ReturnType<typeof vi.fn>;
@@ -66,6 +69,7 @@ describe('BoardStore', () => {
       moveTask: vi.fn().mockResolvedValue(undefined),
       migrateTaskToBoard: vi.fn().mockResolvedValue('task-new-id'),
       addTaskHistory: vi.fn().mockResolvedValue(undefined),
+      updateBoard: vi.fn().mockResolvedValue(undefined),
     };
     syncService = {
       syncTaskToCalendar: vi.fn().mockResolvedValue(null),
@@ -317,7 +321,8 @@ describe('BoardStore', () => {
           metadata: { fromListName: 'To Do', toListName: 'Done' },
         }),
       ]);
-      expect(boardService.moveTask).toHaveBeenCalledWith('board-1', 't1', 'list-2', 'a5');
+      // Neither list is archival, so the archive flag is left untouched (undefined).
+      expect(boardService.moveTask).toHaveBeenCalledWith('board-1', 't1', 'list-2', 'a5', undefined);
     });
 
     it('moveTaskToList appends the task to the end of the destination list and logs history', async () => {
@@ -867,12 +872,155 @@ describe('BoardStore', () => {
       await store.moveTaskToIndex('t1', 'ghost-list', 0);
 
       // The move still fires; the missing destList only affects the derived order key.
+      // The ghost list isn't archival, so the archive flag is left untouched (undefined).
       expect(boardService.moveTask).toHaveBeenCalledWith(
         'board-1',
         't1',
         'ghost-list',
         expect.any(String),
+        undefined,
       );
+    });
+  });
+
+  describe('archiving', () => {
+    // Configures one archival list ('list-arch'), an active task, and points the
+    // shared tasks-collection callback slot at the archived-preview listener that
+    // the archival config spins up.
+    function setupArchival(): void {
+      TestBed.flushEffects();
+      onSnapshotCallbacks.get('boards/board-1/lists')!(
+        collectionSnapshot([
+          { id: 'list-1', data: { title: 'To Do', order: 'a0' } },
+          { id: 'list-arch', data: { title: 'Done', order: 'a1' } },
+        ]),
+      );
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([
+          { id: 't-active', data: { title: 'A', listId: 'list-1', order: 'a0', archive: false } },
+        ]),
+      );
+      onSnapshotCallbacks.get('boards/board-1')!(
+        docSnapshot('board-1', {
+          title: 'B',
+          ownerId: 'u1',
+          collaborators: [],
+          archivalListIds: ['list-arch'],
+        }),
+      );
+      TestBed.flushEffects();
+    }
+
+    it('exposes the board’s archival list ids', () => {
+      const store = TestBed.inject(BoardStore);
+      setupArchival();
+      expect(store.archivalListIds()).toEqual(['list-arch']);
+    });
+
+    it('streams up to five most-recent archived tasks per archival list', () => {
+      const store = TestBed.inject(BoardStore);
+      setupArchival();
+      // After archival config, the tasks-path callback belongs to the preview listener.
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([
+          { id: 'a1', data: { title: 'Old', listId: 'list-arch', order: 'z0', archive: true } },
+        ]),
+      );
+
+      expect(store.archivedPreviewByListId().get('list-arch')?.map((t) => t.id)).toEqual(['a1']);
+      expect(where).toHaveBeenCalledWith('archive', '==', true);
+      expect(limit).toHaveBeenCalledWith(5);
+    });
+
+    it('only re-subscribes previews when the archival list set actually changes', () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      const setBoard = (ids: string[]) =>
+        onSnapshotCallbacks.get('boards/board-1')!(
+          docSnapshot('board-1', {
+            title: 'B',
+            ownerId: 'u1',
+            collaborators: [],
+            archivalListIds: ids,
+          }),
+        );
+      setBoard(['list-a']);
+      TestBed.flushEffects();
+      setBoard(['list-a']); // identical -> distinctUntilChanged filters it out
+      TestBed.flushEffects();
+      setBoard(['list-b']); // same length, different id -> passes through
+      TestBed.flushEffects();
+
+      expect(store.archivalListIds()).toEqual(['list-b']);
+    });
+
+    it('archives a task dragged into an archival list', async () => {
+      const store = TestBed.inject(BoardStore);
+      setupArchival();
+
+      await store.moveTask('t-active', 'list-arch', 'a5');
+
+      expect(boardService.moveTask).toHaveBeenCalledWith(
+        'board-1',
+        't-active',
+        'list-arch',
+        'a5',
+        true,
+      );
+    });
+
+    it('restores a task dragged out of an archival list (found via the preview)', async () => {
+      const store = TestBed.inject(BoardStore);
+      setupArchival();
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([
+          { id: 'a1', data: { title: 'Old', listId: 'list-arch', order: 'z0', archive: true } },
+        ]),
+      );
+
+      await store.moveTask('a1', 'list-1', 'a9');
+
+      expect(boardService.moveTask).toHaveBeenCalledWith('board-1', 'a1', 'list-1', 'a9', false);
+    });
+
+    it('leaves the archive flag untouched when moving between archival lists', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+      onSnapshotCallbacks.get('boards/board-1')!(
+        docSnapshot('board-1', {
+          title: 'B',
+          ownerId: 'u1',
+          collaborators: [],
+          archivalListIds: ['list-arch', 'list-arch2'],
+        }),
+      );
+      TestBed.flushEffects();
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([
+          { id: 'a1', data: { title: 'Old', listId: 'list-arch', order: 'z0', archive: true } },
+        ]),
+      );
+
+      await store.moveTask('a1', 'list-arch2', 'a1');
+
+      expect(boardService.moveTask).toHaveBeenCalledWith(
+        'board-1',
+        'a1',
+        'list-arch2',
+        'a1',
+        undefined,
+      );
+    });
+
+    it('persists archival list ids via setArchivalListIds', async () => {
+      const store = TestBed.inject(BoardStore);
+      TestBed.flushEffects();
+
+      await store.setArchivalListIds(['list-arch']);
+
+      expect(boardService.updateBoard).toHaveBeenCalledWith('board-1', {
+        archivalListIds: ['list-arch'],
+      });
     });
   });
 });

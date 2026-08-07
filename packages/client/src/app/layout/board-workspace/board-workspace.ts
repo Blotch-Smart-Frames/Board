@@ -10,7 +10,7 @@ import { BoardsSidebar, type ViewMode } from '../../features/boards/boards-sideb
 import { KanbanBoard } from '../../features/board/kanban-board/kanban-board';
 import { TimelineView } from '../../features/timeline/timeline-view/timeline-view';
 import { BackgroundImageUpload } from '../../features/board/background-image-upload/background-image-upload';
-import { ShareDialog } from '../../features/collaboration/share-dialog/share-dialog';
+import { BoardSettingsDialog } from '../../features/collaboration/board-settings-dialog/board-settings-dialog';
 
 @Component({
   selector: 'app-board-workspace',
@@ -25,16 +25,16 @@ import { ShareDialog } from '../../features/collaboration/share-dialog/share-dia
     KanbanBoard,
     TimelineView,
     BackgroundImageUpload,
-    ShareDialog,
+    BoardSettingsDialog,
   ],
   template: `
     <div class="flex h-full overflow-hidden">
       <app-boards-sidebar
         [boardTitle]="store.board()?.title"
-        [showShare]="!!store.board()"
+        [showSettings]="!!store.board()"
         [viewMode]="store.board() ? viewMode() : undefined"
         (viewModeChange)="viewMode.set($event)"
-        (share)="openShare()"
+        (settings)="openSettings()"
       />
 
       <main class="flex-1 overflow-hidden">
@@ -78,11 +78,13 @@ import { ShareDialog } from '../../features/collaboration/share-dialog/share-dia
         [hasBackground]="!!board.backgroundImageUrl"
       />
 
-      <app-share-dialog
-        #shareDialog
+      <app-board-settings-dialog
+        #settingsDialog
         [boardId]="store.boardId()!"
         [boardTitle]="board.title"
         [collaborators]="store.collaborators()"
+        [lists]="store.lists() ?? []"
+        [archivalListIds]="board.archivalListIds ?? []"
       />
     }
   `,
@@ -92,9 +94,9 @@ export class BoardWorkspace {
 
   protected readonly viewMode = signal<ViewMode>('kanban');
 
-  private readonly shareDialog = viewChild<ShareDialog>('shareDialog');
+  private readonly settingsDialog = viewChild<BoardSettingsDialog>('settingsDialog');
 
-  protected openShare(): void {
-    this.shareDialog()?.open();
+  protected openSettings(): void {
+    this.settingsDialog()?.open();
   }
 }

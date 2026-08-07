@@ -19,6 +19,10 @@ vi.mock('firebase/firestore', () => ({
     type: 'collection',
     path: segments.join('/'),
   })),
+  // The store now wraps the collection in query(collection, where('archive','==',false));
+  // query passes the ref through unchanged so onSnapshot still receives the path.
+  query: vi.fn((ref: unknown) => ref),
+  where: vi.fn((field: string, op: string, value: unknown) => ({ where: [field, op, value] })),
   onSnapshot: vi.fn(),
 }));
 

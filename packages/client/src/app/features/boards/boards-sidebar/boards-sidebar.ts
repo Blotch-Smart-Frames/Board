@@ -5,7 +5,7 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucidePlus,
   lucideMenu,
-  lucideShare2,
+  lucideSettings,
   lucideColumns3,
   lucideGanttChartSquare,
 } from '@ng-icons/lucide';
@@ -36,7 +36,7 @@ export type ViewMode = 'kanban' | 'timeline';
     provideIcons({
       lucidePlus,
       lucideMenu,
-      lucideShare2,
+      lucideSettings,
       lucideColumns3,
       lucideGanttChartSquare,
     }),
@@ -63,9 +63,15 @@ export type ViewMode = 'kanban' | 'timeline';
       @if (!collapsed()) {
         <h1 class="text-primary min-w-0 grow truncate text-sm font-semibold">{{ title() }}</h1>
 
-        @if (showShare()) {
-          <button hlmBtn variant="ghost" size="icon" aria-label="Share" (click)="share.emit()">
-            <ng-icon name="lucideShare2" />
+        @if (showSettings()) {
+          <button
+            hlmBtn
+            variant="ghost"
+            size="icon"
+            aria-label="Board settings"
+            (click)="settings.emit()"
+          >
+            <ng-icon name="lucideSettings" />
           </button>
         }
       }
@@ -189,10 +195,10 @@ export class BoardsSidebar {
 
   readonly boardTitle = input<string | undefined>(undefined);
   readonly viewMode = input<ViewMode | undefined>(undefined);
-  readonly showShare = input(false);
+  readonly showSettings = input(false);
 
   readonly viewModeChange = output<ViewMode>();
-  readonly share = output<void>();
+  readonly settings = output<void>();
 
   protected readonly collapsed = signal(false);
 

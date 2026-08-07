@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, resource } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { Observable, combineLatest, distinctUntilChanged, of, switchMap } from 'rxjs';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { FIRESTORE_DB } from '../../../core/firebase/firebase.config';
 import { UserService } from '../../../core/services/user.service';
@@ -84,8 +84,13 @@ export class DashboardStore {
         (boardId) =>
           new Observable<Array<Task & { boardId: string }>>((subscriber) => {
             subscriber.next([]);
+            // Mirror the board view: archived tasks are excluded at the query
+            // level so the dashboard's reads (and its metrics) stay bounded.
             return onSnapshot(
-              collection(this.db, 'boards', boardId, 'tasks'),
+              query(
+                collection(this.db, 'boards', boardId, 'tasks'),
+                where('archive', '==', false),
+              ),
               (snap) => {
                 subscriber.next(
                   snap.docs.map(

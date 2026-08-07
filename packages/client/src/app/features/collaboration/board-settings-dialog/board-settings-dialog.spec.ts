@@ -1,9 +1,23 @@
+import type { Timestamp } from 'firebase/firestore';
 import { render, screen, waitFor } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
-import { ShareDialog } from './share-dialog';
+import { BoardSettingsDialog } from './board-settings-dialog';
 import { BoardService } from '../../../core/services/board.service';
 import { UserService } from '../../../core/services/user.service';
-import type { Collaborator } from '../../../shared/types/board';
+import type { Collaborator, List } from '../../../shared/types/board';
+
+// jsdom lacks these; the archival-lists select touches them when it opens.
+class ResizeObserverStub {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
+Element.prototype.scrollIntoView ??= function scrollIntoViewPolyfill(): void {};
+
+function fakeList(id: string, title: string): List {
+  return { id, title, order: 'a0', createdAt: {} as Timestamp };
+}
 
 function fakeCollaborator(overrides: Partial<Collaborator> = {}): Collaborator {
   return {
@@ -19,6 +33,7 @@ function fakeCollaborator(overrides: Partial<Collaborator> = {}): Collaborator {
 async function openWith(
   opts: {
     collaborators?: Collaborator[];
+    lists?: List[];
     boardService?: Partial<BoardService>;
     userService?: Partial<UserService>;
   } = {},
@@ -26,6 +41,7 @@ async function openWith(
   const boardService = {
     shareBoard: vi.fn().mockResolvedValue(undefined),
     removeCollaborator: vi.fn().mockResolvedValue(undefined),
+    updateBoard: vi.fn().mockResolvedValue(undefined),
     ...opts.boardService,
   };
   const userService = {
@@ -35,11 +51,13 @@ async function openWith(
     ...opts.userService,
   };
 
-  const view = await render(ShareDialog, {
+  const view = await render(BoardSettingsDialog, {
     inputs: {
       boardId: 'board-1',
       boardTitle: 'My Board',
       collaborators: opts.collaborators ?? [fakeCollaborator()],
+      lists: opts.lists ?? [],
+      archivalListIds: [],
     },
     providers: [
       { provide: BoardService, useValue: boardService },
@@ -52,7 +70,7 @@ async function openWith(
   return { ...view, boardService, userService };
 }
 
-describe('ShareDialog', () => {
+describe('BoardSettingsDialog', () => {
   it('lists all collaborators, badging the owner and hiding the remove button on them', async () => {
     await openWith({
       collaborators: [
@@ -225,5 +243,49 @@ describe('ShareDialog', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('persists the chosen archival lists when a list is selected in the field', async () => {
+    const user = userEvent.setup();
+    const { boardService } = await openWith({ lists: [fakeList('list-1', 'Complete')] });
+
+    // Open the archival-lists select and pick a list — this drives the field's
+    // (selectedListIdsChange) output through the dialog's template binding.
+    await user.click(screen.getByRole('combobox'));
+    await user.click(await screen.findByRole('option', { name: /complete/i }));
+
+    await waitFor(() =>
+      expect(boardService.updateBoard).toHaveBeenCalledWith('board-1', {
+        archivalListIds: ['list-1'],
+      }),
+    );
+  });
+
+  it('surfaces the error message when saving archival lists fails', async () => {
+    const { fixture } = await openWith({
+      boardService: { updateBoard: vi.fn().mockRejectedValue(new Error('save failed')) },
+    });
+    const dialog = fixture.componentInstance as unknown as {
+      onArchivalListIdsChange(ids: string[]): Promise<void>;
+    };
+
+    await dialog.onArchivalListIdsChange(['list-1']);
+    fixture.detectChanges();
+
+    expect(await screen.findByText(/save failed/i)).toBeInTheDocument();
+  });
+
+  it('falls back to a generic message when the archival save rejects with a non-Error', async () => {
+    const { fixture } = await openWith({
+      boardService: { updateBoard: vi.fn().mockRejectedValue('boom') },
+    });
+    const dialog = fixture.componentInstance as unknown as {
+      onArchivalListIdsChange(ids: string[]): Promise<void>;
+    };
+
+    await dialog.onArchivalListIdsChange(['list-1']);
+    fixture.detectChanges();
+
+    expect(await screen.findByText(/failed to update archived lists/i)).toBeInTheDocument();
   });
 });

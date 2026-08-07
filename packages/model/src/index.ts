@@ -80,6 +80,12 @@ export type Board = {
   collaborators: string[];
   backgroundImageUrl?: string;
   sprintConfig?: SprintConfig;
+  /**
+   * IDs of lists that act as archives: dragging a task into one of these marks
+   * the task `archive: true`, and dragging it back out clears the flag. Stored
+   * as IDs (not titles) so renaming a list keeps the configuration intact.
+   */
+  archivalListIds?: string[];
   createdAt: FirestoreTimestamp;
   updatedAt: FirestoreTimestamp;
 };
@@ -119,6 +125,15 @@ export type Task = {
   dueDate?: FirestoreTimestamp;
   calendarEventId?: string;
   calendarSyncEnabled: boolean;
+  /**
+   * Whether the task has been archived. Set to `true` when a task is dragged
+   * into one of the board's archival lists (see {@link Board.archivalListIds});
+   * absent or `false` means active. The board view filters archived tasks out at
+   * the Firestore query level to keep document reads bounded on large boards.
+   * (Every task written by the app carries this field — see BoardService.addTask
+   * and the one-off backfill — so `where('archive','==',false)` matches them.)
+   */
+  archive?: boolean;
   createdBy: string;
   assignedTo?: string[];
   labelIds?: string[];
@@ -160,6 +175,7 @@ export type CreateTaskInput = {
   startDate?: Date;
   dueDate?: Date;
   calendarSyncEnabled?: boolean;
+  archive?: boolean;
   assignedTo?: string[];
   labelIds?: string[];
   color?: string;
@@ -173,6 +189,7 @@ export type UpdateTaskInput = {
   dueDate?: Date | null;
   calendarEventId?: string | null;
   calendarSyncEnabled?: boolean;
+  archive?: boolean;
   assignedTo?: string[];
   labelIds?: string[];
   color?: string | null;

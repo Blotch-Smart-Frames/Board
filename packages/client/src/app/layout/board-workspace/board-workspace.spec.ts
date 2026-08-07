@@ -19,6 +19,8 @@ vi.mock('firebase/firestore', () => ({
   doc: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'doc', path: segments.join('/') })),
   query: vi.fn((ref: unknown, ...constraints: unknown[]) => ({ type: 'query', ref, constraints })),
   orderBy: vi.fn((field: string) => ({ orderBy: field })),
+  where: vi.fn((field: string, op: string, value: unknown) => ({ where: [field, op, value] })),
+  limit: vi.fn((count: number) => ({ limit: count })),
   onSnapshot: vi.fn(() => vi.fn()),
 }));
 
@@ -151,7 +153,7 @@ describe('BoardWorkspace', () => {
     expect(screen.getByText(/^create board$/i)).toBeInTheDocument();
   });
 
-  it('opens the share dialog when the sidebar emits share', async () => {
+  it('opens the board settings dialog when the sidebar emits settings', async () => {
     const user = userEvent.setup();
     stubMatchMedia();
     const callbacks = new Map<string, (snapshot: unknown) => void>();
@@ -168,15 +170,15 @@ describe('BoardWorkspace', () => {
       ],
     });
 
-    // Load a board so the Share button and the share dialog view child appear.
+    // Load a board so the settings button and the settings dialog view child appear.
     callbacks.get('boards/board-1')!({
       exists: () => true,
       id: 'board-1',
       data: () => ({ title: 'My Board', ownerId: 'u1', collaborators: [] }),
     });
 
-    await user.click(await screen.findByRole('button', { name: /share/i }));
+    await user.click(await screen.findByRole('button', { name: /board settings/i }));
 
-    expect(await screen.findByRole('heading', { name: /share "my board"/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /board settings/i })).toBeInTheDocument();
   });
 });

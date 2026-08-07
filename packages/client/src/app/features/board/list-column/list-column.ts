@@ -96,6 +96,26 @@ export type ListWithTasks = List & { tasks: Task[] };
         </details>
       }
 
+      <!--
+        Archival lists show a bounded, faded peek at their most-recently-archived
+        tasks. The bottom gradient mask hints "there could be more" without
+        loading the full archive. Cards stay clickable so a task can be opened
+        (and moved back out of the archive, which un-archives it).
+      -->
+      @if (isArchival() && archivedPreview().length > 0) {
+        <div class="px-2 pb-2">
+          <p class="text-muted-foreground px-1 py-1 text-xs font-medium">Archived</p>
+          <div
+            class="space-y-2 opacity-65"
+            style="mask-image: linear-gradient(to bottom, black 55%, transparent); -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent)"
+          >
+            @for (task of archivedPreview(); track task.id) {
+              <app-task-card [task]="task" [labels]="labels()" (view)="viewTask.emit($event)" />
+            }
+          </div>
+        </div>
+      }
+
       <app-add-task-form (addTask)="addTask.emit($event)" />
     </div>
   `,
@@ -104,6 +124,10 @@ export class ListColumn {
   readonly list = input.required<ListWithTasks>();
   readonly labels = input<Label[]>([]);
   readonly connectedListIds = input<string[]>([]);
+  // When this list is configured as an archive, `archivedPreview` holds its last
+  // few archived tasks to render as a faded peek beneath the active tasks.
+  readonly isArchival = input(false);
+  readonly archivedPreview = input<Task[]>([]);
   readonly canMoveLeft = input(false);
   readonly canMoveRight = input(false);
   // Parent (KanbanBoard) flips this on mobile/touch to suppress task drag-drop
