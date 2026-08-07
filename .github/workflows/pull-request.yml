@@ -42,7 +42,27 @@ jobs:
           EOF
 
       - name: Run tests
-        run: npm run test:all
+        run: npm run test:ci:coverage
+
+      - name: Upload client coverage to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: packages/client/coverage/board/lcov.info
+          flags: client
+          disable_search: true
+          fail_ci_if_error: false
+
+      - name: Upload functions coverage to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: packages/functions/coverage/lcov.info
+          flags: functions
+          disable_search: true
+          fail_ci_if_error: false
 
   format:
     name: Prettier

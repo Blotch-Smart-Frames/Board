@@ -10,25 +10,19 @@
   "scripts": {
     "dev": "turbo run dev --filter=@blotch/board-client",
     "start": "turbo run start --filter=@blotch/board-client",
-    "build": "turbo run build --filter=@blotch/board-client",
-    "test": "turbo run test --filter=@blotch/board-client",
-    "dev:legacy": "turbo run dev --filter=@blotch/board-client-legacy",
-    "build:legacy": "turbo run build --filter=@blotch/board-client-legacy",
-    "test:legacy": "turbo run test --filter=@blotch/board-client-legacy",
-    "lint:legacy": "turbo run lint --filter=@blotch/board-client-legacy",
-    "format:legacy": "turbo run format --filter=@blotch/board-client-legacy",
-    "cspell:legacy": "turbo run cspell --filter=@blotch/board-client-legacy",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:ci:coverage": "turbo run test:ci:coverage",
     "build:functions": "turbo run build --filter=@blotch/board-functions",
     "test:functions": "turbo run test --filter=@blotch/board-functions",
     "deploy:functions": "npm run build:functions && firebase deploy --only functions",
-    "build:all": "turbo run build",
-    "test:all": "turbo run test",
     "lint": "turbo run lint",
     "format": "turbo run format",
     "format:check": "turbo run format:check",
     "cspell": "turbo run cspell"
   },
   "devDependencies": {
+    "cspell": "^9.6.2",
     "turbo": "2.10.8"
   }
 }

@@ -10,6 +10,10 @@
       "dependsOn": [],
       "outputs": ["coverage/**"]
     },
+    "test:ci:coverage": {
+      "dependsOn": [],
+      "outputs": ["coverage/**"]
+    },
     "lint": {
       "outputs": []
     },

@@ -183,4 +183,36 @@ describe('ListColumn', () => {
 
     expect(onTaskDropped).toHaveBeenCalled();
   });
+
+  it('wires the archival cdkDropList output into taskDropped', async () => {
+    // The archival branch renders its own CdkDropList (with the preview cards)
+    // in place of the active one. Cover its template listener the same way we
+    // cover the active list's.
+    const { CdkDropList } = await import('@angular/cdk/drag-drop');
+    const onTaskDropped = vi.fn();
+    const list = fakeList([]);
+    const view = await render(ListColumn, {
+      inputs: {
+        list,
+        isArchival: true,
+        archivedPreview: [fakeTask({ id: 'a1', archive: true })],
+      },
+      providers: [storeProvider],
+      on: { taskDropped: onTaskDropped },
+    });
+
+    const dropListDebug = view.fixture.debugElement.query(
+      (el) => !!el.injector.get(CdkDropList, null),
+    );
+    const dropList = dropListDebug!.injector.get(CdkDropList);
+    (dropList.dropped as unknown as { emit: (e: unknown) => void }).emit({
+      previousContainer: { id: 'other-list' },
+      container: { id: 'list-1' },
+      previousIndex: 0,
+      currentIndex: 0,
+      item: { data: fakeTask({ id: 'a1', archive: true }) },
+    });
+
+    expect(onTaskDropped).toHaveBeenCalled();
+  });
 });

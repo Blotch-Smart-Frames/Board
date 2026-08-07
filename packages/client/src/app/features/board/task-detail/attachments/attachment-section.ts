@@ -64,23 +64,25 @@ type UploadInProgress = { id: string; fileName: string; progress: number };
       }
 
       @if (hasContent()) {
-        <div hlmAttachmentGroup class="flex-col flex-nowrap overflow-x-visible">
-          @for (upload of uploads(); track upload.id) {
-            <div hlmAttachment state="uploading" class="w-full">
-              <div hlmAttachmentMedia>
-                <hlm-spinner />
-              </div>
-              <div hlmAttachmentContent>
-                <span hlmAttachmentTitle>{{ upload.fileName }}</span>
-                <span hlmAttachmentDescription>Uploading · {{ upload.progress }}%</span>
-              </div>
-            </div>
-          }
+        <div hlmAttachmentGroup class="flex-row flex-nowrap overflow-x-auto">
           @for (attachment of attachments(); track attachment.id) {
             <app-attachment-preview
               [attachment]="attachment"
               (deleted)="removeAttachment($event)"
             />
+          }
+          @for (upload of uploads(); track upload.id) {
+            <div hlmAttachment state="uploading" class="flex flex-col min-w-29.5 items-center">
+              <div class="flex-1 self-stretch flex items-center justify-center">
+                <div hlmAttachmentMedia>
+                  <hlm-spinner />
+                </div>
+              </div>
+              <div hlmAttachmentContent class="min-h-0 flex flex-col justify-end">
+                <span hlmAttachmentTitle>{{ upload.fileName }}</span>
+                <span hlmAttachmentDescription>Uploading · {{ upload.progress }}%</span>
+              </div>
+            </div>
           }
         </div>
       }

@@ -25,7 +25,6 @@ dist-ssr
 
 coverage
 .env
-packages/client-legacy/public/version.json
 packages/client/public/version.json
 
 # Turborepo

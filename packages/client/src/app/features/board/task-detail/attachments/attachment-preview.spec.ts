@@ -17,21 +17,12 @@ function fakeAttachment(overrides: Partial<Attachment> = {}): Attachment {
 }
 
 describe('AttachmentPreview', () => {
-  it('renders the file name as a link to the download URL', async () => {
+  it('renders an image preview using the download URL when the file type is an image', async () => {
     await render(AttachmentPreview, { inputs: { attachment: fakeAttachment() } });
 
-    expect(screen.getByRole('link', { name: /photo\.png/i })).toHaveAttribute(
-      'href',
-      'https://example.com/photo.png',
-    );
-  });
-
-  it('renders an image preview when the file type is an image', async () => {
-    await render(AttachmentPreview, {
-      inputs: { attachment: fakeAttachment({ fileType: 'image/png' }) },
-    });
-
-    expect(screen.getByRole('img')).toBeInTheDocument();
+    const img = screen.getByRole('img', { name: /photo\.png/i }) as HTMLImageElement;
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute('src', 'https://example.com/photo.png');
   });
 
   it('does not render an image preview for a non-image file type', async () => {

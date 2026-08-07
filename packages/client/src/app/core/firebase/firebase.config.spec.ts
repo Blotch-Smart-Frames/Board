@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import {
   FIREBASE_APP,
   FIREBASE_AUTH,
+  FIREBASE_FUNCTIONS,
   FIRESTORE_DB,
   FIREBASE_STORAGE,
   GOOGLE_AUTH_PROVIDER,
@@ -33,6 +34,10 @@ vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(() => ({ mock: 'firestore' })),
 }));
 
+vi.mock('firebase/functions', () => ({
+  getFunctions: vi.fn(() => ({ mock: 'functions' })),
+}));
+
 vi.mock('firebase/storage', () => ({
   getStorage: vi.fn(() => ({ mock: 'storage' })),
 }));
@@ -59,6 +64,12 @@ describe('firebase config injection tokens', () => {
 
   it('provides a Storage instance', () => {
     expect(TestBed.inject(FIREBASE_STORAGE)).toEqual({ mock: 'storage' });
+  });
+
+  it('provides a Functions instance pinned to us-central1', async () => {
+    expect(TestBed.inject(FIREBASE_FUNCTIONS)).toEqual({ mock: 'functions' });
+    const { getFunctions } = await import('firebase/functions');
+    expect(getFunctions).toHaveBeenCalledWith(expect.anything(), 'us-central1');
   });
 
   it('provides a GoogleAuthProvider with calendar scopes', () => {

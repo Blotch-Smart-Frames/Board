@@ -49,7 +49,7 @@ describe('AttachmentSection', () => {
       },
     });
 
-    expect(screen.getByText('existing.png')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'existing.png' })).toBeInTheDocument();
   });
 
   it('uploads a selected file and emits attachmentsChange with it appended once the upload resolves', async () => {

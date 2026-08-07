@@ -18,6 +18,7 @@ import type { Attachment, Task } from '../../../../shared/types/board';
     TaskListSelect,
     TaskMetadataSidebar,
   ],
+  host: { class: 'flex flex-col gap-5' },
   template: `
     <div class="flex flex-col gap-5 sm:flex-row">
       <div class="flex flex-1 flex-col gap-5">
@@ -52,7 +53,7 @@ import type { Attachment, Task } from '../../../../shared/types/board';
       />
     </div>
 
-    <hlm-field-separator />
+    <hlm-field-separator class="block" />
 
     <app-attachment-section
       [boardId]="boardId()"

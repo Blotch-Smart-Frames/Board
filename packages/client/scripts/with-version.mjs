@@ -1,7 +1,7 @@
-// Angular equivalent of client-legacy's vite-plugin-version: stamps a fresh
-// build hash before `ng build`/`ng serve`, writes public/version.json (polled
-// at runtime by VersionCheckService), and injects __BUILD_HASH__ via ng's
-// --define flag. Tests use the "dev" fallback baked into angular.json.
+// Stamps a fresh build hash before `ng build`/`ng serve`, writes
+// public/version.json (polled at runtime by VersionCheckService), and injects
+// __BUILD_HASH__ via ng's --define flag. Tests use the "dev" fallback baked
+// into angular.json.
 import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

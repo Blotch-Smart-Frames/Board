@@ -22,7 +22,7 @@ type DescriptionFormModel = {
       <textarea
         hlmInput
         id="task-description"
-        class="min-h-20 resize-y"
+        class="min-h-40 resize-y"
         placeholder="Add a description…"
         autocomplete="off"
         data-1p-ignore="true"
