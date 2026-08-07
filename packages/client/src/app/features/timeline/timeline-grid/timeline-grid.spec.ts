@@ -53,11 +53,19 @@ function fakeItem(overrides: Partial<TimelineItemData> = {}): TimelineItemData {
 
 function stubScrollMetrics(
   el: HTMLElement,
-  { scrollLeft = 0, scrollWidth = 1000, clientWidth = 500 }: Partial<Record<'scrollLeft' | 'scrollWidth' | 'clientWidth', number>> = {},
+  {
+    scrollLeft = 0,
+    scrollWidth = 1000,
+    clientWidth = 500,
+  }: Partial<Record<'scrollLeft' | 'scrollWidth' | 'clientWidth', number>> = {},
 ) {
   Object.defineProperty(el, 'scrollWidth', { value: scrollWidth, configurable: true });
   Object.defineProperty(el, 'clientWidth', { value: clientWidth, configurable: true });
-  Object.defineProperty(el, 'scrollLeft', { value: scrollLeft, configurable: true, writable: true });
+  Object.defineProperty(el, 'scrollLeft', {
+    value: scrollLeft,
+    configurable: true,
+    writable: true,
+  });
 }
 
 function pointer(type: string, clientX: number, clientY = 0, pointerId = 1): PointerEvent {
@@ -69,8 +77,16 @@ describe('TimelineGrid', () => {
     const scale = fakeScale();
     const rows = [fakeRow('list-1', 'To Do'), fakeRow('list-2', 'Doing')];
     const items = [
-      fakeItem({ id: 't1', rowId: 'list-1', task: fakeTask({ id: 't1', title: 'Task One', listId: 'list-1' }) }),
-      fakeItem({ id: 't2', rowId: 'list-2', task: fakeTask({ id: 't2', title: 'Task Two', listId: 'list-2' }) }),
+      fakeItem({
+        id: 't1',
+        rowId: 'list-1',
+        task: fakeTask({ id: 't1', title: 'Task One', listId: 'list-1' }),
+      }),
+      fakeItem({
+        id: 't2',
+        rowId: 'list-2',
+        task: fakeTask({ id: 't2', title: 'Task Two', listId: 'list-2' }),
+      }),
     ];
 
     await render(TimelineGrid, {
@@ -142,7 +158,10 @@ describe('TimelineGrid', () => {
     endHandle.dispatchEvent(pointer('pointermove', 100, 0));
     endHandle.dispatchEvent(pointer('pointerup', 100, 0));
 
-    expect(onTaskResized).toHaveBeenCalledWith({ id: item.id, span: { start: 12 * MS_PER_DAY, end: 15 * MS_PER_DAY } });
+    expect(onTaskResized).toHaveBeenCalledWith({
+      id: item.id,
+      span: { start: 12 * MS_PER_DAY, end: 15 * MS_PER_DAY },
+    });
   });
 
   it('expands the range on a near-edge scroll and skips expansion when there is nothing to scroll', async () => {

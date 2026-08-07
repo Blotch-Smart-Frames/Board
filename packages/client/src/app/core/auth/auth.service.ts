@@ -1,5 +1,10 @@
 import { Service, inject } from '@angular/core';
-import { signInWithPopup, signOut as firebaseSignOut, GoogleAuthProvider, type User } from 'firebase/auth';
+import {
+  signInWithPopup,
+  signOut as firebaseSignOut,
+  GoogleAuthProvider,
+  type User,
+} from 'firebase/auth';
 import { FIREBASE_AUTH, GOOGLE_AUTH_PROVIDER } from '../firebase/firebase.config';
 
 export type SignInResult = {

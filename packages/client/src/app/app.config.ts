@@ -1,4 +1,8 @@
-import { ApplicationConfig, SecurityContext, provideBrowserGlobalErrorListeners } from '@angular/core';
+import {
+  ApplicationConfig,
+  SecurityContext,
+  provideBrowserGlobalErrorListeners,
+} from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideMarkdown, MARKED_OPTIONS, SANITIZE } from 'ngx-markdown';
 

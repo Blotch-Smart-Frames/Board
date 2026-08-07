@@ -55,9 +55,7 @@ const filteredItems = computed(() => {
   return items().filter((item) => item.name.toLowerCase().includes(query));
 });
 
-const totalPrice = computed(() =>
-  filteredItems().reduce((sum, item) => sum + item.price, 0),
-);
+const totalPrice = computed(() => filteredItems().reduce((sum, item) => sum + item.price, 0));
 ```
 
 ### linkedSignal() - Dependent State with Reset
@@ -130,10 +128,7 @@ export class Search {
 @Component({
   selector: 'app-todo-list',
   template: `
-    <input
-      [value]="newTodo()"
-      (input)="newTodo.set($any($event.target).value)"
-    />
+    <input [value]="newTodo()" (input)="newTodo.set($any($event.target).value)" />
     <button (click)="addTodo()" [disabled]="!canAdd()">Add</button>
 
     <ul>
@@ -175,18 +170,13 @@ export class TodoList {
   addTodo() {
     const text = this.newTodo().trim();
     if (text) {
-      this.todos.update((todos) => [
-        ...todos,
-        { id: crypto.randomUUID(), text, done: false },
-      ]);
+      this.todos.update((todos) => [...todos, { id: crypto.randomUUID(), text, done: false }]);
       this.newTodo.set('');
     }
   }
 
   toggleTodo(id: string) {
-    this.todos.update((todos) =>
-      todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
-    );
+    this.todos.update((todos) => todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
   }
 }
 ```
@@ -242,10 +232,7 @@ export class Search {
 
 ```typescript
 // Custom equality function
-const user = signal<User>(
-  { id: 1, name: 'Alice' },
-  { equal: (a, b) => a.id === b.id },
-);
+const user = signal<User>({ id: 1, name: 'Alice' }, { equal: (a, b) => a.id === b.id });
 
 // Only triggers updates when ID changes
 user.set({ id: 1, name: 'Alice Updated' }); // No update
@@ -287,9 +274,7 @@ export class Auth {
   async login(credentials: Credentials): Promise<void> {
     this._loading.set(true);
     try {
-      const user = await firstValueFrom(
-        this.http.post<User>('/api/login', credentials),
-      );
+      const user = await firstValueFrom(this.http.post<User>('/api/login', credentials));
       this._user.set(user);
     } finally {
       this._loading.set(false);

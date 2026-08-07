@@ -41,10 +41,7 @@ vi.spyOn(service, 'method').mockReturnValue(of(data));
 
 ```typescript
 // Jasmine
-const mockService = jasmine.createSpyObj('UserService', [
-  'getUser',
-  'updateUser',
-]);
+const mockService = jasmine.createSpyObj('UserService', ['getUser', 'updateUser']);
 mockService.getUser.and.returnValue(of({ id: '1', name: 'Test' }));
 
 // Vitest
@@ -136,12 +133,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
-      exclude: [
-        'node_modules/',
-        'src/test-setup.ts',
-        '**/*.spec.ts',
-        '**/*.d.ts',
-      ],
+      exclude: ['node_modules/', 'src/test-setup.ts', '**/*.spec.ts', '**/*.d.ts'],
     },
   },
 });

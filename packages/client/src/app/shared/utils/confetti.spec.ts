@@ -10,9 +10,7 @@ describe('celebrateAt', () => {
 
     await celebrateAt({ x: 250, y: 100 });
 
-    expect(confetti).toHaveBeenCalledWith(
-      expect.objectContaining({ position: { x: 25, y: 20 } }),
-    );
+    expect(confetti).toHaveBeenCalledWith(expect.objectContaining({ position: { x: 25, y: 20 } }));
 
     vi.unstubAllGlobals();
   });

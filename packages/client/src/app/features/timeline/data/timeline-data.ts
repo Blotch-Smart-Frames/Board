@@ -13,7 +13,10 @@ export function computeTimelineRows(lists: List[]): TimelineRow[] {
 }
 
 /** Only tasks with both a start and due date can be placed on the timeline. */
-export function computeTimelineItems(tasks: Task[]): { items: TimelineItemData[]; hiddenCount: number } {
+export function computeTimelineItems(tasks: Task[]): {
+  items: TimelineItemData[];
+  hiddenCount: number;
+} {
   const withDates = tasks.filter((task) => task.startDate && task.dueDate);
   const items = withDates.map((task) => ({
     id: task.id,

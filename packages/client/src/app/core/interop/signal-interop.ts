@@ -16,7 +16,9 @@ import { onAuthStateChanged, type Auth, type User } from 'firebase/auth';
  * boardId), immediately clearing to `undefined` first so a new subscription
  * never briefly shows the previous document's data.
  */
-export function docSignal<T>(refFn: () => DocumentReference<DocumentData> | null): Signal<T | null | undefined> {
+export function docSignal<T>(
+  refFn: () => DocumentReference<DocumentData> | null,
+): Signal<T | null | undefined> {
   const value$ = toObservable(computed(refFn)).pipe(
     switchMap((ref) => {
       if (!ref) return of(null);
@@ -25,7 +27,9 @@ export function docSignal<T>(refFn: () => DocumentReference<DocumentData> | null
         return onSnapshot(
           ref,
           (snapshot) => {
-            subscriber.next(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null);
+            subscriber.next(
+              snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null,
+            );
           },
           (error) => {
             console.error(error);
@@ -70,7 +74,9 @@ export function collectionSignal<T>(
 
 /** Bridges Firebase Auth's callback-based state into a signal. `undefined` until the first callback fires. */
 export function authStateSignal(auth: Auth): Signal<User | null | undefined> {
-  const value$ = new Observable<User | null>((subscriber) => onAuthStateChanged(auth, (user) => subscriber.next(user)));
+  const value$ = new Observable<User | null>((subscriber) =>
+    onAuthStateChanged(auth, (user) => subscriber.next(user)),
+  );
 
   return toSignal(value$, { initialValue: undefined });
 }

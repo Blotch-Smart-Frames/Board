@@ -44,7 +44,9 @@ export class SprintOverlays {
   readonly rowHeightPx = input(48);
   readonly headerHeightPx = input(40);
 
-  protected readonly totalHeightPx = computed(() => this.headerHeightPx() + this.rowCount() * this.rowHeightPx());
+  protected readonly totalHeightPx = computed(
+    () => this.headerHeightPx() + this.rowCount() * this.rowHeightPx(),
+  );
 
   protected readonly bands = computed<SprintBand[]>(() => {
     const range = this.scale.range();

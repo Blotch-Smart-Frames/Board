@@ -36,7 +36,13 @@ export function collaboratorsResource(
       const isOwner = userId === board.ownerId;
 
       if (user) {
-        return { id: user.id, email: user.email, name: user.displayName, photoURL: user.photoURL, isOwner };
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.displayName,
+          photoURL: user.photoURL,
+          isOwner,
+        };
       }
       if (isOwner && currentUser) {
         return {

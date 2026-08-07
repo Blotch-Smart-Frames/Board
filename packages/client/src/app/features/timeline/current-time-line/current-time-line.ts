@@ -18,10 +18,9 @@ import { TimelineScaleService } from '../data/timeline-scale.service';
 export class CurrentTimeLine {
   private readonly scale = inject(TimelineScaleService);
 
-  private readonly now = toSignal(
-    interval(60_000).pipe(map(() => Date.now())),
-    { initialValue: Date.now() },
-  );
+  private readonly now = toSignal(interval(60_000).pipe(map(() => Date.now())), {
+    initialValue: Date.now(),
+  });
 
   protected readonly visible = computed(() => {
     const range = this.scale.range();
@@ -29,5 +28,7 @@ export class CurrentTimeLine {
     return now >= range.start && now <= range.end;
   });
 
-  protected readonly left = computed(() => this.scale.valueToPixels(this.now() - this.scale.range().start));
+  protected readonly left = computed(() =>
+    this.scale.valueToPixels(this.now() - this.scale.range().start),
+  );
 }

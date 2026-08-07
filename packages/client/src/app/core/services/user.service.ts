@@ -1,5 +1,14 @@
 import { Service, inject } from '@angular/core';
-import { collection, doc, getDoc, getDocs, setDoc, query, where, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  query,
+  where,
+  serverTimestamp,
+} from 'firebase/firestore';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { FIRESTORE_DB } from '../firebase/firebase.config';
 import type { User } from '../../shared/types/board';

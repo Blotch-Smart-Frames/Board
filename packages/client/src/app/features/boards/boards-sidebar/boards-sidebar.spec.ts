@@ -145,9 +145,7 @@ describe('BoardsSidebar', () => {
     await user.click(screen.getByRole('button', { name: /options for alpha/i }));
     await user.click(await screen.findByRole('menuitem', { name: /delete/i }));
 
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Alpha')),
-    );
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Alpha')));
     expect(navigate).not.toHaveBeenCalled();
   });
 

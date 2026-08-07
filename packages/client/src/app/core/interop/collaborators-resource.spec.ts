@@ -22,7 +22,9 @@ describe('collaboratorsResource', () => {
 
   beforeEach(() => {
     userService = { getUsersByIds: vi.fn().mockResolvedValue([]) };
-    TestBed.configureTestingModule({ providers: [{ provide: UserService, useValue: userService }] });
+    TestBed.configureTestingModule({
+      providers: [{ provide: UserService, useValue: userService }],
+    });
   });
 
   async function settle() {
@@ -33,7 +35,12 @@ describe('collaboratorsResource', () => {
   }
 
   it('returns an empty array when there is no board', async () => {
-    const result = TestBed.runInInjectionContext(() => collaboratorsResource(() => null, () => null));
+    const result = TestBed.runInInjectionContext(() =>
+      collaboratorsResource(
+        () => null,
+        () => null,
+      ),
+    );
     await settle();
 
     expect(result()).toEqual([]);
@@ -46,7 +53,12 @@ describe('collaboratorsResource', () => {
     ]);
     const board = fakeBoard();
 
-    const result = TestBed.runInInjectionContext(() => collaboratorsResource(() => board, () => null));
+    const result = TestBed.runInInjectionContext(() =>
+      collaboratorsResource(
+        () => board,
+        () => null,
+      ),
+    );
     await settle();
 
     expect(result()).toEqual([
@@ -79,7 +91,12 @@ describe('collaboratorsResource', () => {
   it('falls back to a generic placeholder for an unknown non-owner user', async () => {
     const board = fakeBoard({ collaborators: ['ghost'] });
 
-    const result = TestBed.runInInjectionContext(() => collaboratorsResource(() => board, () => null));
+    const result = TestBed.runInInjectionContext(() =>
+      collaboratorsResource(
+        () => board,
+        () => null,
+      ),
+    );
     await settle();
 
     expect(result()).toContainEqual({

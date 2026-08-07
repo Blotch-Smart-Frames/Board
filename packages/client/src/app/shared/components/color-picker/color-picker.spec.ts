@@ -13,7 +13,10 @@ describe('ColorPicker', () => {
   it('marks the selected color as checked', async () => {
     await render(ColorPicker, { inputs: { value: labelColors[0] } });
 
-    expect(screen.getByRole('radio', { name: labelColors[0] })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: labelColors[0] })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
   });
 
   it('emits valueChange when a swatch is clicked', async () => {

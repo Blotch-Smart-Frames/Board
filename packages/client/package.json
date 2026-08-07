@@ -10,7 +10,9 @@
     "test": "ng test",
     "test:coverage": "ng test --coverage --no-watch",
     "test:ui": "ng test --ui --coverage",
-    "cspell": "cspell ."
+    "cspell": "cspell .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "private": true,
   "dependencies": {

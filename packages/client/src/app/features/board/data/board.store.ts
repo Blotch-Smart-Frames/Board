@@ -140,7 +140,10 @@ export class BoardStore {
                 limit(ARCHIVED_PREVIEW_LIMIT),
               ),
               (snap) =>
-                subscriber.next([listId, snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task)]),
+                subscriber.next([
+                  listId,
+                  snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task),
+                ]),
               /* v8 ignore next -- onSnapshot error path mirrors signal-interop's swallow-and-empty @preserve */
               () => subscriber.next([listId, []]),
             );
@@ -350,11 +353,7 @@ export class BoardStore {
     const destIsArchival = this.archivalListIds().includes(newListId);
     const wasArchived = !!task?.archive;
     const archive =
-      destIsArchival && !wasArchived
-        ? true
-        : !destIsArchival && wasArchived
-          ? false
-          : undefined;
+      destIsArchival && !wasArchived ? true : !destIsArchival && wasArchived ? false : undefined;
 
     this.taskOverrides.update((m) =>
       new Map(m).set(taskId, { listId: newListId, order: newOrder }),

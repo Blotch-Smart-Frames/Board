@@ -56,7 +56,12 @@ describe('computeTimelineItems', () => {
     const missingDue = fakeTask({ id: 't3', listId: 'list-1', startDate });
     const missingBoth = fakeTask({ id: 't4', listId: 'list-1' });
 
-    const { items, hiddenCount } = computeTimelineItems([withBoth, missingStart, missingDue, missingBoth]);
+    const { items, hiddenCount } = computeTimelineItems([
+      withBoth,
+      missingStart,
+      missingDue,
+      missingBoth,
+    ]);
 
     expect(items).toEqual([
       {

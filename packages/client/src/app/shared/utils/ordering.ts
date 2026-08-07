@@ -5,10 +5,7 @@ import { generateKeyBetween } from 'fractional-indexing';
  * Uses simple lexicographic comparison (not locale-aware) for fractional indexing.
  * Items with undefined/null order are sorted to the end.
  */
-export const compareOrder = (
-  a: string | undefined,
-  b: string | undefined,
-): number => {
+export const compareOrder = (a: string | undefined, b: string | undefined): number => {
   if (!a && !b) return 0;
   if (!a) return 1;
   if (!b) return -1;
@@ -23,19 +20,14 @@ export const compareOrder = (
  * Use null for before to place at the beginning.
  * Use null for after to place at the end.
  */
-export const getOrderBetween = (
-  before: string | null,
-  after: string | null,
-): string => {
+export const getOrderBetween = (before: string | null, after: string | null): string => {
   return generateKeyBetween(before, after);
 };
 
 /**
  * Generate an order key to place an item at the end of a sorted list.
  */
-export const getOrderAtEnd = <T extends { order?: string }>(
-  items: T[],
-): string => {
+export const getOrderAtEnd = <T extends { order?: string }>(items: T[]): string => {
   const validItems = items.filter(
     (item): item is T & { order: string } =>
       typeof item.order === 'string' && item.order.length > 0,

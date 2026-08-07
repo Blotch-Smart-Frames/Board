@@ -76,8 +76,9 @@ import type { Collaborator, List } from '../../../shared/types/board';
           <section class="flex flex-col gap-2">
             <h4 class="text-sm font-medium">Archived lists</h4>
             <p class="text-muted-foreground text-xs">
-              Dragging a task into one of these lists archives it. Archived tasks are hidden from the
-              board (only a few recent ones show, faded) to keep large boards fast and cheap to load.
+              Dragging a task into one of these lists archives it. Archived tasks are hidden from
+              the board (only a few recent ones show, faded) to keep large boards fast and cheap to
+              load.
             </p>
             <app-archival-lists-field
               [lists]="lists()"

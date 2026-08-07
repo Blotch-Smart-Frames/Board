@@ -164,10 +164,7 @@ interface PaginatedResponse<T> {
 
         <span>Page {{ page() }} of {{ usersResource.value().totalPages }}</span>
 
-        <button
-          (click)="nextPage()"
-          [disabled]="page() >= usersResource.value().totalPages"
-        >
+        <button (click)="nextPage()" [disabled]="page() >= usersResource.value().totalPages">
           Next
         </button>
       </div>
@@ -288,9 +285,7 @@ export class FileUpload {
       })
       .subscribe((event) => {
         if (event.type === HttpEventType.UploadProgress && event.total) {
-          this.uploadProgress.set(
-            Math.round((100 * event.loaded) / event.total),
-          );
+          this.uploadProgress.set(Math.round((100 * event.loaded) / event.total));
         } else if (event.type === HttpEventType.Response) {
           this.uploadProgress.set(null);
           console.log('Upload complete:', event.body);

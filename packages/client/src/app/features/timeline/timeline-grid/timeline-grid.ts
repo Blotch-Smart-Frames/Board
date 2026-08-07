@@ -38,7 +38,7 @@ const EDGE_THRESHOLD_PX = 200;
       class="bg-card mx-4 mt-4 flex-1 overflow-auto rounded-md border"
       (scroll)="onScroll()"
     >
-    <!-- /* v8 ignore stop -- @preserve */ -->
+      <!-- /* v8 ignore stop -- @preserve */ -->
       <div class="flex w-fit min-w-full">
         <app-timeline-sidebar
           [rows]="rows()"

@@ -37,8 +37,15 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner';
         </form>
 
         <hlm-dialog-footer>
-          <button hlmBtn variant="outline" type="button" [disabled]="saving()" (click)="close()">Cancel</button>
-          <button hlmBtn type="button" [disabled]="titleForm().invalid() || saving()" (click)="save()">
+          <button hlmBtn variant="outline" type="button" [disabled]="saving()" (click)="close()">
+            Cancel
+          </button>
+          <button
+            hlmBtn
+            type="button"
+            [disabled]="titleForm().invalid() || saving()"
+            (click)="save()"
+          >
             @if (saving()) {
               <hlm-spinner class="size-4" />
             } @else {

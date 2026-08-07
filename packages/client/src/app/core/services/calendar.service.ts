@@ -41,10 +41,10 @@ export class CalendarService {
       body['end'] = { dateTime: input.endDateTime.toISOString() };
     }
 
-    return this.request<CalendarEvent>(
-      `/calendars/${GOOGLE_CONFIG.calendarId}/events/${eventId}`,
-      { method: 'PATCH', body: JSON.stringify(body) },
-    );
+    return this.request<CalendarEvent>(`/calendars/${GOOGLE_CONFIG.calendarId}/events/${eventId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
   }
 
   async deleteEvent(eventId: string): Promise<void> {
@@ -63,7 +63,9 @@ export class CalendarService {
     }
   }
 
-  async syncEvents(syncToken?: string): Promise<{ items: CalendarEvent[]; nextSyncToken?: string }> {
+  async syncEvents(
+    syncToken?: string,
+  ): Promise<{ items: CalendarEvent[]; nextSyncToken?: string }> {
     const params = new URLSearchParams({ maxResults: '100', singleEvents: 'true' });
     if (syncToken) {
       params.set('syncToken', syncToken);

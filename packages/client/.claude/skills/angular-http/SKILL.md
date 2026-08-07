@@ -258,8 +258,7 @@ export const loggingInterceptor: HttpInterceptorFn = (req, next) => {
   const started = Date.now();
   return next(req).pipe(
     tap({
-      next: () =>
-        console.log(`${req.method} ${req.url} - ${Date.now() - started}ms`),
+      next: () => console.log(`${req.method} ${req.url} - ${Date.now() - started}ms`),
       error: (err) => console.error(`${req.method} ${req.url} failed`, err),
     }),
   );
@@ -274,9 +273,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(
-      withInterceptors([authInterceptor, errorInterceptor, loggingInterceptor]),
-    ),
+    provideHttpClient(withInterceptors([authInterceptor, errorInterceptor, loggingInterceptor])),
   ],
 };
 ```
@@ -301,9 +298,7 @@ export class UserCmpt {
 
   getErrorMessage(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
-      return (
-        error.error?.message || `Error ${error.status}: ${error.statusText}`
-      );
+      return error.error?.message || `Error ${error.status}: ${error.statusText}`;
     }
     return 'An unexpected error occurred';
   }
@@ -346,10 +341,7 @@ getUser(id: string) {
         <app-data [data]="dataResource.value()" />
       }
       @case ('error') {
-        <app-error
-          [error]="dataResource.error()"
-          (retry)="dataResource.reload()"
-        />
+        <app-error [error]="dataResource.error()" (retry)="dataResource.reload()" />
       }
     }
   `,

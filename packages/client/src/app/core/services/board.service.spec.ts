@@ -109,9 +109,7 @@ describe('BoardService', () => {
       await service.deleteBoard('board-1');
 
       expect(deleteDoc).toHaveBeenCalledTimes(1);
-      expect(deleteDoc).toHaveBeenCalledWith(
-        expect.objectContaining({ path: 'boards/board-1' }),
-      );
+      expect(deleteDoc).toHaveBeenCalledWith(expect.objectContaining({ path: 'boards/board-1' }));
     });
 
     it('does no client-side cascade: no subcollection reads, batches, or storage cleanup', async () => {

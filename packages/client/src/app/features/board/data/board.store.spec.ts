@@ -322,7 +322,13 @@ describe('BoardStore', () => {
         }),
       ]);
       // Neither list is archival, so the archive flag is left untouched (undefined).
-      expect(boardService.moveTask).toHaveBeenCalledWith('board-1', 't1', 'list-2', 'a5', undefined);
+      expect(boardService.moveTask).toHaveBeenCalledWith(
+        'board-1',
+        't1',
+        'list-2',
+        'a5',
+        undefined,
+      );
     });
 
     it('moveTaskToList appends the task to the end of the destination list and logs history', async () => {
@@ -927,7 +933,12 @@ describe('BoardStore', () => {
         ]),
       );
 
-      expect(store.archivedPreviewByListId().get('list-arch')?.map((t) => t.id)).toEqual(['a1']);
+      expect(
+        store
+          .archivedPreviewByListId()
+          .get('list-arch')
+          ?.map((t) => t.id),
+      ).toEqual(['a1']);
       expect(where).toHaveBeenCalledWith('archive', '==', true);
       expect(limit).toHaveBeenCalledWith(5);
     });

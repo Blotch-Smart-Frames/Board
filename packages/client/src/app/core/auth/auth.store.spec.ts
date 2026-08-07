@@ -13,7 +13,10 @@ vi.mock('firebase/auth', () => ({
 }));
 
 describe('AuthStore', () => {
-  let authService: { signInWithGoogle: ReturnType<typeof vi.fn>; signOut: ReturnType<typeof vi.fn> };
+  let authService: {
+    signInWithGoogle: ReturnType<typeof vi.fn>;
+    signOut: ReturnType<typeof vi.fn>;
+  };
   let userService: { syncUserProfile: ReturnType<typeof vi.fn> };
   let calendarService: { setAccessToken: ReturnType<typeof vi.fn> };
   let authCallback: AuthCallback;

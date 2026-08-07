@@ -156,11 +156,7 @@ export class Mask {
 
   onKeydown(event: KeyboardEvent) {
     // Allow navigation keys
-    if (
-      ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(
-        event.key,
-      )
-    ) {
+    if (['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(event.key)) {
       return;
     }
 
@@ -448,10 +444,7 @@ export class Draggable {
 
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = this.effectAllowed();
-      event.dataTransfer.setData(
-        'application/json',
-        JSON.stringify(this.data()),
-      );
+      event.dataTransfer.setData('application/json', JSON.stringify(this.data()));
     }
 
     this.dragStart.emit(event);

@@ -59,9 +59,7 @@ export class DashboardStore {
   private readonly userService = inject(UserService);
 
   /* v8 ignore next 3 -- userId is read via signal-effect chain; V8 attributes coverage inconsistently to the arrow @preserve */
-  readonly userId = computed(
-    () => this.authStore.user()?.uid ?? null,
-  );
+  readonly userId = computed(() => this.authStore.user()?.uid ?? null);
   readonly boards = computed<BoardWithOrder[]>(() => this.userBoardsStore.boards());
   readonly isLoadingBoards = computed(() => this.userBoardsStore.isLoading());
 
@@ -87,10 +85,7 @@ export class DashboardStore {
             // Mirror the board view: archived tasks are excluded at the query
             // level so the dashboard's reads (and its metrics) stay bounded.
             return onSnapshot(
-              query(
-                collection(this.db, 'boards', boardId, 'tasks'),
-                where('archive', '==', false),
-              ),
+              query(collection(this.db, 'boards', boardId, 'tasks'), where('archive', '==', false)),
               (snap) => {
                 subscriber.next(
                   snap.docs.map(

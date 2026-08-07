@@ -73,15 +73,7 @@ export class Example {
 Import validators from `@angular/forms/signals`.
 
 ```ts
-import {
-  required,
-  email,
-  min,
-  max,
-  minLength,
-  maxLength,
-  pattern,
-} from '@angular/forms/signals';
+import { required, email, min, max, minLength, maxLength, pattern } from '@angular/forms/signals';
 ```
 
 Use them in the schema function passed to `form()`:
@@ -153,15 +145,10 @@ import { disabled, readonly, hidden } from '@angular/forms/signals';
 
 userForm = form(this.userModel, (schemaPath) => {
   // Conditionally disabled
-  disabled(
-    schemaPath.password,
-    ({ valueOf }) => !valueOf(schemaPath.createAccount),
-  );
+  disabled(schemaPath.password, ({ valueOf }) => !valueOf(schemaPath.createAccount));
 
   // Conditionally hidden (does NOT remove from model, just marks as hidden)
-  hidden(schemaPath.shippingAddress, ({ valueOf }) =>
-    valueOf(schemaPath.sameAsBilling),
-  );
+  hidden(schemaPath.shippingAddress, ({ valueOf }) => valueOf(schemaPath.sameAsBilling));
 
   // Readonly
   readonly(schemaPath.username);
@@ -363,15 +350,14 @@ applyEach(s.items, (item, index) => {
 
 ```html
 <!-- WRONG - $parent does not exist -->
-@for (item of form.items; track $index) { @for (option of item.options; track
-$index) {
+@for (item of form.items; track $index) { @for (option of item.options; track $index) {
 <button (click)="removeOption($parent.$index, $index)">Remove</button>
 <!-- ERROR -->
 } }
 
 <!-- CORRECT - use let to store outer index -->
-@for (item of form.items; track $index; let outerIndex = $index) { @for (option
-of item.options; track $index) {
+@for (item of form.items; track $index; let outerIndex = $index) { @for (option of item.options;
+track $index) {
 <button (click)="removeOption(outerIndex, $index)">Remove</button>
 } }
 ```
@@ -418,9 +404,7 @@ userForm = form(this.userModel, (s) => {
 
     // 3. Map success to errors
     onSuccess: (isTaken) =>
-      isTaken
-        ? { kind: 'taken', message: 'Username is already taken' }
-        : undefined,
+      isTaken ? { kind: 'taken', message: 'Username is already taken' } : undefined,
 
     // 4. Handle errors - THIS IS REQUIRED!
     onError: () => ({ kind: 'error', message: 'Validation failed' }),
@@ -440,10 +424,7 @@ validateAsync(s.username, {
 // WRONG - missing onError (it's required!)
 validateAsync(s.username, {
   params: ({ value }) => value(),
-  factory: (username) =>
-    resource({
-      /* ... */
-    }),
+  factory: (username) => resource({/* ... */}),
   onSuccess: (result) => (result ? { kind: 'error' } : undefined),
   // ERROR: 'onError' is missing but required!
 });
@@ -617,10 +598,7 @@ export class App {
     });
 
     // valueOf is used to access values of other fields in rules
-    hidden(
-      s.package.extras,
-      ({ valueOf }) => valueOf(s.package.tier) === 'economy',
-    );
+    hidden(s.package.extras, ({ valueOf }) => valueOf(s.package.tier) === 'economy');
 
     applyEach(s.companions, (companion) => {
       required(companion.name, { message: 'Companion name required' });
@@ -667,9 +645,7 @@ export class App {
       <input [formField]="bookingForm.personalInfo.firstName" />
       @if (bookingForm.personalInfo.firstName().touched() &&
       bookingForm.personalInfo.firstName().errors().length) {
-      <span
-        >{{ bookingForm.personalInfo.firstName().errors()[0].message }}</span
-      >
+      <span>{{ bookingForm.personalInfo.firstName().errors()[0].message }}</span>
       }
     </label>
 
@@ -718,9 +694,7 @@ export class App {
       <input type="date" [formField]="bookingForm.tripDetails.launchDate" />
       @if (bookingForm.tripDetails.launchDate().touched() &&
       bookingForm.tripDetails.launchDate().errors().length) {
-      <span
-        >{{ bookingForm.tripDetails.launchDate().errors()[0].message }}</span
-      >
+      <span>{{ bookingForm.tripDetails.launchDate().errors()[0].message }}</span>
       }
     </label>
   </section>
@@ -729,27 +703,15 @@ export class App {
     <h2>Package</h2>
 
     <label>
-      <input
-        type="radio"
-        value="economy"
-        [formField]="bookingForm.package.tier"
-      />
+      <input type="radio" value="economy" [formField]="bookingForm.package.tier" />
       Economy
     </label>
     <label>
-      <input
-        type="radio"
-        value="business"
-        [formField]="bookingForm.package.tier"
-      />
+      <input type="radio" value="business" [formField]="bookingForm.package.tier" />
       Business
     </label>
     <label>
-      <input
-        type="radio"
-        value="first"
-        [formField]="bookingForm.package.tier"
-      />
+      <input type="radio" value="first" [formField]="bookingForm.package.tier" />
       First Class
     </label>
 
@@ -777,8 +739,7 @@ export class App {
       }
 
       <input [formField]="companion.relation" placeholder="Relation" />
-      @if (companion.relation().touched() &&
-      companion.relation().errors().length) {
+      @if (companion.relation().touched() && companion.relation().errors().length) {
       <span>{{ companion.relation().errors()[0].message }}</span>
       }
 
@@ -933,8 +894,7 @@ totalPriceFormatted = computed(() => this.totalPrice().toFixed(2));
 } }
 
 <!-- RIGHT -->
-@for (item of items; track $index; let outerIdx = $index) { @for (sub of
-item.subs; track $index) {
+@for (item of items; track $index; let outerIdx = $index) { @for (sub of item.subs; track $index) {
 <button (click)="remove(outerIdx, $index)">X</button>
 } }
 ```

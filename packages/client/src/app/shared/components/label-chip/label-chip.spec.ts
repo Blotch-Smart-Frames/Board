@@ -19,7 +19,9 @@ describe('LabelChip', () => {
   it('renders the label name and applies its color', async () => {
     await render(LabelChip, { inputs: { label: fakeLabel() } });
 
-    const chip = screen.getByText('Urgent').closest('[hlmBadge], [data-slot="badge"]') as HTMLElement;
+    const chip = screen
+      .getByText('Urgent')
+      .closest('[hlmBadge], [data-slot="badge"]') as HTMLElement;
     expect(screen.getByText('Urgent')).toBeInTheDocument();
     expect(chip.style.backgroundColor).toBeTruthy();
   });

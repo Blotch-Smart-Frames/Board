@@ -239,10 +239,7 @@ describe('CounterService', () => {
 ### Service with HTTP
 
 ```typescript
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 
 describe('UserService', () => {
@@ -332,9 +329,7 @@ it('should show content when authenticated', () => {
   const fixture = TestBed.createComponent(ProtectedPage);
   fixture.detectChanges();
 
-  expect(
-    fixture.nativeElement.querySelector('.protected-content'),
-  ).toBeTruthy();
+  expect(fixture.nativeElement.querySelector('.protected-content')).toBeTruthy();
 });
 ```
 

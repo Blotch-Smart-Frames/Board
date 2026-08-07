@@ -23,9 +23,7 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
   template: `
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
       <input formControlName="email" />
-      @if (
-        form.controls.email.errors?.['required'] && form.controls.email.touched
-      ) {
+      @if (form.controls.email.errors?.['required'] && form.controls.email.touched) {
         <span class="error">Email is required</span>
       }
 

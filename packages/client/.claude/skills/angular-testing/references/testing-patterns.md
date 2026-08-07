@@ -137,12 +137,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
-      exclude: [
-        'node_modules/',
-        'src/test-setup.ts',
-        '**/*.spec.ts',
-        '**/*.d.ts',
-      ],
+      exclude: ['node_modules/', 'src/test-setup.ts', '**/*.spec.ts', '**/*.d.ts'],
       thresholds: {
         statements: 80,
         branches: 80,
@@ -303,9 +298,7 @@ describe('Counter with Harness', () => {
     await counter.increment();
 
     // Find counter with count of 2
-    const counterWith2 = await loader.getHarness(
-      CounterHarn.with({ count: 2 }),
-    );
+    const counterWith2 = await loader.getHarness(CounterHarn.with({ count: 2 }));
     expect(counterWith2).toBeTruthy();
   });
 });

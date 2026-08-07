@@ -300,10 +300,7 @@ const profileForm = form(this.profileModel, (schemaPath) => {
 import { disabled } from '@angular/forms/signals';
 
 const orderForm = form(this.orderModel, (schemaPath) => {
-  disabled(
-    schemaPath.couponCode,
-    ({ valueOf }) => valueOf(schemaPath.total) < 50,
-  );
+  disabled(schemaPath.couponCode, ({ valueOf }) => valueOf(schemaPath.total) < 50);
 });
 ```
 

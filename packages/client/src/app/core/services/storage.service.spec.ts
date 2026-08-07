@@ -1,5 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { deleteObject, getDownloadURL, ref, uploadBytes, uploadBytesResumable } from 'firebase/storage';
+import {
+  deleteObject,
+  getDownloadURL,
+  ref,
+  uploadBytes,
+  uploadBytesResumable,
+} from 'firebase/storage';
 import { FIREBASE_STORAGE } from '../firebase/firebase.config';
 import { StorageService } from './storage.service';
 
@@ -42,7 +48,10 @@ describe('StorageService', () => {
       vi.mocked(uploadBytes).mockResolvedValue(undefined as never);
       vi.mocked(getDownloadURL).mockResolvedValue('https://example.com/bg.png');
 
-      const url = await service.uploadBoardBackground('board-1', fakeFile('x.png', 'image/png', 1000));
+      const url = await service.uploadBoardBackground(
+        'board-1',
+        fakeFile('x.png', 'image/png', 1000),
+      );
 
       expect(ref).toHaveBeenCalledWith(expect.anything(), 'boards/board-1/background.png');
       expect(url).toBe('https://example.com/bg.png');
@@ -52,7 +61,11 @@ describe('StorageService', () => {
   describe('uploadTaskAttachment', () => {
     it('rejects disallowed types without ever calling uploadBytesResumable', async () => {
       await expect(
-        service.uploadTaskAttachment('board-1', 'task-1', fakeFile('a.pdf', 'application/pdf', 1000)),
+        service.uploadTaskAttachment(
+          'board-1',
+          'task-1',
+          fakeFile('a.pdf', 'application/pdf', 1000),
+        ),
       ).rejects.toThrow('Only images and videos');
       expect(uploadBytesResumable).not.toHaveBeenCalled();
     });
@@ -70,10 +83,17 @@ describe('StorageService', () => {
     it('reports progress and resolves with the attachment once the upload completes', async () => {
       const listeners: Record<string, (arg?: unknown) => void> = {};
       const uploadTask = {
-        on: vi.fn((_event: string, onProgress: (s: unknown) => void, _onError: unknown, onComplete: () => void) => {
-          listeners['progress'] = onProgress;
-          listeners['complete'] = onComplete;
-        }),
+        on: vi.fn(
+          (
+            _event: string,
+            onProgress: (s: unknown) => void,
+            _onError: unknown,
+            onComplete: () => void,
+          ) => {
+            listeners['progress'] = onProgress;
+            listeners['complete'] = onComplete;
+          },
+        ),
         snapshot: { ref: { path: 'attachment-path' } },
       };
       vi.mocked(uploadBytesResumable).mockReturnValue(uploadTask as never);
@@ -99,7 +119,9 @@ describe('StorageService', () => {
         fileType: 'image/png',
         downloadUrl: 'https://example.com/a.png',
       });
-      expect(attachment.storagePath).toContain(`boards/board-1/tasks/task-1/attachments/${attachment.id}.png`);
+      expect(attachment.storagePath).toContain(
+        `boards/board-1/tasks/task-1/attachments/${attachment.id}.png`,
+      );
     });
   });
 

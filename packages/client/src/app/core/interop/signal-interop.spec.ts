@@ -40,7 +40,9 @@ vi.mock('firebase/auth', () => ({
 }));
 
 function isDocRef(ref: unknown): ref is { kind: 'doc' } {
-  return !!ref && typeof ref === 'object' && 'kind' in ref && (ref as { kind: string }).kind === 'doc';
+  return (
+    !!ref && typeof ref === 'object' && 'kind' in ref && (ref as { kind: string }).kind === 'doc'
+  );
 }
 
 function fakeDocRef(id = 'doc-1') {

@@ -52,8 +52,9 @@ export class Rating implements FormValueControl<number> {
   // Optional: Bindings for other form control states.
   readonly readonly = input<boolean>(false);
   readonly invalid = input<boolean>(false);
-  readonly errors: InputSignal<readonly WithOptionalField<ValidationError>[]> =
-    input<readonly WithOptionalField<ValidationError>[]>([]);
+  readonly errors: InputSignal<readonly WithOptionalField<ValidationError>[]> = input<
+    readonly WithOptionalField<ValidationError>[]
+  >([]);
 
   starArray: Signal<number[]> = signal(
     Array(5)

@@ -16,7 +16,11 @@ export type ScrollState = { scrollLeft: number; viewportWidth: number };
         [style.left.px]="dayLeft(day)"
         [style.width.px]="dayWidth()"
       >
-        <span class="truncate text-xs" [class.font-semibold]="isToday(day)" [class.text-foreground]="!isToday(day)">
+        <span
+          class="truncate text-xs"
+          [class.font-semibold]="isToday(day)"
+          [class.text-foreground]="!isToday(day)"
+        >
           {{ dayLabel(day) }}
         </span>
       </div>

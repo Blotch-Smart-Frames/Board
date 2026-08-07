@@ -56,10 +56,7 @@ export class Page {}
 
 ```typescript
 // Enable hydration debugging in development
-import {
-  provideClientHydration,
-  withNoDomReuse,
-} from '@angular/platform-browser';
+import { provideClientHydration, withNoDomReuse } from '@angular/platform-browser';
 
 export const appConfig: ApplicationConfig = {
   providers: [

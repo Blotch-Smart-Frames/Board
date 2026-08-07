@@ -124,9 +124,7 @@ export class ProductSt {
   readonly filteredProducts = computed(() => {
     const { products, filter } = this.state();
     if (!filter) return products;
-    return products.filter((p) =>
-      p.name.toLowerCase().includes(filter.toLowerCase()),
-    );
+    return products.filter((p) => p.name.toLowerCase().includes(filter.toLowerCase()));
   });
 
   readonly selectedProduct = computed(() => {
@@ -149,9 +147,7 @@ export class ProductSt {
     this.state.update((s) => ({ ...s, loading: true, error: null }));
 
     try {
-      const products = await firstValueFrom(
-        this.http.get<Product[]>('/api/products'),
-      );
+      const products = await firstValueFrom(this.http.get<Product[]>('/api/products'));
       this.state.update((s) => ({ ...s, products, loading: false }));
     } catch (err) {
       this.state.update((s) => ({
@@ -163,9 +159,7 @@ export class ProductSt {
   }
 
   async addProduct(product: Omit<Product, 'id'>): Promise<void> {
-    const newProduct = await firstValueFrom(
-      this.http.post<Product>('/api/products', product),
-    );
+    const newProduct = await firstValueFrom(this.http.post<Product>('/api/products', product));
     this.state.update((s) => ({
       ...s,
       products: [...s.products, newProduct],
@@ -301,9 +295,7 @@ export class Todo {
   async toggleTodo(id: string): Promise<void> {
     // Optimistic update
     const previousTodos = this.todos();
-    this.todos.update((todos) =>
-      todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
-    );
+    this.todos.update((todos) => todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
 
     try {
       await firstValueFrom(this.http.patch(`/api/todos/${id}/toggle`, {}));

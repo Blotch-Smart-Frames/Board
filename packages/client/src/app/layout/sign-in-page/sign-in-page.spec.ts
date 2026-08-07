@@ -8,7 +8,13 @@ describe('SignInPage', () => {
 
     expect(screen.getByRole('heading', { name: /board/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in with google/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /terms of service/i })).toHaveAttribute('href', '/terms.html');
-    expect(screen.getByRole('link', { name: /privacy policy/i })).toHaveAttribute('href', '/privacy.html');
+    expect(screen.getByRole('link', { name: /terms of service/i })).toHaveAttribute(
+      'href',
+      '/terms.html',
+    );
+    expect(screen.getByRole('link', { name: /privacy policy/i })).toHaveAttribute(
+      'href',
+      '/privacy.html',
+    );
   });
 });

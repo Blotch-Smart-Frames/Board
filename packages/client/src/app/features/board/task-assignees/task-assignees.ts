@@ -34,5 +34,7 @@ export class TaskAssignees {
   readonly assignedUsers = input.required<Collaborator[]>();
 
   protected readonly visible = computed(() => this.assignedUsers().slice(0, MAX_VISIBLE));
-  protected readonly overflow = computed(() => Math.max(0, this.assignedUsers().length - MAX_VISIBLE));
+  protected readonly overflow = computed(() =>
+    Math.max(0, this.assignedUsers().length - MAX_VISIBLE),
+  );
 }
