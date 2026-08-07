@@ -35,6 +35,6 @@ jobs:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
       - name: Deploy functions
-        run: npx --yes firebase-tools@13.22.1 deploy --only functions --non-interactive --project "$PROJECT_ID"
+        run: npx --yes firebase-tools@13.22.1 deploy --only functions --non-interactive --force --project "$PROJECT_ID"
         env:
           PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}

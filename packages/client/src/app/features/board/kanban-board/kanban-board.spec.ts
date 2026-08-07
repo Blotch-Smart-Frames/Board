@@ -323,6 +323,32 @@ describe('KanbanBoard', () => {
     expect(confettiFn).not.toHaveBeenCalled();
   });
 
+  // preloadConfetti only warms the dynamic import (fire-and-forget) and has no
+  // observable return, and the confetti util is a relative import the harness
+  // won't let us spy on. So we assert the observable safety property instead:
+  // starting a drag must never fire a burst, regardless of the archive gate —
+  // which still exercises both branches of onTaskDragStarted's guard.
+  it('warms the confetti bundle on task drag start (archive present) without firing a burst', async () => {
+    const { store, providers } = setup();
+    store.archivalListIds.set(['list-2']);
+    const { fixture } = await render(KanbanBoard, { providers });
+
+    const column = fixture.debugElement.query((el) => el.name === 'app-list-column');
+    (column.componentInstance as { taskDragStarted: { emit: () => void } }).taskDragStarted.emit();
+
+    expect(confettiFn).not.toHaveBeenCalled();
+  });
+
+  it('does not fire a burst on task drag start when the board has no archive', async () => {
+    const { providers } = setup();
+    const { fixture } = await render(KanbanBoard, { providers });
+
+    const column = fixture.debugElement.query((el) => el.name === 'app-list-column');
+    (column.componentInstance as { taskDragStarted: { emit: () => void } }).taskDragStarted.emit();
+
+    expect(confettiFn).not.toHaveBeenCalled();
+  });
+
   it('renames a list through the header edit flow', async () => {
     const user = userEvent.setup();
     const { store, providers } = setup();

@@ -76,7 +76,12 @@ export type ListWithTasks = List & { tasks: Task[] };
             (cdkDropListDropped)="taskDropped.emit($event)"
           >
             @for (task of tasks(); track task.id) {
-              <div cdkDrag [cdkDragData]="task" [cdkDragDisabled]="dragDisabled()">
+              <div
+                cdkDrag
+                [cdkDragData]="task"
+                [cdkDragDisabled]="dragDisabled()"
+                (cdkDragStarted)="taskDragStarted.emit()"
+              >
                 <app-task-card [task]="task" [labels]="labels()" (view)="viewTask.emit($event)" />
               </div>
             } @empty {
@@ -137,6 +142,9 @@ export class ListColumn {
   readonly addTask = output<string>();
   readonly viewTask = output<Task>();
   readonly taskDropped = output<CdkDragDrop<Task[]>>();
+  // Fires when a task in this (non-archival) list starts being dragged — the
+  // parent uses it to warm the confetti bundle before a possible archive drop.
+  readonly taskDragStarted = output<void>();
   readonly moveLeft = output<void>();
   readonly moveRight = output<void>();
 

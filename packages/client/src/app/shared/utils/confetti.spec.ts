@@ -1,4 +1,4 @@
-import { celebrateAt } from './confetti';
+import { celebrateAt, preloadConfetti } from './confetti';
 
 const confetti = vi.fn().mockResolvedValue(undefined);
 vi.mock('@tsparticles/confetti', () => ({ confetti: (...args: unknown[]) => confetti(...args) }));
@@ -13,5 +13,14 @@ describe('celebrateAt', () => {
     expect(confetti).toHaveBeenCalledWith(expect.objectContaining({ position: { x: 25, y: 20 } }));
 
     vi.unstubAllGlobals();
+  });
+});
+
+describe('preloadConfetti', () => {
+  it('warms the module without firing a burst', () => {
+    confetti.mockClear();
+
+    expect(() => preloadConfetti()).not.toThrow();
+    expect(confetti).not.toHaveBeenCalled();
   });
 });

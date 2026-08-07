@@ -19,3 +19,15 @@ export async function celebrateAt(point: { x: number; y: number }): Promise<void
     ticks: 150,
   });
 }
+
+/**
+ * Warms the `@tsparticles/confetti` module cache without firing a burst. Call
+ * this ahead of a likely celebration (e.g. when a drag that could archive a
+ * task starts) so the ~1MB dynamic import is already resolved by the time
+ * `celebrateAt` runs — making the first burst instant instead of stalling on
+ * the fetch. The module cache dedupes the import, so a later `celebrateAt`
+ * reuses this same in-flight (or settled) promise rather than fetching twice.
+ */
+export function preloadConfetti(): void {
+  void import('@tsparticles/confetti');
+}

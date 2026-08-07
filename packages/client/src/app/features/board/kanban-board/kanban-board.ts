@@ -14,7 +14,7 @@ import { LabelFilter } from '../label-filter/label-filter';
 import { AssigneeFilter } from '../assignee-filter/assignee-filter';
 import { BoardStore } from '../data/board.store';
 import { isTouchOrMobileSignal } from '../../../core/interop/breakpoint-signal';
-import { celebrateAt } from '../../../shared/utils/confetti';
+import { celebrateAt, preloadConfetti } from '../../../shared/utils/confetti';
 import type { Task } from '../../../shared/types/board';
 
 @Component({
@@ -97,6 +97,7 @@ import type { Task } from '../../../shared/types/board';
                       (deleteList)="store.deleteList(list.id)"
                       (addTask)="store.addTask(list.id, { title: $event })"
                       (viewTask)="openDetail($event)"
+                      (taskDragStarted)="onTaskDragStarted()"
                       (taskDropped)="onTaskDrop($event)"
                       (moveLeft)="store.reorderListToIndex(list.id, i - 1)"
                       (moveRight)="store.reorderListToIndex(list.id, i + 1)"
@@ -132,6 +133,18 @@ export class KanbanBoard {
 
   protected openDetail(task: Task): void {
     this.detailDialog().open(task);
+  }
+
+  /**
+   * When a task drag starts, warm the confetti bundle so the burst on a possible
+   * archive drop is instant rather than stalling on its ~1MB dynamic import.
+   * Gated on the board actually having an archive — otherwise no drop can ever
+   * celebrate, so there's nothing worth preloading.
+   */
+  protected onTaskDragStarted(): void {
+    if (this.store.archivalListIds().length > 0) {
+      preloadConfetti();
+    }
   }
 
   protected onTaskDrop(event: CdkDragDrop<Task[]>): void {
