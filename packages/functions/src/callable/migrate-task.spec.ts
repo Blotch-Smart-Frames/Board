@@ -12,7 +12,7 @@ vi.mock("firebase-functions/v2", () => ({
 
 // Reimplement HttpsError as a plain Error carrying `code`, and shim onCall to
 // return the raw handler so tests can invoke it directly. This keeps the
-// firebase-functions v2 https module out of import-time initialisation.
+// firebase-functions v2 https module out of import-time initialization.
 vi.mock("firebase-functions/v2/https", () => {
   class HttpsError extends Error {
     readonly code: string;
