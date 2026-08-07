@@ -21,8 +21,16 @@ vi.mock('firebase/firestore', () => ({
   doc: vi.fn((_db: unknown, ...segments: string[]) => ({ type: 'doc', path: segments.join('/') })),
   query: vi.fn((ref: unknown, ...constraints: unknown[]) => ({ type: 'query', ref, constraints })),
   orderBy: vi.fn((field: string) => ({ orderBy: field })),
+  where: vi.fn((field: string, op: string, value: unknown) => ({ where: [field, op, value] })),
+  limit: vi.fn((count: number) => ({ limit: count })),
   onSnapshot: vi.fn(() => vi.fn()),
 }));
+
+// celebrateAt (a plain relative-import util, which Angular's vitest harness
+// won't let us vi.mock directly) dynamically imports @tsparticles/confetti —
+// mock that package boundary instead and let celebrateAt run for real.
+const confettiFn = vi.fn().mockResolvedValue(undefined);
+vi.mock('@tsparticles/confetti', () => ({ confetti: (...args: unknown[]) => confettiFn(...args) }));
 
 function ts(): Timestamp {
   return { toDate: () => new Date(2026, 0, 1) } as Timestamp;
@@ -65,6 +73,8 @@ function setup() {
     listsWithTasks: signal([
       { id: 'list-1', title: 'To Do', order: 'a0', createdAt: ts(), tasks: [fakeTask()] },
     ]),
+    archivalListIds: signal<string[]>([]),
+    archivedPreviewByListId: signal(new Map<string, ReturnType<typeof fakeTask>[]>()),
     addList: vi.fn().mockResolvedValue(undefined),
     updateListTitle: vi.fn().mockResolvedValue(undefined),
     deleteList: vi.fn().mockResolvedValue(undefined),
@@ -89,6 +99,16 @@ function setup() {
 }
 
 describe('KanbanBoard', () => {
+  beforeEach(() => {
+    confettiFn.mockClear();
+    vi.stubGlobal('innerWidth', 1000);
+    vi.stubGlobal('innerHeight', 500);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('renders the board’s lists and tasks', async () => {
     const { providers } = setup();
     await render(KanbanBoard, { providers });
@@ -242,6 +262,64 @@ describe('KanbanBoard', () => {
       item: { data: task },
     } as never);
     expect(store.moveTaskToIndex).toHaveBeenCalledWith('t1', 'list-2', 0);
+  });
+
+  it('fires a confetti burst at the drop point when a task enters an archival list', async () => {
+    const { store, providers } = setup();
+    store.archivalListIds.set(['list-2']);
+    const view = await render(KanbanBoard, { providers });
+    const task = fakeTask();
+
+    view.fixture.componentInstance['onTaskDrop']({
+      previousContainer: { id: 'list-1' } as unknown,
+      container: { id: 'list-2' } as unknown,
+      previousIndex: 0,
+      currentIndex: 0,
+      dropPoint: { x: 250, y: 100 },
+      item: { data: task },
+    } as never);
+
+    // dropPoint (250, 100) against the stubbed 1000x500 viewport -> 25%, 20%.
+    await waitFor(() =>
+      expect(confettiFn).toHaveBeenCalledWith(
+        expect.objectContaining({ position: { x: 25, y: 20 } }),
+      ),
+    );
+  });
+
+  it('does not fire confetti when moving between two non-archival lists', async () => {
+    const { providers } = setup();
+    const view = await render(KanbanBoard, { providers });
+    const task = fakeTask();
+
+    view.fixture.componentInstance['onTaskDrop']({
+      previousContainer: { id: 'list-1' } as unknown,
+      container: { id: 'list-2' } as unknown,
+      previousIndex: 0,
+      currentIndex: 0,
+      dropPoint: { x: 0, y: 0 },
+      item: { data: task },
+    } as never);
+
+    expect(confettiFn).not.toHaveBeenCalled();
+  });
+
+  it('does not fire confetti when a task is already in an archival list (moving between two archival lists)', async () => {
+    const { store, providers } = setup();
+    store.archivalListIds.set(['list-1', 'list-2']);
+    const view = await render(KanbanBoard, { providers });
+    const task = fakeTask();
+
+    view.fixture.componentInstance['onTaskDrop']({
+      previousContainer: { id: 'list-1' } as unknown,
+      container: { id: 'list-2' } as unknown,
+      previousIndex: 0,
+      currentIndex: 0,
+      dropPoint: { x: 0, y: 0 },
+      item: { data: task },
+    } as never);
+
+    expect(confettiFn).not.toHaveBeenCalled();
   });
 
   it('renames a list through the header edit flow', async () => {

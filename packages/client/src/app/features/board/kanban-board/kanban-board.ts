@@ -14,6 +14,7 @@ import { LabelFilter } from '../label-filter/label-filter';
 import { AssigneeFilter } from '../assignee-filter/assignee-filter';
 import { BoardStore } from '../data/board.store';
 import { isTouchOrMobileSignal } from '../../../core/interop/breakpoint-signal';
+import { celebrateAt } from '../../../shared/utils/confetti';
 import type { Task } from '../../../shared/types/board';
 
 @Component({
@@ -87,6 +88,8 @@ import type { Task } from '../../../shared/types/board';
                       [list]="list"
                       [labels]="labels()"
                       [connectedListIds]="listIds()"
+                      [isArchival]="store.archivalListIds().includes(list.id)"
+                      [archivedPreview]="archivedPreviewFor(list.id)"
                       [canMoveLeft]="i > 0"
                       [canMoveRight]="i < count - 1"
                       [dragDisabled]="dragDisabled()"
@@ -123,6 +126,10 @@ export class KanbanBoard {
   /* v8 ignore next -- defensive: labels() is seeded to an array before this template reads it @preserve */
   protected readonly labels = computed(() => this.store.labels() ?? []);
 
+  protected archivedPreviewFor(listId: string): Task[] {
+    return this.store.archivedPreviewByListId().get(listId) ?? [];
+  }
+
   protected openDetail(task: Task): void {
     this.detailDialog().open(task);
   }
@@ -132,7 +139,17 @@ export class KanbanBoard {
       return;
     }
     const task = event.item.data as Task;
+    if (this.entersArchive(event.previousContainer.id, event.container.id)) {
+      /* v8 ignore next -- fire-and-forget celebration; failure shouldn't block the move @preserve */
+      celebrateAt(event.dropPoint).catch(() => {});
+    }
     this.store.moveTaskToIndex(task.id, event.container.id, event.currentIndex);
+  }
+
+  /** True when a task moves from a non-archival list into an archival one — the actual "archive" transition. */
+  private entersArchive(fromListId: string, toListId: string): boolean {
+    const archivalListIds = this.store.archivalListIds();
+    return archivalListIds.includes(toListId) && !archivalListIds.includes(fromListId);
   }
 
   protected onListDrop(event: CdkDragDrop<unknown>): void {

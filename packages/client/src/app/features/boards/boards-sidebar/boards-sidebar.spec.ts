@@ -183,19 +183,19 @@ describe('BoardsSidebar', () => {
     expect(screen.getByRole('button', { name: /create board/i })).toBeInTheDocument();
   });
 
-  it('emits share when the Share button is clicked', async () => {
+  it('emits settings when the Board settings button is clicked', async () => {
     const user = userEvent.setup();
-    const onShare = vi.fn();
+    const onSettings = vi.fn();
     const { providers } = setup([]);
     await render(BoardsSidebar, {
       providers,
-      inputs: { showShare: true },
-      on: { share: onShare },
+      inputs: { showSettings: true },
+      on: { settings: onSettings },
     });
 
-    await user.click(screen.getByRole('button', { name: /share/i }));
+    await user.click(screen.getByRole('button', { name: /board settings/i }));
 
-    expect(onShare).toHaveBeenCalledTimes(1);
+    expect(onSettings).toHaveBeenCalledTimes(1);
   });
 
   it('emits a viewMode change when the toggle group changes value', async () => {

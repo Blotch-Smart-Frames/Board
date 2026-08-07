@@ -484,6 +484,15 @@ describe('BoardService', () => {
         { listId: 'list-2', order: 'b0', updatedAt: 'SERVER_TIMESTAMP' },
       );
     });
+
+    it('includes the archive flag in the same write when provided', async () => {
+      await service.moveTask('board-1', 'task-1', 'list-2', 'b0', true);
+
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'boards/board-1/tasks/task-1' }),
+        { listId: 'list-2', order: 'b0', archive: true, updatedAt: 'SERVER_TIMESTAMP' },
+      );
+    });
   });
 
   describe('updateComment', () => {

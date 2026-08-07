@@ -1,13 +1,15 @@
 import { Injectable, inject, computed, linkedSignal, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
-import { map } from 'rxjs';
+import { Observable, combineLatest, distinctUntilChanged, map, of, switchMap } from 'rxjs';
 import {
   collection,
   doc,
+  limit,
+  onSnapshot,
   orderBy,
   query,
-  type CollectionReference,
+  where,
   type DocumentReference,
   type Query,
 } from 'firebase/firestore';
@@ -30,6 +32,9 @@ import type {
   CreateTaskInput,
   UpdateTaskInput,
 } from '../../../shared/types/board';
+
+/** How many archived tasks to peek per archival list in the faded preview. */
+const ARCHIVED_PREVIEW_LIMIT = 5;
 
 /**
  * Live data for whichever board is active on the current route. Provided at
@@ -61,9 +66,17 @@ export class BoardStore {
       : null;
   });
 
-  private readonly tasksQuery = computed<CollectionReference | null>(() => {
+  // Only non-archived tasks are streamed to the board. Filtering at the query
+  // level (rather than after fetching) is the whole point of archiving: it keeps
+  // document reads bounded on large boards instead of paying one read per ticket.
+  // NB: Firestore equality filters skip docs missing the field, so every task
+  // must carry `archive` (defaulted on create; existing docs need a one-off
+  // backfill — see packages/functions/scripts/backfill-archive.ts).
+  private readonly tasksQuery = computed<Query | null>(() => {
     const boardId = this.boardId();
-    return boardId ? collection(this.db, 'boards', boardId, 'tasks') : null;
+    return boardId
+      ? query(collection(this.db, 'boards', boardId, 'tasks'), where('archive', '==', false))
+      : null;
   });
 
   private readonly labelsQuery = computed<Query | null>(() => {
@@ -90,6 +103,57 @@ export class BoardStore {
     () => this.board(),
     () => this.authStore.user(),
   );
+
+  /** IDs of the board's archival lists (empty when none configured). */
+  readonly archivalListIds = computed<string[]>(() => this.board()?.archivalListIds ?? []);
+
+  // A bounded live peek at each archival list's most-recently-archived tasks, so
+  // an archived column still shows *something* (with a fade hinting at more)
+  // without re-fetching the whole archive. One small listener per archival list,
+  // capped at ARCHIVED_PREVIEW_LIMIT docs each.
+  private readonly archivedPreviewSource = computed(() => ({
+    boardId: this.boardId(),
+    listIds: this.archivalListIds(),
+  }));
+
+  private readonly archivedPreview$ = toObservable(this.archivedPreviewSource).pipe(
+    distinctUntilChanged(
+      (a, b) =>
+        a.boardId === b.boardId &&
+        a.listIds.length === b.listIds.length &&
+        a.listIds.every((id, i) => id === b.listIds[i]),
+    ),
+    switchMap(({ boardId, listIds }) => {
+      if (listIds.length === 0) return of(new Map<string, Task[]>());
+      /* v8 ignore next -- defensive: listIds is only non-empty once a board (hence boardId) has loaded @preserve */
+      if (!boardId) return of(new Map<string, Task[]>());
+      const streams = listIds.map(
+        (listId) =>
+          new Observable<[string, Task[]]>((subscriber) => {
+            subscriber.next([listId, []]);
+            return onSnapshot(
+              query(
+                collection(this.db, 'boards', boardId, 'tasks'),
+                where('listId', '==', listId),
+                where('archive', '==', true),
+                orderBy('updatedAt', 'desc'),
+                limit(ARCHIVED_PREVIEW_LIMIT),
+              ),
+              (snap) =>
+                subscriber.next([listId, snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task)]),
+              /* v8 ignore next -- onSnapshot error path mirrors signal-interop's swallow-and-empty @preserve */
+              () => subscriber.next([listId, []]),
+            );
+          }),
+      );
+      return combineLatest(streams).pipe(map((entries) => new Map(entries)));
+    }),
+  );
+
+  /** Map of archival listId -> its last {@link ARCHIVED_PREVIEW_LIMIT} archived tasks. */
+  readonly archivedPreviewByListId = toSignal(this.archivedPreview$, {
+    initialValue: new Map<string, Task[]>(),
+  });
 
   readonly isLoading = computed(() => !!this.boardId() && this.board() === undefined);
 
@@ -278,15 +342,26 @@ export class BoardStore {
 
   async moveTask(taskId: string, newListId: string, newOrder: string): Promise<void> {
     const boardId = this.requireBoardId();
-    const task = (this.tasks() ?? []).find((t) => t.id === taskId);
+    const task = this.findTask(taskId);
     const listChanged = !!task && task.listId !== newListId;
+
+    // Dropping into an archival list archives; dragging back out restores.
+    // `undefined` leaves the flag untouched (same-archival-state moves).
+    const destIsArchival = this.archivalListIds().includes(newListId);
+    const wasArchived = !!task?.archive;
+    const archive =
+      destIsArchival && !wasArchived
+        ? true
+        : !destIsArchival && wasArchived
+          ? false
+          : undefined;
 
     this.taskOverrides.update((m) =>
       new Map(m).set(taskId, { listId: newListId, order: newOrder }),
     );
 
     try {
-      await this.boardService.moveTask(boardId, taskId, newListId, newOrder);
+      await this.boardService.moveTask(boardId, taskId, newListId, newOrder, archive);
     } catch (error) {
       this.taskOverrides.update((m) => {
         const next = new Map(m);
@@ -319,10 +394,32 @@ export class BoardStore {
   moveTaskToList(taskId: string, newListId: string): Promise<void> {
     /* v8 ignore next -- defensive: tasks() is seeded to an array by the collection stream @preserve */
     const tasks = this.tasks() ?? [];
-    const task = tasks.find((t) => t.id === taskId);
+    // An archived task isn't in tasks() (filtered out at the query), so look it
+    // up across the archived preview too — this is the "unarchive via List
+    // select" path, which relies on moveTask flipping archive back to false.
+    const task = this.findTask(taskId);
     if (!task || task.listId === newListId) return Promise.resolve();
     const targetListTasks = tasks.filter((t) => t.listId === newListId);
     return this.moveTask(taskId, newListId, getOrderAtEnd(targetListTasks));
+  }
+
+  /**
+   * Finds a task by id across both the live (non-archived) tasks and the archived
+   * previews, so move/restore logic can read an archived task's current state.
+   */
+  private findTask(taskId: string): Task | undefined {
+    const active = (this.tasks() ?? []).find((t) => t.id === taskId);
+    if (active) return active;
+    for (const previews of this.archivedPreviewByListId().values()) {
+      const found = previews.find((t) => t.id === taskId);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  /** Persists which lists act as archives (stored as IDs so renames don't break it). */
+  setArchivalListIds(listIds: string[]): Promise<void> {
+    return this.boardService.updateBoard(this.requireBoardId(), { archivalListIds: listIds });
   }
 
   /**

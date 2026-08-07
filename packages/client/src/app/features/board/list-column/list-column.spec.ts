@@ -157,6 +157,25 @@ describe('ListColumn', () => {
     expect(onView).toHaveBeenCalledWith(expect.objectContaining({ id: 't-done' }));
   });
 
+  it('renders a faded archived preview on archival lists and opens those cards', async () => {
+    const user = userEvent.setup();
+    const onView = vi.fn();
+    await render(ListColumn, {
+      inputs: {
+        list: fakeList([]),
+        isArchival: true,
+        archivedPreview: [fakeTask({ id: 'a1', title: 'Archived one', archive: true })],
+      },
+      providers: [storeProvider],
+      on: { viewTask: onView },
+    });
+
+    expect(screen.getByText('Archived')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /open task archived one/i }));
+
+    expect(onView).toHaveBeenCalledWith(expect.objectContaining({ id: 'a1' }));
+  });
+
   it('wires the inner cdkDropList output into taskDropped', async () => {
     const { CdkDropList } = await import('@angular/cdk/drag-drop');
     const onTaskDropped = vi.fn();

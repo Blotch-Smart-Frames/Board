@@ -103,7 +103,9 @@ export class BoardService {
 
   async updateBoard(
     boardId: string,
-    updates: Partial<Pick<Board, 'title'>> & { backgroundImageUrl?: string | FieldValue },
+    updates: Partial<Pick<Board, 'title' | 'archivalListIds'>> & {
+      backgroundImageUrl?: string | FieldValue;
+    },
   ): Promise<void> {
     await updateDoc(this.boardRef(boardId), { ...updates, updatedAt: serverTimestamp() });
   }
@@ -196,6 +198,7 @@ export class BoardService {
       dueDate: input.dueDate ? Timestamp.fromDate(input.dueDate) : null,
       calendarEventId: null,
       calendarSyncEnabled: input.calendarSyncEnabled ?? false,
+      archive: input.archive ?? false,
       createdBy: userId,
       assignedTo: input.assignedTo ?? [],
       labelIds: input.labelIds ?? [],
@@ -239,15 +242,23 @@ export class BoardService {
     await deleteDoc(this.taskRef(boardId, taskId));
   }
 
+  /**
+   * Moves a task within/across lists. When `archive` is provided the flag is
+   * written in the same update, so dropping a task into (or out of) an archival
+   * list flips its archived state atomically with the move. Passing `undefined`
+   * leaves the existing `archive` value untouched.
+   */
   async moveTask(
     boardId: string,
     taskId: string,
     newListId: string,
     newOrder: string,
+    archive?: boolean,
   ): Promise<void> {
     await updateDoc(this.taskRef(boardId, taskId), {
       listId: newListId,
       order: newOrder,
+      ...(archive === undefined ? {} : { archive }),
       updatedAt: serverTimestamp(),
     });
   }
@@ -304,6 +315,7 @@ export class BoardService {
       dueDate: source.dueDate ?? null,
       calendarEventId: source.calendarEventId ?? null,
       calendarSyncEnabled: source.calendarSyncEnabled ?? false,
+      archive: source.archive ?? false,
       createdBy: source.createdBy,
       assignedTo: source.assignedTo ?? [],
       // Labels belong to the source board's collections — dropped.
