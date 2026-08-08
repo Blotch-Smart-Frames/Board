@@ -87,7 +87,7 @@ function hasEditingSupport(): boolean {
       <app-rich-text-toolbar (command)="onCommand($event)" />
       <div
         #host
-        class="border-input! min-h-60 rounded-b-md border"
+        class="border-input! min-h-60 rounded-b-md border text-foreground"
         [attr.aria-label]="ariaLabel()"
         [attr.data-testid]="'rich-text-editor'"
       ></div>
