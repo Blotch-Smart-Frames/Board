@@ -1,7 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+const DEFAULT_APP_NAME = "[DEFAULT]";
+
 const state = {
-  apps: [] as unknown[],
+  apps: [] as { name: string }[],
   initSpy: vi.fn(),
   firestoreSpy: vi.fn(() => ({ __tag: "firestore" })),
   bucketSpy: vi.fn(() => ({ __tag: "bucket" })),
@@ -9,10 +11,18 @@ const state = {
 };
 
 vi.mock("firebase-admin/app", () => ({
-  getApps: () => state.apps,
+  getApp: (name: string = DEFAULT_APP_NAME) => {
+    const app = state.apps.find((a) => a.name === name);
+    if (!app) {
+      throw new Error(
+        `The default Firebase app does not exist. Make sure you call initializeApp() before using any of the Firebase services.`,
+      );
+    }
+    return app;
+  },
   initializeApp: (...args: unknown[]) => {
     state.initSpy(...args);
-    state.apps.push({});
+    state.apps.push({ name: DEFAULT_APP_NAME });
   },
 }));
 
@@ -40,11 +50,20 @@ describe("getDb", () => {
     expect(db).toEqual({ __tag: "firestore" });
   });
 
-  it("does not reinitialize when apps are already registered", async () => {
-    state.apps.push({}); // simulate an app that already exists
+  it("does not reinitialize when the default app already exists", async () => {
+    state.apps.push({ name: DEFAULT_APP_NAME });
     const { getDb } = await import("./firebase");
     getDb();
     expect(state.initSpy).not.toHaveBeenCalled();
+  });
+
+  it("initializes the default app even when only a named app is registered", async () => {
+    // firebase-functions registers this app while verifying callable auth.
+    state.apps.push({ name: "__FIREBASE_FUNCTIONS_SDK__" });
+    const { getDb } = await import("./firebase");
+    getDb();
+    expect(state.initSpy).toHaveBeenCalledTimes(1);
+    expect(state.apps.some((a) => a.name === DEFAULT_APP_NAME)).toBe(true);
   });
 });
 

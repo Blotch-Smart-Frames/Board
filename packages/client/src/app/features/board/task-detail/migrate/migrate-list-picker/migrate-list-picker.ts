@@ -23,10 +23,10 @@ import type { List } from '../../../../../shared/types/board';
         <hlm-combobox-trigger buttonId="migrate-list-trigger" class="w-full">
           <hlm-combobox-value [placeholder]="placeholder()" />
         </hlm-combobox-trigger>
-        <hlm-combobox-content *hlmComboboxPortal>
+        <hlm-combobox-content *hlmComboboxPortal class="max-h-96">
           <hlm-combobox-input placeholder="Search lists..." />
           <hlm-combobox-empty>No matching lists.</hlm-combobox-empty>
-          <div hlmComboboxList>
+          <div hlmComboboxList class="max-h-[calc(--spacing(96)-(--spacing(9)))]">
             @for (list of sortedLists(); track list.id) {
               <hlm-combobox-item [value]="list.id">{{ list.title }}</hlm-combobox-item>
             }

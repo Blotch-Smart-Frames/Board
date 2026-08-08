@@ -1,12 +1,15 @@
-import { getApps, initializeApp } from "firebase-admin/app";
+import { getApp, initializeApp } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 
-// Lazily initialize the Admin SDK exactly once. Guarding on getApps() keeps
-// repeat calls (and hot-reloaded test modules) from throwing "app already
-// exists".
+// firebase-functions verifies callable auth tokens before our handler runs and
+// registers its own named `__FIREBASE_FUNCTIONS_SDK__` admin app if no default
+// exists — so `getApps().length === 0` is a lying guard here. Probe for the
+// default app directly instead; `getApp()` throws when it's missing.
 function ensureApp(): void {
-  if (getApps().length === 0) {
+  try {
+    getApp();
+  } catch {
     initializeApp();
   }
 }
