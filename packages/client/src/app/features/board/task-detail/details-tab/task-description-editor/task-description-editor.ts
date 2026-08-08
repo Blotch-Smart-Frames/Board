@@ -1,37 +1,27 @@
-import { Component, input, linkedSignal, output } from '@angular/core';
-import { FormField, form } from '@angular/forms/signals';
+import { Component, input, output } from '@angular/core';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
-import { HlmInput } from '@spartan-ng/helm/input';
-
-type DescriptionFormModel = {
-  description: string;
-};
+import { RichTextEditor } from '../../../../../shared/components/rich-text-editor/rich-text-editor';
 
 /**
- * Textarea + save-on-blur for a task's description. Resets the local model
- * only when a different task is opened (keyed by `taskKey`), so ambient
- * updates to the same task (e.g. from another collaborator) don't wipe an
- * edit in progress.
+ * Rich-text editor + save-on-blur for a task's description. Delegates the
+ * actual editing surface to `RichTextEditor` (Quill 2 wrapped in a Spartan
+ * toolbar) and only forwards the resulting HTML through to the parent store.
+ * The `taskKey`-scoped reset behavior lives inside `RichTextEditor`, so opening
+ * a new task never wipes an in-flight edit on a different one.
  */
 @Component({
   selector: 'app-task-description-editor',
-  imports: [HlmFieldImports, HlmInput, FormField],
+  imports: [HlmFieldImports, RichTextEditor],
   template: `
     <div hlmField>
-      <label hlmFieldLabel for="task-description">Description</label>
-      <textarea
-        hlmInput
-        id="task-description"
-        class="min-h-40 resize-y"
+      <label hlmFieldLabel>Description</label>
+      <app-rich-text-editor
+        [taskKey]="taskKey()"
+        [initialHtml]="initialDescription()"
         placeholder="Add a description…"
-        autocomplete="off"
-        data-1p-ignore="true"
-        data-lpignore="true"
-        data-bwignore="true"
-        data-form-type="other"
-        [formField]="descriptionForm.description"
-        (blur)="onBlur()"
-      ></textarea>
+        ariaLabel="Description"
+        (htmlChange)="descriptionChange.emit($event)"
+      />
     </div>
   `,
 })
@@ -39,18 +29,4 @@ export class TaskDescriptionEditor {
   readonly taskKey = input.required<string>();
   readonly initialDescription = input<string>('');
   readonly descriptionChange = output<string | undefined>();
-
-  protected readonly model = linkedSignal<string, DescriptionFormModel>({
-    source: this.taskKey,
-    computation: () => ({ description: this.initialDescription() }),
-  });
-  protected readonly descriptionForm = form(this.model);
-
-  protected onBlur(): void {
-    const value = this.model().description.trim();
-    const current = this.initialDescription();
-    if (value !== current) {
-      this.descriptionChange.emit(value || undefined);
-    }
-  }
 }

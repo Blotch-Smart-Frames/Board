@@ -4,6 +4,13 @@
 @import 'tailwindcss/utilities.css';
 
 @import '@spartan-ng/brain/hlm-tailwind-preset.css';
+
+/* Quill 2.x snow theme + KaTeX styles for the rich text description editor.
+ * Loaded globally because Quill applies `.ql-editor` / `.ql-*` classes directly
+ * to its (unshadowed) DOM tree, and KaTeX renders inline into the same tree.
+ * Kept unlayered so they win over Tailwind utilities without needing !important. */
+@import 'quill/dist/quill.snow.css';
+@import 'katex/dist/katex.min.css';
 /* You can add global styles to this file, and also import other style files */
 
 :root {

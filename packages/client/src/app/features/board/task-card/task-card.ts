@@ -4,6 +4,7 @@ import { lucideCalendar, lucidePaperclip, lucideMessageSquare } from '@ng-icons/
 import { HlmCard } from '@spartan-ng/helm/card';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { LabelChip } from '../../../shared/components/label-chip/label-chip';
+import { stripHtml } from '../../../shared/utils/html-text';
 import { TaskAssignees } from '../task-assignees/task-assignees';
 import { BoardStore } from '../data/board.store';
 import type { Task, Label } from '../../../shared/types/board';
@@ -29,8 +30,10 @@ import type { Task, Label } from '../../../shared/types/board';
           {{ task().title }}
         </h3>
 
-        @if (task().description) {
-          <p class="text-muted-foreground mt-1 line-clamp-2 text-xs">{{ task().description }}</p>
+        @if (descriptionPreview()) {
+          <p class="text-muted-foreground mt-1 line-clamp-2 text-xs">
+            {{ descriptionPreview() }}
+          </p>
         }
 
         @if (taskLabels().length > 0) {
@@ -80,6 +83,11 @@ export class TaskCard {
     const ids = this.task().labelIds ?? [];
     return this.labels().filter((label) => ids.includes(label.id));
   });
+
+  // Rich-text descriptions are stored as HTML; the card preview is plain text
+  // with `line-clamp-2`, so strip tags/entities to a single readable line —
+  // otherwise legacy plain-text descriptions still round-trip untouched.
+  protected readonly descriptionPreview = computed(() => stripHtml(this.task().description));
 
   protected readonly assignedUsers = computed(() => {
     const ids = this.task().assignedTo ?? [];

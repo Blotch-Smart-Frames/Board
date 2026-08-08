@@ -24,7 +24,7 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.css"],
+            "styles": ["https://cdn.blotch.app/fonts/font-awesome/css/all.css", "src/styles.css"],
             "define": {
               "__BUILD_HASH__": "\"dev\""
             }
@@ -81,7 +81,8 @@
               "src/main.ts",
               "src/environments/**",
               "src/**/*.d.ts",
-              "src/app/shared/ui/**"
+              "src/app/shared/ui/**",
+              "src/app/shared/components/rich-text-editor/rich-text-editor.ts"
             ],
             "coverageThresholds": {
               "statements": 100,

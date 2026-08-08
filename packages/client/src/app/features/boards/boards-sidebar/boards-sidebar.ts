@@ -81,11 +81,10 @@ export type ViewMode = 'kanban' | 'timeline';
       <div class="border-b p-2">
         <div
           hlmToggleGroup
+          [orientation]="collapsed() ? 'vertical' : 'horizontal'"
           type="single"
           [value]="mode"
           class="w-full"
-          [class.flex-col]="collapsed()"
-          [class.gap-1]="collapsed()"
           (valueChange)="onViewModeChange($event)"
         >
           <button
