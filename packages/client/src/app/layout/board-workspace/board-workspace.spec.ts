@@ -117,11 +117,14 @@ describe('BoardWorkspace', () => {
       id: 'board-1',
       data: () => ({ title: 'My Board', ownerId: 'u1', collaborators: [] }),
     });
+    // Resolve the lists collection to empty so KanbanBoard leaves its loading
+    // state (it now shows a spinner until the first lists snapshot arrives).
+    callbacks.get('boards/board-1/lists')!({ docs: [] });
 
-    // With no lists loaded, KanbanBoard shows its "No lists yet" empty state
-    // (whose Create-list button replaced the always-visible "Add another list"
-    // control). That empty-state heading is enough to prove the kanban view is
-    // the default before we switch to the timeline.
+    // With the board loaded and no lists, KanbanBoard shows its "No lists yet"
+    // empty state (whose Create-list button replaced the always-visible "Add
+    // another list" control). That empty-state heading is enough to prove the
+    // kanban view is the default before we switch to the timeline.
     expect(await screen.findByText(/no lists yet/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /timeline view/i }));

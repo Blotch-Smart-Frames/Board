@@ -136,6 +136,18 @@ describe('BoardStore', () => {
     expect(store.isLoading()).toBe(false);
   });
 
+  it('reports isLoadingLists until the lists snapshot arrives, then false even when empty', () => {
+    const store = TestBed.inject(BoardStore);
+    TestBed.flushEffects();
+
+    expect(store.isLoadingLists()).toBe(true);
+
+    // An empty snapshot still resolves the load — a board with genuinely no lists.
+    onSnapshotCallbacks.get('boards/board-1/lists')!(collectionSnapshot([]));
+
+    expect(store.isLoadingLists()).toBe(false);
+  });
+
   it('is not loading when no board is selected at all', () => {
     paramMap$.next(convertToParamMap({}));
     const store = TestBed.inject(BoardStore);

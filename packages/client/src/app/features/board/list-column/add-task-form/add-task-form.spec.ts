@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { AddTaskForm } from './add-task-form';
+import { MAX_TITLE_LENGTH } from '../../task-title';
 
 describe('AddTaskForm', () => {
   it('reveals the textarea only after the "Add a task" trigger is clicked', async () => {
@@ -37,6 +38,48 @@ describe('AddTaskForm', () => {
     await user.type(screen.getByLabelText('Task title'), '   {Enter}');
 
     expect(addTask).not.toHaveBeenCalled();
+  });
+
+  it('shows a "too long" error and blocks submission past the max length', async () => {
+    const user = userEvent.setup();
+    const addTask = vi.fn();
+
+    await render(AddTaskForm, { on: { addTask } });
+
+    await user.click(screen.getByRole('button', { name: /add a task/i }));
+    const textarea = screen.getByLabelText('Task title');
+    await user.type(textarea, 'a'.repeat(MAX_TITLE_LENGTH + 1));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/title is too long/i);
+    expect(screen.getByRole('button', { name: /^add$/i })).toBeDisabled();
+
+    await user.type(textarea, '{Enter}');
+    expect(addTask).not.toHaveBeenCalled();
+  });
+
+  it('accepts a title exactly at the max length', async () => {
+    const user = userEvent.setup();
+    const addTask = vi.fn();
+
+    await render(AddTaskForm, { on: { addTask } });
+
+    await user.click(screen.getByRole('button', { name: /add a task/i }));
+    const title = 'a'.repeat(MAX_TITLE_LENGTH);
+    await user.type(screen.getByLabelText('Task title'), `${title}{Enter}`);
+
+    expect(addTask).toHaveBeenCalledWith(title);
+  });
+
+  it('shows a validation error and disables Add when the field is emptied after typing', async () => {
+    const user = userEvent.setup();
+
+    await render(AddTaskForm);
+
+    await user.click(screen.getByRole('button', { name: /add a task/i }));
+    await user.type(screen.getByLabelText('Task title'), 'a{Backspace}');
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/enter a task title/i);
+    expect(screen.getByRole('button', { name: /^add$/i })).toBeDisabled();
   });
 
   it('collapses back to the trigger button when Cancel is clicked', async () => {

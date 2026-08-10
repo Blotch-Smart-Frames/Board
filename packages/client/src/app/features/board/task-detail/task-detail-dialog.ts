@@ -70,7 +70,11 @@ type TabId = 'details' | 'sprint' | 'history' | 'advanced';
           </div>
         } @else if (task(); as task) {
           <hlm-dialog-header>
-            <app-task-title-editor [title]="task.title" (titleChange)="onTitleChange($event)" />
+            <app-task-title-editor
+              [title]="task.title"
+              (titleChange)="onTitleChange($event)"
+              class="w-[calc(100%-50px)]"
+            />
           </hlm-dialog-header>
 
           <hlm-tabs

@@ -5,6 +5,7 @@ import { lucideKanbanSquare } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmEmptyImports } from '@spartan-ng/helm/empty';
 import { HlmScrollAreaImports } from '@spartan-ng/helm/scroll-area';
+import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { NgScrollbar } from 'ngx-scrollbar';
 import { BoardBackground } from '../board-background/board-background';
 import { ListColumn } from '../list-column/list-column';
@@ -17,6 +18,13 @@ import { isTouchOrMobileSignal } from '../../../core/interop/breakpoint-signal';
 import { celebrateAt } from '../../../shared/utils/confetti';
 import type { Task } from '../../../shared/types/board';
 
+// WheelEvent.deltaMode units. Pixels are the default, but some browsers
+// (notably Firefox with a physical mouse) report scroll amounts in lines/pages.
+const WHEEL_DELTA_LINE = 1;
+const WHEEL_DELTA_PAGE = 2;
+// Rough px-per-line used to normalise line-mode wheel deltas into pixels.
+const LINE_HEIGHT_PX = 16;
+
 @Component({
   selector: 'app-kanban-board',
   imports: [
@@ -26,6 +34,7 @@ import type { Task } from '../../../shared/types/board';
     HlmButton,
     HlmEmptyImports,
     HlmScrollAreaImports,
+    HlmSpinner,
     NgScrollbar,
     BoardBackground,
     ListColumn,
@@ -50,9 +59,20 @@ import type { Task } from '../../../shared/types/board';
         />
       </div>
 
-      <ng-scrollbar hlm class="min-h-0 flex-1" appearance="compact" orientation="horizontal">
+      <ng-scrollbar
+        #boardScrollbar
+        hlm
+        class="min-h-0 flex-1"
+        appearance="compact"
+        orientation="horizontal"
+        (wheel)="onWheel($event)"
+      >
         <div class="h-full p-4">
-          @if (store.listsWithTasks().length === 0) {
+          @if (store.isLoadingLists()) {
+            <div class="flex h-full items-center justify-center">
+              <hlm-spinner />
+            </div>
+          } @else if (store.listsWithTasks().length === 0) {
             <div class="flex h-full items-center justify-center">
               <hlm-empty class="w-96">
                 <hlm-empty-header>
@@ -117,6 +137,7 @@ import type { Task } from '../../../shared/types/board';
 export class KanbanBoard {
   protected readonly store = inject(BoardStore);
   private readonly detailDialog = viewChild.required<TaskDetailDialog>('detailDialog');
+  private readonly boardScrollbar = viewChild.required<NgScrollbar>('boardScrollbar');
 
   // Suppress drag-and-drop on mobile viewports and touch-primary devices where
   // CDK drag intercepts native touch scrolling of the board.
@@ -132,6 +153,65 @@ export class KanbanBoard {
 
   protected openDetail(task: Task): void {
     this.detailDialog().open(task);
+  }
+
+  /**
+   * Pan the board horizontally with a plain vertical mouse wheel — the board
+   * only scrolls on its x-axis, so a normal wheel would otherwise do nothing.
+   *
+   * Nested vertical scrolling still takes priority: while the pointer is over a
+   * list that can scroll further in the wheel's direction, we leave the event
+   * alone and let the browser scroll that list (Trello-style). Only once no
+   * inner list can consume the scroll do we translate it into horizontal panning.
+   */
+  protected onWheel(event: WheelEvent): void {
+    // Horizontal-dominant input (trackpad swipe, Shift+wheel) already scrolls
+    // the viewport on its x-axis natively — don't double-apply it.
+    if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+
+    const viewport = this.boardScrollbar().adapter.viewportElement;
+
+    // Defer to an inner vertically-scrollable list that still has room to move.
+    if (this.consumedByInnerList(event.target, viewport, event.deltaY)) return;
+
+    // Nothing to pan if every list fits within the viewport width.
+    if (viewport.scrollWidth <= viewport.clientWidth) return;
+
+    viewport.scrollLeft += this.wheelDeltaToPixels(event, viewport.clientWidth);
+    event.preventDefault();
+  }
+
+  /**
+   * Walk up from the wheel target to the board viewport, returning true if any
+   * ancestor scrolls vertically and hasn't yet hit the edge in `deltaY`'s
+   * direction — i.e. that element should get the scroll instead of the board.
+   */
+  private consumedByInnerList(
+    target: EventTarget | null,
+    viewport: HTMLElement,
+    deltaY: number,
+  ): boolean {
+    // Start from any Element (SVG icons are SVGElement, not HTMLElement) so the
+    // walk still finds a scrollable ancestor when the pointer is over an icon.
+    let el: Element | null = target instanceof Element ? target : null;
+    while (el && el !== viewport) {
+      const overflowY = getComputedStyle(el).overflowY;
+      const scrolls = overflowY === 'auto' || overflowY === 'scroll';
+      if (scrolls && el.scrollHeight > el.clientHeight) {
+        const atTop = el.scrollTop <= 0;
+        const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+        if (deltaY > 0 ? !atBottom : !atTop) return true;
+      }
+      el = el.parentElement;
+    }
+    return false;
+  }
+
+  /** Normalise a wheel delta to pixels, accounting for line/page delta modes. */
+  private wheelDeltaToPixels(event: WheelEvent, pageSize: number): number {
+    if (event.deltaMode === WHEEL_DELTA_LINE) return event.deltaY * LINE_HEIGHT_PX;
+    if (event.deltaMode === WHEEL_DELTA_PAGE) return event.deltaY * pageSize;
+    return event.deltaY;
   }
 
   protected onTaskDrop(event: CdkDragDrop<Task[]>): void {

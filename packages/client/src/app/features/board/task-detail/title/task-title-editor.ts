@@ -1,8 +1,9 @@
 import { Component, ElementRef, input, output, signal, viewChild } from '@angular/core';
-import { FormField, form, required } from '@angular/forms/signals';
+import { FormField, form, required, validate } from '@angular/forms/signals';
 import { HlmDialogImports } from '@spartan-ng/helm/dialog';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
+import { MAX_TITLE_LENGTH } from '../../task-title';
 
 type TitleFormModel = { title: string };
 
@@ -53,6 +54,17 @@ export class TaskTitleEditor {
   protected readonly model = signal<TitleFormModel>({ title: '' });
   protected readonly titleForm = form(this.model, (path) => {
     required(path.title, { message: 'A title is required' });
+    // A custom rule rather than `maxLength`, which would reflect a native `maxlength` and silently
+    // hard-cap input — this lets the user type past the limit and see why the title is rejected.
+    validate(path.title, ({ value }) =>
+      value().length > MAX_TITLE_LENGTH
+        ? {
+            kind: 'maxLength',
+            message:
+              'Title is too long. If you want to add more information, add it to the description instead.',
+          }
+        : null,
+    );
   });
 
   private readonly titleInput = viewChild<ElementRef<HTMLInputElement>>('titleInput');

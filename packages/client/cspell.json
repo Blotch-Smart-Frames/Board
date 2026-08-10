@@ -1,8 +1,6 @@
 {
   "version": "0.2",
-  "import": [
-    "../../cspell.json"
-  ],
+  "import": ["../../cspell.json"],
   "words": [
     "bandaid",
     "capturable",
@@ -17,21 +15,23 @@
     "katex",
     "keymanager",
     "LaTeX",
+    "maxlength",
     "moai",
+    "normalise",
+    "normalises",
     "Parchment",
     "pickable",
     "Quill",
     "RRGGBB",
     "tearoff",
+    "trackpad",
     "uncompleting",
+    "undispatched",
     "unshadowed",
     "unsuffixed",
     "Unsuffixed",
     "viewports",
     "Virtualizes"
   ],
-  "ignorePaths": [
-    "src/app/shared/ui/**",
-    "public/version.json"
-  ]
+  "ignorePaths": ["src/app/shared/ui/**", "public/version.json"]
 }
