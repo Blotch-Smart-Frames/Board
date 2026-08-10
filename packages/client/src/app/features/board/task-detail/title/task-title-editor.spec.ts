@@ -2,6 +2,7 @@ import { BrnDialogRef } from '@spartan-ng/brain/dialog';
 import { render, screen, waitFor } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { TaskTitleEditor } from './task-title-editor';
+import { MAX_TITLE_LENGTH } from '../../task-title';
 
 // hlmDialogTitle inside the component's template injects BrnDialogRef so it can
 // stamp an id for aria-labelledby. When the editor is rendered outside an
@@ -61,6 +62,26 @@ describe('TaskTitleEditor', () => {
 
     expect(onTitleChange).not.toHaveBeenCalled();
     expect(await screen.findByRole('heading', { name: 'Old title' })).toBeInTheDocument();
+  });
+
+  it('shows a "too long" error and does not emit when the title exceeds the max length', async () => {
+    const user = userEvent.setup();
+    const onTitleChange = vi.fn();
+    await render(TaskTitleEditor, {
+      providers,
+      inputs: { title: 'Old title' },
+      on: { titleChange: onTitleChange },
+    });
+
+    await user.click(screen.getByRole('heading', { name: 'Old title' }));
+    const input = screen.getByLabelText('Title');
+    await user.clear(input);
+    await user.type(input, 'a'.repeat(MAX_TITLE_LENGTH + 1));
+
+    expect(screen.getByText(/title is too long/i)).toBeInTheDocument();
+
+    await user.tab();
+    expect(onTitleChange).not.toHaveBeenCalled();
   });
 
   it('does not emit when Escape reverts the edit', async () => {

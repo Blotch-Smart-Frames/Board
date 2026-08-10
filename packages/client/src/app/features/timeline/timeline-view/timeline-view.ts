@@ -75,8 +75,8 @@ export class TimelineView {
 
   private readonly detailDialog = viewChild.required<TaskDetailDialog>('detailDialog');
 
-  protected readonly rows = computed(() => computeTimelineRows(this.store.lists() ?? []));
   /* v8 ignore start -- defensive: signals are seeded to arrays before render @preserve */
+  protected readonly rows = computed(() => computeTimelineRows(this.store.lists() ?? []));
   private readonly rawItems = computed(() => computeTimelineItems(this.store.tasks() ?? []));
   protected readonly hiddenCount = computed(() => this.rawItems().hiddenCount);
   protected readonly labels = computed(() => this.store.labels() ?? []);

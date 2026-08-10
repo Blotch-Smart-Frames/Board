@@ -62,6 +62,21 @@ function fakeTask(): Task {
   };
 }
 
+// Build a cancelable wheel event with an explicit target for onWheel() tests.
+function wheel(init: WheelEventInit, target: EventTarget): WheelEvent {
+  const event = new WheelEvent('wheel', { cancelable: true, ...init });
+  Object.defineProperty(event, 'target', { value: target, configurable: true });
+  return event;
+}
+
+// jsdom performs no layout, so scroll dimensions default to 0 — stub the ones
+// onWheel() reads (scrollWidth/clientWidth on the board, scroll* on inner lists).
+function stubDims(el: HTMLElement, dims: Record<string, number>): void {
+  for (const [key, value] of Object.entries(dims)) {
+    Object.defineProperty(el, key, { value, configurable: true });
+  }
+}
+
 function setup() {
   const store = {
     boardId: signal('board-1'),
@@ -75,6 +90,7 @@ function setup() {
     listsWithTasks: signal([
       { id: 'list-1', title: 'To Do', order: 'a0', createdAt: ts(), tasks: [fakeTask()] },
     ]),
+    isLoadingLists: signal(false),
     archivalListIds: signal<string[]>([]),
     archivedPreviewByListId: signal(new Map<string, ReturnType<typeof fakeTask>[]>()),
     addList: vi.fn().mockResolvedValue(undefined),
@@ -185,6 +201,24 @@ describe('KanbanBoard', () => {
 
     await user.click(screen.getByRole('button', { name: /create list/i }));
     expect(store.addList).toHaveBeenCalledWith({ title: 'New list' });
+  });
+
+  it('shows a loading spinner instead of the empty state while lists are still loading', async () => {
+    const { store, providers } = setup();
+    // Lists not yet fetched: empty listsWithTasks but flagged as still loading.
+    store.listsWithTasks.set([]);
+    store.isLoadingLists.set(true);
+    const view = await render(KanbanBoard, { providers });
+
+    expect(view.container.querySelector('hlm-spinner')).toBeInTheDocument();
+    expect(screen.queryByText(/no lists yet/i)).not.toBeInTheDocument();
+
+    // Once the snapshot arrives with no lists, the genuine empty state replaces it.
+    store.isLoadingLists.set(false);
+    view.detectChanges();
+
+    expect(view.container.querySelector('hlm-spinner')).not.toBeInTheDocument();
+    expect(screen.getByText(/no lists yet/i)).toBeInTheDocument();
   });
 
   it('reorders a list to a new index when a list is dropped', async () => {
@@ -415,5 +449,166 @@ describe('KanbanBoard', () => {
     (columns[1].componentInstance as { moveLeft: { emit: () => void } }).moveLeft.emit();
 
     expect(store.reorderListToIndex).toHaveBeenCalledWith('list-2', 0);
+  });
+
+  describe('horizontal wheel scrolling', () => {
+    // The board's horizontal ng-scrollbar viewport, resolved from the component.
+    function boardViewport(component: KanbanBoard): HTMLElement {
+      return (
+        component as unknown as {
+          boardScrollbar: () => { adapter: { viewportElement: HTMLElement } };
+        }
+      ).boardScrollbar().adapter.viewportElement;
+    }
+
+    function onWheel(component: KanbanBoard, event: WheelEvent): void {
+      (component as unknown as { onWheel: (e: WheelEvent) => void }).onWheel(event);
+    }
+
+    it('pans the board horizontally on a vertical wheel dispatched through the template', async () => {
+      const { providers } = setup();
+      const view = await render(KanbanBoard, { providers });
+      const vp = boardViewport(view.fixture.componentInstance);
+      stubDims(vp, { scrollWidth: 2000, clientWidth: 1000 });
+      vp.scrollLeft = 0;
+
+      // Dispatch a real, bubbling wheel event from the viewport so the
+      // template's (wheel) binding — not just onWheel() — is exercised.
+      const event = new WheelEvent('wheel', { deltaY: 120, cancelable: true, bubbles: true });
+      vp.dispatchEvent(event);
+
+      expect(vp.scrollLeft).toBe(120);
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('ignores horizontal-dominant wheel input so native x-scroll handles it', async () => {
+      const { providers } = setup();
+      const view = await render(KanbanBoard, { providers });
+      const vp = boardViewport(view.fixture.componentInstance);
+      stubDims(vp, { scrollWidth: 2000, clientWidth: 1000 });
+      vp.scrollLeft = 0;
+
+      const event = wheel({ deltaX: 120, deltaY: 10 }, vp);
+      onWheel(view.fixture.componentInstance, event);
+
+      expect(vp.scrollLeft).toBe(0);
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('defers to an inner list that can still scroll down', async () => {
+      const { providers } = setup();
+      const view = await render(KanbanBoard, { providers });
+      const vp = boardViewport(view.fixture.componentInstance);
+      stubDims(vp, { scrollWidth: 2000, clientWidth: 1000 });
+      vp.scrollLeft = 0;
+
+      const list = document.createElement('div');
+      list.style.overflowY = 'auto';
+      stubDims(list, { scrollHeight: 500, clientHeight: 100, scrollTop: 0 });
+      const event = wheel({ deltaY: 120 }, list);
+      onWheel(view.fixture.componentInstance, event);
+
+      expect(vp.scrollLeft).toBe(0);
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('defers to an inner list that can still scroll up', async () => {
+      const { providers } = setup();
+      const view = await render(KanbanBoard, { providers });
+      const vp = boardViewport(view.fixture.componentInstance);
+      stubDims(vp, { scrollWidth: 2000, clientWidth: 1000 });
+      vp.scrollLeft = 500;
+
+      const list = document.createElement('div');
+      list.style.overflowY = 'scroll';
+      stubDims(list, { scrollHeight: 500, clientHeight: 100, scrollTop: 200 });
+      const event = wheel({ deltaY: -120 }, list);
+      onWheel(view.fixture.componentInstance, event);
+
+      expect(vp.scrollLeft).toBe(500);
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('pans the board once the inner list has reached its scroll edge', async () => {
+      const { providers } = setup();
+      const view = await render(KanbanBoard, { providers });
+      const vp = boardViewport(view.fixture.componentInstance);
+      stubDims(vp, { scrollWidth: 2000, clientWidth: 1000 });
+      vp.scrollLeft = 0;
+
+      // List scrolled to its bottom: a further downward wheel pans the board.
+      const list = document.createElement('div');
+      list.style.overflowY = 'auto';
+      stubDims(list, { scrollHeight: 500, clientHeight: 100, scrollTop: 400 });
+      const event = wheel({ deltaY: 120 }, list);
+      onWheel(view.fixture.componentInstance, event);
+
+      expect(vp.scrollLeft).toBe(120);
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('pans the board when the wheel event has no element target', async () => {
+      const { providers } = setup();
+      const view = await render(KanbanBoard, { providers });
+      const vp = boardViewport(view.fixture.componentInstance);
+      stubDims(vp, { scrollWidth: 2000, clientWidth: 1000 });
+      vp.scrollLeft = 0;
+
+      // An undispatched WheelEvent has a null target — nothing to walk up from.
+      const event = new WheelEvent('wheel', { deltaY: 120, cancelable: true });
+      onWheel(view.fixture.componentInstance, event);
+
+      expect(vp.scrollLeft).toBe(120);
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('pans past a scrollable ancestor that is not actually overflowing', async () => {
+      const { providers } = setup();
+      const view = await render(KanbanBoard, { providers });
+      const vp = boardViewport(view.fixture.componentInstance);
+      stubDims(vp, { scrollWidth: 2000, clientWidth: 1000 });
+      vp.scrollLeft = 0;
+
+      // overflow-y: auto but content fits — it can't consume the scroll.
+      const list = document.createElement('div');
+      list.style.overflowY = 'auto';
+      stubDims(list, { scrollHeight: 100, clientHeight: 100, scrollTop: 0 });
+      const event = wheel({ deltaY: 120 }, list);
+      onWheel(view.fixture.componentInstance, event);
+
+      expect(vp.scrollLeft).toBe(120);
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('does nothing when the board content fits within the viewport', async () => {
+      const { providers } = setup();
+      const view = await render(KanbanBoard, { providers });
+      const vp = boardViewport(view.fixture.componentInstance);
+      stubDims(vp, { scrollWidth: 500, clientWidth: 1000 });
+      vp.scrollLeft = 0;
+
+      const event = wheel({ deltaY: 120 }, vp);
+      onWheel(view.fixture.componentInstance, event);
+
+      expect(vp.scrollLeft).toBe(0);
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('normalises line- and page-mode wheel deltas into pixels', async () => {
+      const { providers } = setup();
+      const view = await render(KanbanBoard, { providers });
+      const vp = boardViewport(view.fixture.componentInstance);
+      stubDims(vp, { scrollWidth: 10000, clientWidth: 1000 });
+
+      // Line mode: 3 lines * 16px = 48px.
+      vp.scrollLeft = 0;
+      onWheel(view.fixture.componentInstance, wheel({ deltaY: 3, deltaMode: 1 }, vp));
+      expect(vp.scrollLeft).toBe(48);
+
+      // Page mode: 2 pages * 1000px viewport width = 2000px.
+      vp.scrollLeft = 0;
+      onWheel(view.fixture.componentInstance, wheel({ deltaY: 2, deltaMode: 2 }, vp));
+      expect(vp.scrollLeft).toBe(2000);
+    });
   });
 });

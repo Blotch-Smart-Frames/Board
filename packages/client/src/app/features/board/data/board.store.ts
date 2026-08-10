@@ -160,6 +160,13 @@ export class BoardStore {
 
   readonly isLoading = computed(() => !!this.boardId() && this.board() === undefined);
 
+  /**
+   * True until the board's lists collection has received its first snapshot.
+   * Distinct from an empty board (`lists()` is `[]`): lets the UI show a spinner
+   * during the initial fetch instead of flashing the "No lists yet" empty state.
+   */
+  readonly isLoadingLists = computed(() => !!this.boardId() && this.lists() === undefined);
+
   /** Board-wide filters applied in `listsWithTasks`, mirroring the source app's Board.tsx filteredTasks. */
   readonly assigneeFilter = signal<string[]>([]);
   readonly labelFilter = signal<string[]>([]);
