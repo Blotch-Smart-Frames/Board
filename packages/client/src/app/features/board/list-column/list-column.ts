@@ -108,6 +108,8 @@ export type ListWithTasks = List & { tasks: Task[] };
             <div cdkDrag [cdkDragData]="task" [cdkDragDisabled]="dragDisabled()" class="opacity-65">
               <app-task-card [task]="task" [labels]="labels()" (view)="viewTask.emit($event)" />
             </div>
+          } @empty {
+            <p class="text-muted-foreground py-4 text-center text-sm">No tasks yet</p>
           }
         </div>
       }

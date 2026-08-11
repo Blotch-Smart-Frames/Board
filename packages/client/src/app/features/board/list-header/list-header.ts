@@ -53,9 +53,11 @@ import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
           >
             {{ title() }}
           </h2>
-          <span class="bg-accent text-muted-foreground rounded-full px-2 py-0.5 text-xs">{{
-            taskCount()
-          }}</span>
+          @if (!isArchival()) {
+            <span class="bg-accent text-muted-foreground rounded-full px-2 py-0.5 text-xs">{{
+              taskCount()
+            }}</span>
+          }
         </div>
       }
 
