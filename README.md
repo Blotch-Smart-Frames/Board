@@ -1,5 +1,8 @@
 # Board by Blotch
 
+[![Tests](https://github.com/Blotch-Smart-Frames/Board/actions/workflows/test.yml/badge.svg)](https://github.com/Blotch-Smart-Frames/Board/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/Blotch-Smart-Frames/Board/graph/badge.svg)](https://codecov.io/gh/Blotch-Smart-Frames/Board)
+
 A simple, visual way to organize your work. Create boards, add tasks, and drag them across columns to track progress — just like sticky notes on a whiteboard, but better.
 
 ## What You Can Do
