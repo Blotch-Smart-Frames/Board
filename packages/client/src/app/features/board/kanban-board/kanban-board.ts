@@ -160,9 +160,11 @@ export class KanbanBoard {
    * only scrolls on its x-axis, so a normal wheel would otherwise do nothing.
    *
    * Nested vertical scrolling still takes priority: while the pointer is over a
-   * list that can scroll further in the wheel's direction, we leave the event
-   * alone and let the browser scroll that list (Trello-style). Only once no
-   * inner list can consume the scroll do we translate it into horizontal panning.
+   * vertically-scrollable list we leave the event alone and let the browser
+   * scroll that list (Trello-style). Crucially, a scrollable list keeps owning
+   * the wheel even once it hits its top/bottom edge — we don't translate the
+   * leftover scroll into horizontal panning, so reaching the end of a list no
+   * longer "hijacks" the wheel and jerks the board sideways.
    */
   protected onWheel(event: WheelEvent): void {
     // Horizontal-dominant input (trackpad swipe, Shift+wheel) already scrolls
@@ -171,8 +173,8 @@ export class KanbanBoard {
 
     const viewport = this.boardScrollbar().adapter.viewportElement;
 
-    // Defer to an inner vertically-scrollable list that still has room to move.
-    if (this.consumedByInnerList(event.target, viewport, event.deltaY)) return;
+    // Defer to an inner vertically-scrollable list — even at its edge.
+    if (this.consumedByInnerList(event.target, viewport)) return;
 
     // Nothing to pan if every list fits within the viewport width.
     if (viewport.scrollWidth <= viewport.clientWidth) return;
@@ -183,25 +185,19 @@ export class KanbanBoard {
 
   /**
    * Walk up from the wheel target to the board viewport, returning true if any
-   * ancestor scrolls vertically and hasn't yet hit the edge in `deltaY`'s
-   * direction — i.e. that element should get the scroll instead of the board.
+   * ancestor is a vertically-scrollable list — i.e. that element should own the
+   * wheel instead of the board. We deliberately ignore whether the list is at
+   * its scroll edge: a list that owns the wheel keeps it there, so scrolling
+   * past the top or bottom never leaks into horizontal panning of the board.
    */
-  private consumedByInnerList(
-    target: EventTarget | null,
-    viewport: HTMLElement,
-    deltaY: number,
-  ): boolean {
+  private consumedByInnerList(target: EventTarget | null, viewport: HTMLElement): boolean {
     // Start from any Element (SVG icons are SVGElement, not HTMLElement) so the
     // walk still finds a scrollable ancestor when the pointer is over an icon.
     let el: Element | null = target instanceof Element ? target : null;
     while (el && el !== viewport) {
       const overflowY = getComputedStyle(el).overflowY;
       const scrolls = overflowY === 'auto' || overflowY === 'scroll';
-      if (scrolls && el.scrollHeight > el.clientHeight) {
-        const atTop = el.scrollTop <= 0;
-        const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-        if (deltaY > 0 ? !atBottom : !atTop) return true;
-      }
+      if (scrolls && el.scrollHeight > el.clientHeight) return true;
       el = el.parentElement;
     }
     return false;

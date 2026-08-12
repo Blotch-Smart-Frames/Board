@@ -8,8 +8,8 @@ import type { Collaborator } from '../../../shared/types/board';
   imports: [HlmSelectImports, UserAvatar],
   template: `
     <hlm-select-multiple [value]="selectedAssigneeIds()" (valueChange)="onValueChange($event)">
-      <hlm-select-trigger class="min-w-40">
-        <hlm-select-placeholder>Filter by assignee</hlm-select-placeholder>
+      <hlm-select-trigger class="min-w-20 bg-background!">
+        <hlm-select-placeholder>Assignee</hlm-select-placeholder>
         <ng-template hlmSelectValues let-values>
           <hlm-select-values-content class="items-center">
             <!-- /* v8 ignore start -- defensive @if branch: only fires when the selected id is missing from collaborators() @preserve */ -->

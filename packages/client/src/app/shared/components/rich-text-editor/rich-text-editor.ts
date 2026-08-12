@@ -34,7 +34,6 @@ interface QuillInstance {
   removeFormat(index: number, length: number, source?: string): void;
   insertEmbed(index: number, type: string, value: unknown, source?: string): void;
   deleteText(index: number, length: number, source?: string): void;
-  on(event: 'selection-change', handler: (range: QuillRange | null) => void): void;
   clipboard: { dangerouslyPasteHTML(html: string, source?: string): void };
 }
 interface QuillCtor {
@@ -82,6 +81,14 @@ function hasEditingSupport(): boolean {
 @Component({
   selector: 'app-rich-text-editor',
   imports: [HlmInput, RichTextToolbar],
+  // A single synchronous `focusout` on the host is the save trigger for BOTH
+  // the Quill and textarea paths. It bubbles from the editable (or textarea)
+  // and, crucially, fires on the `mousedown` that PRECEDES a dialog Close/X
+  // `click` — so the edit reaches the store while the component tree is still
+  // alive, before the click tears the dialog down. Quill's own
+  // `selection-change` blur is delivered asynchronously and loses that race,
+  // which is why an edit-then-close silently dropped the description.
+  host: { '(focusout)': 'saveNow()' },
   template: `
     @if (!fallback()) {
       <app-rich-text-toolbar (command)="onCommand($event)" />
@@ -97,7 +104,6 @@ function hasEditingSupport(): boolean {
         class="min-h-40 w-full resize-y"
         [value]="fallbackValue()"
         (input)="onFallbackInput($event)"
-        (blur)="onFallbackBlur()"
         [attr.placeholder]="placeholder()"
         [attr.aria-label]="ariaLabel()"
       ></textarea>
@@ -106,13 +112,16 @@ function hasEditingSupport(): boolean {
 })
 export class RichTextEditor {
   private readonly destroyRef = inject(DestroyRef);
-  // Registered as a field so it enters the destroy queue BEFORE `output()`'s
-  // own hook (registered when `htmlChange` is initialized below). Destroy
-  // hooks fire in FIFO order, so this guarantees the flushed edit is emitted
-  // while the `OutputRef` is still live — otherwise NG0953 fires and the
-  // in-flight edit is dropped when an enclosing dialog closes mid-type.
+  // Backstop for a teardown that doesn't emit a `focusout` first (e.g. Escape
+  // or a backdrop click when the editable never blurs). Registered as a field so
+  // it enters the destroy queue BEFORE `output()`'s own hook (created when
+  // `htmlChange` is initialized below); destroy hooks fire in FIFO order, so
+  // this runs while our `OutputRef` is still live. Note this can only reach a
+  // listener that outlives our subtree — ancestor outputs are torn down first
+  // — so the reliable save is the synchronous `focusout` above; this is best
+  // effort.
   private readonly flushOnDestroy = this.destroyRef.onDestroy(() => {
-    this.flush();
+    this.saveNow();
     this.destroyed = true;
   });
 
@@ -208,8 +217,17 @@ export class RichTextEditor {
     this.fallbackValue.set(target.value);
   }
 
-  protected onFallbackBlur(): void {
-    this.emit(this.fallbackValue());
+  // Bound to the host `focusout` and reused by the destroy backstop. Runs the
+  // emit path against whichever surface is live. Swallows so a partly-detached
+  // DOM (or an already-torn-down `OutputRef` during teardown) never surfaces an
+  // error; `emitIfChanged`/`emit` self-dedupe, so firing it twice is safe.
+  protected saveNow(): void {
+    try {
+      if (this.quill) this.emitIfChanged(this.quill);
+      else if (this.fallback()) this.emit(this.fallbackValue());
+    } catch {
+      /* no-op */
+    }
   }
 
   private async initQuill(): Promise<void> {
@@ -241,11 +259,9 @@ export class RichTextEditor {
       this.pushContent(quill, this.initialHtml());
       this.lastEmitted = this.normalize(this.initialHtml());
 
-      quill.on('selection-change', (range) => {
-        // Quill fires `null` when focus leaves the editor — that's our blur.
-        if (range === null) this.emitIfChanged(quill);
-      });
-
+      // Blur is handled by the host `focusout` (see the decorator) rather than
+      // Quill's async `selection-change`, so a save lands synchronously before
+      // a dialog close.
       this.quill = quill;
     } catch {
       // Any failure (missing Selection support, module resolution, malformed
@@ -278,19 +294,6 @@ export class RichTextEditor {
     if (this.normalize(trimmed) === this.lastEmitted) return;
     this.lastEmitted = this.normalize(trimmed);
     this.htmlChange.emit(trimmed || undefined);
-  }
-
-  // Called from the DestroyRef hook: a mid-type dialog close (Escape,
-  // backdrop click) tears the subtree down before the editor can blur, so we
-  // re-run the emit path once more against the live Quill/textarea state.
-  // Swallow so a partly-detached DOM never surfaces an error during teardown.
-  private flush(): void {
-    try {
-      if (this.quill) this.emitIfChanged(this.quill);
-      else if (this.fallback()) this.emit(this.fallbackValue());
-    } catch {
-      /* no-op */
-    }
   }
 
   private normalize(html: string): string {

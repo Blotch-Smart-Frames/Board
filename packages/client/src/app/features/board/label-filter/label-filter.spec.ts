@@ -30,7 +30,7 @@ describe('LabelFilter', () => {
   it('shows the placeholder when nothing is selected', async () => {
     await render(LabelFilter, { inputs: { labels: [fakeLabel()] } });
 
-    expect(screen.getByText('Filter by label')).toBeInTheDocument();
+    expect(screen.getByText('Label')).toBeInTheDocument();
   });
 
   it('opens the dropdown to show an option per label', async () => {
@@ -78,7 +78,7 @@ describe('LabelFilter', () => {
     expect(screen.getByText('Bug')).toBeInTheDocument();
     // hlm-select-placeholder keeps its text in the DOM but marks itself
     // hidden via data-hidden when the select has a value.
-    expect(screen.getByText('Filter by label')).toHaveAttribute('data-hidden', '');
+    expect(screen.getByText('Label')).toHaveAttribute('data-hidden', '');
   });
 
   it('shows a "No labels yet" hint when the board has no labels', async () => {

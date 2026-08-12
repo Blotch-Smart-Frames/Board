@@ -27,7 +27,7 @@ describe('AssigneeFilter', () => {
   it('shows the placeholder when nothing is selected', async () => {
     await render(AssigneeFilter, { inputs: { collaborators: [fakeCollaborator()] } });
 
-    expect(screen.getByText('Filter by assignee')).toBeInTheDocument();
+    expect(screen.getByText('Assignee')).toBeInTheDocument();
   });
 
   it('opens the dropdown to show an option per collaborator', async () => {
@@ -80,7 +80,7 @@ describe('AssigneeFilter', () => {
     expect(trigger).toHaveTextContent('Jane Doe');
     // hlm-select-placeholder keeps its text in the DOM but marks itself
     // hidden via data-hidden when the select has a value.
-    expect(screen.getByText('Filter by assignee')).toHaveAttribute('data-hidden', '');
+    expect(screen.getByText('Assignee')).toHaveAttribute('data-hidden', '');
   });
 
   it('shows a "(+N more)" hint on the trigger when multiple collaborators are selected', async () => {
