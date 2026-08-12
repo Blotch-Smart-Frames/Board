@@ -529,22 +529,23 @@ describe('KanbanBoard', () => {
       expect(event.defaultPrevented).toBe(false);
     });
 
-    it('pans the board once the inner list has reached its scroll edge', async () => {
+    it('keeps deferring to a scrollable inner list at its bottom edge (no horizontal hijack)', async () => {
       const { providers } = setup();
       const view = await render(KanbanBoard, { providers });
       const vp = boardViewport(view.fixture.componentInstance);
       stubDims(vp, { scrollWidth: 2000, clientWidth: 1000 });
       vp.scrollLeft = 0;
 
-      // List scrolled to its bottom: a further downward wheel pans the board.
+      // List scrolled to its bottom: a further downward wheel must NOT pan the
+      // board — the list owns the wheel, so reaching the end doesn't jerk sideways.
       const list = document.createElement('div');
       list.style.overflowY = 'auto';
       stubDims(list, { scrollHeight: 500, clientHeight: 100, scrollTop: 400 });
       const event = wheel({ deltaY: 120 }, list);
       onWheel(view.fixture.componentInstance, event);
 
-      expect(vp.scrollLeft).toBe(120);
-      expect(event.defaultPrevented).toBe(true);
+      expect(vp.scrollLeft).toBe(0);
+      expect(event.defaultPrevented).toBe(false);
     });
 
     it('pans the board when the wheel event has no element target', async () => {

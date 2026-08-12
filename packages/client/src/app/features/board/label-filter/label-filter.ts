@@ -9,8 +9,8 @@ import type { Label } from '../../../shared/types/board';
   imports: [HlmSelectImports, LabelChip],
   template: `
     <hlm-select-multiple [value]="selectedLabelIds()" (valueChange)="onValueChange($event)">
-      <hlm-select-trigger class="min-w-40">
-        <hlm-select-placeholder>Filter by label</hlm-select-placeholder>
+      <hlm-select-trigger class="min-w-20 bg-background!">
+        <hlm-select-placeholder>Label</hlm-select-placeholder>
         <ng-template hlmSelectValues>
           <hlm-select-values-content class="flex-wrap gap-1">
             @for (label of selectedLabels(); track label.id) {

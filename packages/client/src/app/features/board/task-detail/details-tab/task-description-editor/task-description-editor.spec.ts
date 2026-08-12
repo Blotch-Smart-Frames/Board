@@ -1,3 +1,4 @@
+import { Component, signal } from '@angular/core';
 import { render, screen } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { TaskDescriptionEditor } from './task-description-editor';
@@ -103,5 +104,39 @@ describe('TaskDescriptionEditor', () => {
     await view.fixture.whenStable();
 
     expect(screen.getByLabelText('Description')).toHaveValue('second');
+  });
+
+  // Regression: editing the description then clicking a Close/X button used to
+  // silently drop the edit. The save must land synchronously on blur (the
+  // `focusout` that a Close click's mousedown triggers) so it propagates
+  // through the nested output hop while the surrounding tree is still alive —
+  // i.e. WITHOUT relying on emitting during teardown.
+  it('emits the in-flight edit when focus leaves for a Close button (mimics a dialog close)', async () => {
+    @Component({
+      imports: [TaskDescriptionEditor],
+      template: `
+        <app-task-description-editor
+          taskKey="t1"
+          initialDescription="old"
+          (descriptionChange)="onChange($event)"
+        />
+        <button type="button">Close</button>
+      `,
+    })
+    class HostCmp {
+      readonly received = signal<(string | undefined)[]>([]);
+      onChange(value: string | undefined): void {
+        this.received.update((prev) => [...prev, value]);
+      }
+    }
+
+    const user = userEvent.setup();
+    const view = await render(HostCmp);
+
+    await user.type(screen.getByLabelText('Description'), ' more');
+    // Focus leaves the editor for the Close button before any teardown.
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(view.fixture.componentInstance.received()).toContain('old more');
   });
 });
