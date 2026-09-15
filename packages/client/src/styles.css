@@ -11,6 +11,14 @@
  * Kept unlayered so they win over Tailwind utilities without needing !important. */
 @import 'quill/dist/quill.snow.css';
 @import 'katex/dist/katex.min.css';
+
+/* Quill's snow theme hardcodes the empty-editor placeholder to rgba(0,0,0,0.6),
+ * which is unreadable in dark mode. Route it through --muted-foreground so it
+ * matches HlmInput/HlmTextarea and flips with the theme. */
+.ql-editor.ql-blank::before {
+  color: var(--muted-foreground);
+}
+
 /* You can add global styles to this file, and also import other style files */
 
 :root {
