@@ -39,12 +39,13 @@ import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
           (keydown.enter)="commit()"
           (keydown.escape)="cancel()"
           aria-label="List title"
+          maxlength="30"
         />
         <!-- /* v8 ignore stop -- @preserve */ -->
       } @else {
         <div class="flex min-w-0 flex-1 items-center gap-2">
           <h2
-            class="cursor-pointer truncate font-semibold"
+            class="min-w-0 flex-1 cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap font-semibold"
             (click)="startEditing()"
             (keydown.enter)="startEditing()"
             tabindex="0"

@@ -20,7 +20,7 @@ let nextErrorId = 0;
   imports: [HlmButton, HlmInput, NgIcon, FormField],
   providers: [provideIcons({ lucidePlus })],
   template: `
-    <div class="border-t p-2">
+    <div class="p-2">
       @if (adding()) {
         <!-- /* v8 ignore start -- template listener wrappers (keydown/mousedown) exercised via user.type/user.click but V8 attributes coverage inconsistently @preserve */ -->
         <textarea

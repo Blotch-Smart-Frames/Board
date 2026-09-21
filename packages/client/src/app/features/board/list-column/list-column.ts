@@ -42,7 +42,7 @@ export type ListWithTasks = List & { tasks: Task[] };
             <ng-icon name="lucideGripVertical" />
           </button>
         }
-        <div class="flex-1">
+        <div class="min-w-0 flex-1">
           <app-list-header
             [title]="list().title"
             [taskCount]="tasks().length"
@@ -60,7 +60,7 @@ export type ListWithTasks = List & { tasks: Task[] };
       @if (!isArchival()) {
         <ng-scrollbar
           hlm
-          class="min-h-0 flex-1"
+          class="min-h-0 flex-1 scroll-fade"
           appearance="compact"
           orientation="vertical"
           style="--_scrollbar-content-width: 100%"
