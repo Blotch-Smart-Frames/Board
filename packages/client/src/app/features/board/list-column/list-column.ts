@@ -79,7 +79,12 @@ export type ListWithTasks = List & { tasks: Task[] };
           >
             @for (task of tasks(); track task.id) {
               <div cdkDrag [cdkDragData]="task" [cdkDragDisabled]="dragDisabled()">
-                <app-task-card [task]="task" [labels]="labels()" (view)="viewTask.emit($event)" />
+                <app-task-card
+                  [class.arrive]="freshTaskIds().has(task.id)"
+                  [task]="task"
+                  [labels]="labels()"
+                  (view)="viewTask.emit($event)"
+                />
               </div>
             } @empty {
               <p class="text-muted-foreground py-4 text-center text-sm">No tasks yet</p>
@@ -136,6 +141,8 @@ export class ListColumn {
   // few archived tasks to render as a faded peek beneath the active tasks.
   readonly isArchival = input(false);
   readonly archivedPreview = input<Task[]>([]);
+  // Ids of tasks that just arrived on the board; their cards animate in.
+  readonly freshTaskIds = input<ReadonlySet<string>>(new Set());
   // Active task count ignoring board filters (hidden cards still use a slot).
   // Falls back to the visible task count when the parent doesn't supply one.
   readonly totalTaskCount = input<number>();

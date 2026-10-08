@@ -18,6 +18,7 @@ import { AuthStore } from '../../../core/auth/auth.store';
 import { BoardService } from '../../../core/services/board.service';
 import { SyncService } from '../../../core/services/sync.service';
 import { docSignal, collectionSignal } from '../../../core/interop/signal-interop';
+import { arrivals } from '../../../shared/utils/arrivals';
 import { collaboratorsResource } from '../../../core/interop/collaborators-resource';
 import { diffTaskChanges } from '../../../shared/utils/task-history-diff';
 import { compareOrder, getOrderAtIndex, getOrderAtEnd } from '../../../shared/utils/ordering';
@@ -159,6 +160,20 @@ export class BoardStore {
   /** Map of archival listId -> its last {@link ARCHIVED_PREVIEW_LIMIT} archived tasks. */
   readonly archivedPreviewByListId = toSignal(this.archivedPreview$, {
     initialValue: new Map<string, Task[]>(),
+  });
+
+  /**
+   * Ids of tasks that just appeared on the board (a collaborator's new card, one
+   * you just added) so their cards can animate in. Archived previews count as
+   * known, so dragging a task out of an archive doesn't read as an arrival.
+   */
+  readonly freshTaskIds = arrivals(() => {
+    const tasks = this.tasks();
+    const archived = [...this.archivedPreviewByListId().values()].flat();
+    return {
+      scope: this.boardId(),
+      ids: tasks && [...tasks, ...archived].map((task) => task.id),
+    };
   });
 
   readonly isLoading = computed(() => !!this.boardId() && this.board() === undefined);

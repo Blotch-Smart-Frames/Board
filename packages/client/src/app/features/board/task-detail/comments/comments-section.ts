@@ -2,6 +2,7 @@ import { Component, inject, input } from '@angular/core';
 import { FIRESTORE_DB } from '../../../../core/firebase/firebase.config';
 import { taskCommentsQuery } from '../../../../core/firebase/firestore-refs';
 import { collectionSignal } from '../../../../core/interop/signal-interop';
+import { arrivals } from '../../../../shared/utils/arrivals';
 import { AuthStore } from '../../../../core/auth/auth.store';
 import { BoardService } from '../../../../core/services/board.service';
 import { CommentInput } from './comment-input';
@@ -19,6 +20,8 @@ import type { Comment, Collaborator } from '../../../../shared/types/board';
         <div class="mb-2">
           @for (comment of comments(); track comment.id) {
             <app-comment-item
+              class="arrive-rise block"
+              [class.arrive]="freshCommentIds().has(comment.id)"
               [comment]="comment"
               [author]="authorFor(comment)"
               [isOwnComment]="isOwn(comment)"
@@ -47,6 +50,12 @@ export class CommentsSection {
   protected readonly comments = collectionSignal<Comment>(() =>
     taskCommentsQuery(this.db, this.boardId(), this.taskId()),
   );
+
+  /** Comments that just arrived (yours or a collaborator's), so they settle in. */
+  protected readonly freshCommentIds = arrivals(() => ({
+    scope: `${this.boardId()}/${this.taskId()}`,
+    ids: this.comments()?.map((comment) => comment.id),
+  }));
 
   protected authorFor(comment: Comment): Collaborator | undefined {
     return this.collaborators().find((c) => c.id === comment.authorId);

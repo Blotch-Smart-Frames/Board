@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import type { Timestamp } from 'firebase/firestore';
 import { provideRouter, Router } from '@angular/router';
-import { render, screen, waitFor, within } from '@testing-library/angular';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { provideMarkdown } from 'ngx-markdown';
 import { TaskDetailDialog } from './task-detail-dialog';
@@ -277,11 +277,12 @@ describe('TaskDetailDialog', () => {
     );
   });
 
-  it('deletes the task and closes the dialog when Delete is clicked', async () => {
-    const user = userEvent.setup();
+  it('deletes the task when Hold to delete is activated', async () => {
     const { store } = await openWith(fakeTask());
 
-    await user.click(await screen.findByRole('button', { name: /delete/i }));
+    // An assistive-tech activation (click with detail 0) confirms without a hold;
+    // the hold timing itself is covered by HoldToConfirm's spec.
+    fireEvent.click(await screen.findByRole('button', { name: /hold to delete/i }), { detail: 0 });
 
     expect(store.deleteTask).toHaveBeenCalledWith('t1');
   });
@@ -640,12 +641,11 @@ describe('TaskDetailDialog', () => {
   });
 
   it('logs but does not throw when deleting fails', async () => {
-    const user = userEvent.setup();
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { store } = await openWith(fakeTask());
     store.deleteTask.mockRejectedValueOnce(new Error('offline'));
 
-    await user.click(await screen.findByRole('button', { name: /^delete$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /hold to delete/i }), { detail: 0 });
 
     await waitFor(() =>
       expect(consoleError).toHaveBeenCalledWith('Task delete failed:', expect.any(Error)),
@@ -664,10 +664,10 @@ describe('TaskDetailDialog', () => {
     view.fixture.detectChanges();
     await view.fixture.whenStable();
 
-    // The `@if (task(); as task)` gate hides the destructive "Delete" button
-    // (label "Delete") — the icon-only close button in the dialog corner is
-    // named "Close" and still renders.
-    expect(screen.queryByRole('button', { name: /^delete$/i })).not.toBeInTheDocument();
+    // The `@if (task(); as task)` gate hides the destructive "Hold to delete"
+    // button — the icon-only close button in the dialog corner is named
+    // "Close" and still renders.
+    expect(screen.queryByRole('button', { name: /hold to delete/i })).not.toBeInTheDocument();
   });
 
   it('is a no-op when the title change handler runs without a matching task', async () => {

@@ -13,6 +13,7 @@ import { TaskDetailsTab } from './details-tab/task-details-tab';
 import { TaskSprintTab } from './sprint-tab/task-sprint-tab';
 import { TaskTitleEditor } from './title/task-title-editor';
 import { BoardStore } from '../data/board.store';
+import { HoldToConfirm } from '../../../shared/components/hold-to-confirm/hold-to-confirm';
 import type { Task } from '../../../shared/types/board';
 
 type TabId = 'details' | 'sprint' | 'history' | 'advanced';
@@ -26,6 +27,7 @@ type TabId = 'details' | 'sprint' | 'history' | 'advanced';
     HlmButton,
     HlmSpinner,
     HlmTabsImports,
+    HoldToConfirm,
     NgIcon,
     HistorySection,
     TaskMigrateForm,
@@ -121,9 +123,20 @@ type TabId = 'details' | 'sprint' | 'history' | 'advanced';
           </hlm-tabs>
 
           <hlm-dialog-footer class="justify-between">
-            <button hlmBtn variant="destructive" type="button" (click)="deleteTask()">
+            <button
+              hlmBtn
+              variant="destructive"
+              type="button"
+              class="relative isolate overflow-hidden"
+              appHoldToConfirm
+              (confirmed)="deleteTask()"
+            >
+              <span
+                class="hold-to-confirm-fill bg-destructive/25 dark:bg-destructive/35 absolute inset-0 -z-10"
+                aria-hidden="true"
+              ></span>
               <ng-icon name="lucideTrash2" class="mr-2" />
-              Delete
+              Hold to delete
             </button>
             <!-- /* v8 ignore start -- close listener is exercised via spec but V8 attributes coverage elsewhere @preserve */ -->
             <button hlmBtn variant="outline" type="button" (click)="close()">Close</button>

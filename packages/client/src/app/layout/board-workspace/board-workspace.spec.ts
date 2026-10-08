@@ -85,7 +85,8 @@ describe('BoardWorkspace', () => {
   it('shows "board not found" once loading settles with no board', async () => {
     stubMatchMedia();
     vi.mocked(onSnapshot).mockImplementation((_ref: unknown, onNext: unknown) => {
-      (onNext as (snapshot: unknown) => void)({ exists: () => false });
+      // Shaped to satisfy both doc listeners (`exists`) and collection listeners (`docs`).
+      (onNext as (snapshot: unknown) => void)({ exists: () => false, docs: [] });
       return vi.fn();
     });
 

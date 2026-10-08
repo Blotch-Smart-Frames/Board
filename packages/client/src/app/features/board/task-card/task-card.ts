@@ -17,7 +17,7 @@ import type { Task, Label } from '../../../shared/types/board';
   template: `
     <div
       hlmCard
-      class="hover:ring-primary/40 cursor-pointer gap-0 p-3 transition-shadow hover:shadow-md"
+      class="hover:ring-primary/40 cursor-pointer gap-0 p-3 transition-[box-shadow,transform] duration-150 ease-out hover:shadow-md active:scale-[0.98]"
       [style.background-color]="task().color ? task().color + '15' : null"
       (click)="view.emit(task())"
       (keydown.enter)="view.emit(task())"

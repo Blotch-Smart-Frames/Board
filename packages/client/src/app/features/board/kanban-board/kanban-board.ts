@@ -110,6 +110,7 @@ const LINE_HEIGHT_PX = 16;
                       [connectedListIds]="listIds()"
                       [isArchival]="store.archivalListIds().includes(list.id)"
                       [archivedPreview]="archivedPreviewFor(list.id)"
+                      [freshTaskIds]="store.freshTaskIds()"
                       [totalTaskCount]="store.taskCountByListId().get(list.id) ?? 0"
                       [canMoveLeft]="i > 0"
                       [canMoveRight]="i < count - 1"
