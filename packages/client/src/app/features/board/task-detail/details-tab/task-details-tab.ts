@@ -26,6 +26,7 @@ import type { Attachment, Task } from '../../../../shared/types/board';
           <app-task-list-select
             [value]="task().listId"
             [lists]="store.listsWithTasks()"
+            [fullListIds]="fullListIds()"
             (listMove)="onMoveToList($event)"
           />
         }
@@ -118,6 +119,14 @@ export class TaskDetailsTab {
   protected onAttachmentsChange(attachments: Attachment[]): void {
     this.store.updateTask(this.task().id, { attachments });
   }
+
+  // The task's own list is never "full" for it, so keep it selectable.
+  protected readonly fullListIds = computed(() =>
+    this.store
+      .listsWithTasks()
+      .filter((l) => l.id !== this.task().listId && this.store.isListFull(l.id))
+      .map((l) => l.id),
+  );
 
   protected onMoveToList(listId: string): void {
     this.store.moveTaskToList(this.task().id, listId);

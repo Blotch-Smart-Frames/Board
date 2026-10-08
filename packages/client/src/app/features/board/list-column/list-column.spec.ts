@@ -2,7 +2,10 @@ import { signal } from '@angular/core';
 import type { Timestamp } from 'firebase/firestore';
 import { render, screen } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
+import { By } from '@angular/platform-browser';
+import { CdkDropList, type CdkDrag } from '@angular/cdk/drag-drop';
 import { ListColumn, type ListWithTasks } from './list-column';
+import { MAX_TASKS_PER_LIST } from '../list-limit';
 import { BoardStore } from '../data/board.store';
 import type { Task } from '../../../shared/types/board';
 
@@ -63,6 +66,75 @@ describe('ListColumn', () => {
     await user.type(screen.getByLabelText('Task title'), '  New task  {Enter}');
 
     expect(onAddTask).toHaveBeenCalledWith('New task');
+  });
+
+  describe('task limit', () => {
+    it('replaces the add-task form with a notice once the list is full', async () => {
+      await render(ListColumn, {
+        inputs: { list: fakeList([]), totalTaskCount: MAX_TASKS_PER_LIST },
+        providers: [storeProvider],
+      });
+
+      expect(screen.queryByRole('button', { name: /add a task/i })).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent(/list is full/i);
+    });
+
+    it('counts hidden (filtered-out) tasks toward the limit, not just the visible ones', async () => {
+      await render(ListColumn, {
+        inputs: { list: fakeList([fakeTask()]), totalTaskCount: MAX_TASKS_PER_LIST - 1 },
+        providers: [storeProvider],
+      });
+
+      expect(screen.getByRole('button', { name: /add a task/i })).toBeInTheDocument();
+      expect(
+        screen.getByLabelText(`${MAX_TASKS_PER_LIST - 1} of ${MAX_TASKS_PER_LIST} tasks`),
+      ).toBeInTheDocument();
+    });
+
+    it('rejects tasks dragged in from other lists but allows reordering within a full list', async () => {
+      const { fixture } = await render(ListColumn, {
+        inputs: { list: fakeList([]), totalTaskCount: MAX_TASKS_PER_LIST },
+        providers: [storeProvider],
+      });
+
+      const dropList = fixture.debugElement
+        .query(By.directive(CdkDropList))
+        .injector.get(CdkDropList);
+      const dragOf = (task: Task) => ({ data: task }) as CdkDrag<Task>;
+
+      expect(dropList.enterPredicate(dragOf(fakeTask({ listId: 'other' })), dropList)).toBe(false);
+      expect(dropList.enterPredicate(dragOf(fakeTask({ listId: 'list-1' })), dropList)).toBe(true);
+    });
+
+    it('accepts drops into a list that still has room', async () => {
+      const { fixture } = await render(ListColumn, {
+        inputs: { list: fakeList([]), totalTaskCount: 0 },
+        providers: [storeProvider],
+      });
+
+      const dropList = fixture.debugElement
+        .query(By.directive(CdkDropList))
+        .injector.get(CdkDropList);
+
+      expect(
+        dropList.enterPredicate({ data: fakeTask({ listId: 'other' }) } as CdkDrag<Task>, dropList),
+      ).toBe(true);
+    });
+
+    it('never limits archival lists', async () => {
+      const { fixture } = await render(ListColumn, {
+        inputs: { list: fakeList([]), isArchival: true, totalTaskCount: MAX_TASKS_PER_LIST + 5 },
+        providers: [storeProvider],
+      });
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      const dropList = fixture.debugElement
+        .query(By.directive(CdkDropList))
+        .injector.get(CdkDropList);
+      expect(
+        dropList.enterPredicate({ data: fakeTask({ listId: 'other' }) } as CdkDrag<Task>, dropList),
+      ).toBe(true);
+    });
   });
 
   it('shows the drag handle by default', async () => {

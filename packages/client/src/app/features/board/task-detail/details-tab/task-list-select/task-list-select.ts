@@ -24,7 +24,9 @@ type ListOption = { readonly id: string; readonly title: string };
         </hlm-select-trigger>
         <hlm-select-content *hlmSelectPortal>
           @for (list of lists(); track list.id) {
-            <hlm-select-item [value]="list.id">{{ list.title }}</hlm-select-item>
+            <hlm-select-item [value]="list.id" [disabled]="fullListIds().includes(list.id)">
+              {{ list.title }}{{ fullListIds().includes(list.id) ? ' (full)' : '' }}
+            </hlm-select-item>
           }
         </hlm-select-content>
       </hlm-select>
@@ -34,6 +36,8 @@ type ListOption = { readonly id: string; readonly title: string };
 export class TaskListSelect {
   readonly value = input.required<string>();
   readonly lists = input.required<ListOption[]>();
+  /** Lists at their task limit; shown but not selectable as a destination. */
+  readonly fullListIds = input<string[]>([]);
   readonly listMove = output<string>();
 
   protected onValueChange(value: unknown): void {

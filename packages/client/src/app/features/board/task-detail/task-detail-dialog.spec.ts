@@ -128,6 +128,7 @@ function setup(task: Task, opts: SetupOpts = {}) {
     ),
     updateTask: vi.fn().mockResolvedValue(undefined),
     moveTaskToList: vi.fn().mockResolvedValue(undefined),
+    isListFull: vi.fn().mockReturnValue(false),
     deleteTask: vi.fn().mockResolvedValue(undefined),
     migrateTaskToBoard: vi.fn().mockResolvedValue('new-task-id'),
   };

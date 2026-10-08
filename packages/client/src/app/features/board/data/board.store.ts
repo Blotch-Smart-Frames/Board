@@ -21,6 +21,7 @@ import { docSignal, collectionSignal } from '../../../core/interop/signal-intero
 import { collaboratorsResource } from '../../../core/interop/collaborators-resource';
 import { diffTaskChanges } from '../../../shared/utils/task-history-diff';
 import { compareOrder, getOrderAtIndex, getOrderAtEnd } from '../../../shared/utils/ordering';
+import { MAX_TASKS_PER_LIST } from '../list-limit';
 import type {
   Board,
   List,
@@ -35,6 +36,8 @@ import type {
 
 /** How many archived tasks to peek per archival list in the faded preview. */
 const ARCHIVED_PREVIEW_LIMIT = 5;
+
+export const LIST_FULL_MESSAGE = `This list is full (max ${MAX_TASKS_PER_LIST} tasks). Finish or move some tasks first.`;
 
 /**
  * Live data for whichever board is active on the current route. Provided at
@@ -184,10 +187,36 @@ export class BoardStore {
     computation: () => new Map(),
   });
 
+  /** Live active tasks with optimistic drag overrides applied, before any board filter. */
+  private readonly effectiveTasks = computed(() => {
+    const taskOverrides = this.taskOverrides();
+    return (this.tasks() ?? []).map((task) => {
+      const override = taskOverrides.get(task.id);
+      return override ? { ...task, listId: override.listId, order: override.order } : task;
+    });
+  });
+
+  /**
+   * Active task count per list. Deliberately unfiltered: label/assignee filters
+   * only hide cards, they still occupy a slot toward {@link MAX_TASKS_PER_LIST}.
+   */
+  readonly taskCountByListId = computed(() => {
+    const counts = new Map<string, number>();
+    for (const task of this.effectiveTasks()) {
+      counts.set(task.listId, (counts.get(task.listId) ?? 0) + 1);
+    }
+    return counts;
+  });
+
+  /** True when a non-archival list has reached {@link MAX_TASKS_PER_LIST}. Archival lists never fill. */
+  isListFull(listId: string): boolean {
+    if (this.archivalListIds().includes(listId)) return false;
+    return (this.taskCountByListId().get(listId) ?? 0) >= MAX_TASKS_PER_LIST;
+  }
+
   /** Lists sorted by fractional order, each with its tasks (also order-sorted). */
   readonly listsWithTasks = computed(() => {
     const listOverrides = this.listOverrides();
-    const taskOverrides = this.taskOverrides();
     const assigneeFilter = this.assigneeFilter();
     const labelFilter = this.labelFilter();
 
@@ -196,11 +225,7 @@ export class BoardStore {
       ...list,
       order: listOverrides.get(list.id) ?? list.order,
     }));
-    const tasks = (this.tasks() ?? [])
-      .map((task) => {
-        const override = taskOverrides.get(task.id);
-        return override ? { ...task, listId: override.listId, order: override.order } : task;
-      })
+    const tasks = this.effectiveTasks()
       .filter(
         (task) =>
           assigneeFilter.length === 0 || task.assignedTo?.some((id) => assigneeFilter.includes(id)),
@@ -259,6 +284,7 @@ export class BoardStore {
   async addTask(listId: string, input: CreateTaskInput): Promise<Task> {
     const userId = this.authStore.user()?.uid;
     if (!userId) throw new Error('Not authenticated');
+    if (this.isListFull(listId)) throw new Error(LIST_FULL_MESSAGE);
     const task = await this.boardService.addTask(this.requireBoardId(), listId, input, userId);
     if (task.calendarSyncEnabled && task.dueDate) {
       this.syncService.syncTaskToCalendar(this.requireBoardId(), task).catch(
@@ -334,6 +360,8 @@ export class BoardStore {
     const boardId = this.requireBoardId();
     const task = this.findTask(taskId);
     const listChanged = !!task && task.listId !== newListId;
+    // Reordering within a full list is fine; only arrivals from elsewhere are blocked.
+    if (listChanged && this.isListFull(newListId)) throw new Error(LIST_FULL_MESSAGE);
 
     // Dropping into an archival list archives; dragging back out restores.
     // `undefined` leaves the flag untouched (same-archival-state moves).

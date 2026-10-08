@@ -38,6 +38,24 @@ describe('TaskListSelect', () => {
     expect(onListMove).toHaveBeenCalledWith('list-3');
   });
 
+  it('marks full lists and disables them as destinations', async () => {
+    const user = userEvent.setup();
+    await render(TaskListSelect, {
+      inputs: { value: 'list-1', lists, fullListIds: ['list-3'] },
+    });
+
+    await user.click(screen.getByRole('combobox', { name: 'List' }));
+
+    expect(await screen.findByRole('option', { name: 'Done (full)' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('option', { name: 'Doing' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+  });
+
   it('lists every option from the input array', async () => {
     const user = userEvent.setup();
     await render(TaskListSelect, { inputs: { value: 'list-1', lists } });

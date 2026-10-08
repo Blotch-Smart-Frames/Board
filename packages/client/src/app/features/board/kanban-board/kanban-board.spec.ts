@@ -92,6 +92,7 @@ function setup() {
     ]),
     isLoadingLists: signal(false),
     archivalListIds: signal<string[]>([]),
+    taskCountByListId: signal(new Map<string, number>()),
     archivedPreviewByListId: signal(new Map<string, ReturnType<typeof fakeTask>[]>()),
     addList: vi.fn().mockResolvedValue(undefined),
     updateListTitle: vi.fn().mockResolvedValue(undefined),

@@ -1,4 +1,13 @@
-import { Component, ElementRef, effect, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideEllipsisVertical,
@@ -11,6 +20,7 @@ import {
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
+import { MAX_TASKS_PER_LIST } from '../list-limit';
 
 @Component({
   selector: 'app-list-header',
@@ -55,9 +65,14 @@ import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
             {{ title() }}
           </h2>
           @if (!isArchival()) {
-            <span class="bg-accent text-muted-foreground rounded-full px-2 py-0.5 text-xs">{{
-              taskCount()
-            }}</span>
+            <span
+              class="rounded-full px-2 py-0.5 text-xs"
+              [class]="
+                isFull() ? 'bg-destructive/15 text-destructive' : 'bg-accent text-muted-foreground'
+              "
+              [attr.aria-label]="taskCount() + ' of ' + maxTasks + ' tasks'"
+              >{{ taskCount() }}/{{ maxTasks }}</span
+            >
           }
         </div>
       }
@@ -116,6 +131,9 @@ export class ListHeader {
   readonly deleteList = output<void>();
   readonly moveLeft = output<void>();
   readonly moveRight = output<void>();
+
+  protected readonly maxTasks = MAX_TASKS_PER_LIST;
+  protected readonly isFull = computed(() => this.taskCount() >= MAX_TASKS_PER_LIST);
 
   protected readonly editing = signal(false);
   protected readonly draft = signal('');

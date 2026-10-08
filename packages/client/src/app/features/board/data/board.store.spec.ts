@@ -8,7 +8,8 @@ import { AuthStore } from '../../../core/auth/auth.store';
 import { BoardService } from '../../../core/services/board.service';
 import { SyncService } from '../../../core/services/sync.service';
 import { UserService } from '../../../core/services/user.service';
-import { BoardStore } from './board.store';
+import { BoardStore, LIST_FULL_MESSAGE } from './board.store';
+import { MAX_TASKS_PER_LIST } from '../list-limit';
 
 type SnapshotCallback = (snapshot: unknown) => void;
 
@@ -967,6 +968,95 @@ describe('BoardStore', () => {
       expect(boardService.updateBoard).toHaveBeenCalledWith('board-1', {
         archivalListIds: ['list-arch'],
       });
+    });
+  });
+
+  describe('task limit', () => {
+    // list-1 is exactly at the limit, list-2 has room, list-arch is an archive
+    // already holding more active-board tasks than the limit would allow.
+    function setupLimit(): void {
+      TestBed.flushEffects();
+      onSnapshotCallbacks.get('boards/board-1/lists')!(
+        collectionSnapshot([
+          { id: 'list-1', data: { title: 'Doing', order: 'a0' } },
+          { id: 'list-2', data: { title: 'Next', order: 'a1' } },
+          { id: 'list-arch', data: { title: 'Done', order: 'a2' } },
+        ]),
+      );
+      const inList = (listId: string, count: number, prefix: string) =>
+        Array.from({ length: count }, (_, i) => ({
+          id: `${prefix}-${i}`,
+          data: { title: `T${i}`, listId, order: `a${i}`, archive: false, labelIds: [] },
+        }));
+      onSnapshotCallbacks.get('boards/board-1/tasks')!(
+        collectionSnapshot([
+          ...inList('list-1', MAX_TASKS_PER_LIST, 'full'),
+          { id: 'room', data: { title: 'R', listId: 'list-2', order: 'a0', archive: false } },
+          ...inList('list-arch', MAX_TASKS_PER_LIST, 'arch'),
+        ]),
+      );
+      onSnapshotCallbacks.get('boards/board-1')!(
+        docSnapshot('board-1', {
+          title: 'B',
+          ownerId: 'u1',
+          collaborators: [],
+          archivalListIds: ['list-arch'],
+        }),
+      );
+      TestBed.flushEffects();
+    }
+
+    it('counts active tasks per list and flags only non-archival lists at the limit as full', () => {
+      const store = TestBed.inject(BoardStore);
+      setupLimit();
+
+      expect(store.taskCountByListId().get('list-1')).toBe(MAX_TASKS_PER_LIST);
+      expect(store.isListFull('list-1')).toBe(true);
+      expect(store.isListFull('list-2')).toBe(false);
+      expect(store.isListFull('list-arch')).toBe(false);
+      expect(store.isListFull('unknown')).toBe(false);
+    });
+
+    it('ignores board filters when counting, since hidden cards still occupy the list', () => {
+      const store = TestBed.inject(BoardStore);
+      setupLimit();
+      store.labelFilter.set(['nothing-matches']);
+
+      expect(store.listsWithTasks().find((l) => l.id === 'list-1')?.tasks).toEqual([]);
+      expect(store.isListFull('list-1')).toBe(true);
+    });
+
+    it('addTask rejects without writing when the list is full', async () => {
+      const store = TestBed.inject(BoardStore);
+      setupLimit();
+
+      await expect(store.addTask('list-1', { title: 'One too many' })).rejects.toThrow(
+        LIST_FULL_MESSAGE,
+      );
+      expect(boardService.addTask).not.toHaveBeenCalled();
+    });
+
+    it('moveTask rejects moving a task into a full list from another list', async () => {
+      const store = TestBed.inject(BoardStore);
+      setupLimit();
+
+      await expect(store.moveTask('room', 'list-1', 'z0')).rejects.toThrow(LIST_FULL_MESSAGE);
+      expect(boardService.moveTask).not.toHaveBeenCalled();
+    });
+
+    it('moveTask still allows reordering within a full list', async () => {
+      const store = TestBed.inject(BoardStore);
+      setupLimit();
+
+      await store.moveTask('full-0', 'list-1', 'z0');
+
+      expect(boardService.moveTask).toHaveBeenCalledWith(
+        'board-1',
+        'full-0',
+        'list-1',
+        'z0',
+        undefined,
+      );
     });
   });
 });

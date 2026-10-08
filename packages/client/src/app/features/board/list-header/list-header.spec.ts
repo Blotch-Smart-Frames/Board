@@ -7,7 +7,13 @@ describe('ListHeader', () => {
     await render(ListHeader, { inputs: { title: 'To Do', taskCount: 3 } });
 
     expect(screen.getByRole('button', { name: /rename list to do/i })).toHaveTextContent('To Do');
-    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByLabelText('3 of 20 tasks')).toHaveTextContent('3/20');
+  });
+
+  it('highlights the count once the list reaches its task limit', async () => {
+    await render(ListHeader, { inputs: { title: 'To Do', taskCount: 20 } });
+
+    expect(screen.getByLabelText('20 of 20 tasks')).toHaveClass('text-destructive');
   });
 
   it('commits a renamed title on Enter', async () => {

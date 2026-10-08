@@ -8,6 +8,7 @@ import { NgScrollbar } from 'ngx-scrollbar';
 import { AddTaskForm } from './add-task-form/add-task-form';
 import { ListHeader } from '../list-header/list-header';
 import { TaskCard } from '../task-card/task-card';
+import { MAX_TASKS_PER_LIST } from '../list-limit';
 import type { List, Task, Label } from '../../../shared/types/board';
 
 export type ListWithTasks = List & { tasks: Task[] };
@@ -45,7 +46,7 @@ export type ListWithTasks = List & { tasks: Task[] };
         <div class="min-w-0 flex-1">
           <app-list-header
             [title]="list().title"
-            [taskCount]="tasks().length"
+            [taskCount]="taskCount()"
             [isArchival]="isArchival()"
             [canMoveLeft]="canMoveLeft()"
             [canMoveRight]="canMoveRight()"
@@ -73,6 +74,7 @@ export type ListWithTasks = List & { tasks: Task[] };
             [cdkDropListData]="tasks()"
             [cdkDropListConnectedTo]="connectedListIds()"
             [cdkDropListDisabled]="dragDisabled()"
+            [cdkDropListEnterPredicate]="canEnter"
             (cdkDropListDropped)="taskDropped.emit($event)"
           >
             @for (task of tasks(); track task.id) {
@@ -115,7 +117,13 @@ export type ListWithTasks = List & { tasks: Task[] };
       }
 
       @if (!isArchival()) {
-        <app-add-task-form (addTask)="addTask.emit($event)" />
+        @if (isFull()) {
+          <p class="text-muted-foreground p-4 text-center text-sm" role="status">
+            List is full. Finish or move a task before adding more.
+          </p>
+        } @else {
+          <app-add-task-form (addTask)="addTask.emit($event)" />
+        }
       }
     </div>
   `,
@@ -128,6 +136,9 @@ export class ListColumn {
   // few archived tasks to render as a faded peek beneath the active tasks.
   readonly isArchival = input(false);
   readonly archivedPreview = input<Task[]>([]);
+  // Active task count ignoring board filters (hidden cards still use a slot).
+  // Falls back to the visible task count when the parent doesn't supply one.
+  readonly totalTaskCount = input<number>();
   readonly canMoveLeft = input(false);
   readonly canMoveRight = input(false);
   // Parent (KanbanBoard) flips this on mobile/touch to suppress task drag-drop
@@ -143,4 +154,12 @@ export class ListColumn {
   readonly moveRight = output<void>();
 
   protected readonly tasks = computed(() => this.list().tasks);
+  protected readonly taskCount = computed(() => this.totalTaskCount() ?? this.tasks().length);
+  protected readonly isFull = computed(
+    () => !this.isArchival() && this.taskCount() >= MAX_TASKS_PER_LIST,
+  );
+
+  /** Blocks dragging new tasks into a full list; reordering tasks already in it still works. */
+  protected readonly canEnter = (drag: CdkDrag<Task>): boolean =>
+    !this.isFull() || drag.data.listId === this.list().id;
 }

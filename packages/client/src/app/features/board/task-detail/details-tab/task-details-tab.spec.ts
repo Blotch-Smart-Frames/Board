@@ -71,6 +71,7 @@ function setup(task: Task, opts: SetupOpts = {}) {
     ),
     updateTask: vi.fn().mockResolvedValue(undefined),
     moveTaskToList: vi.fn().mockResolvedValue(undefined),
+    isListFull: vi.fn().mockReturnValue(false),
   };
   return {
     store,
@@ -151,6 +152,21 @@ describe('TaskDetailsTab', () => {
     await user.click(await screen.findByRole('option', { name: 'Doing' }));
 
     expect(store.moveTaskToList).toHaveBeenCalledWith('t1', 'list-2');
+  });
+
+  it('marks other full lists as unavailable but never the task’s own list', async () => {
+    const user = userEvent.setup();
+    const task = fakeTask({ listId: 'list-1' });
+    const { store, providers } = setup(task, {
+      lists: [fakeList('list-1', 'To Do', 'a0'), fakeList('list-2', 'Doing', 'a1')],
+    });
+    store.isListFull.mockReturnValue(true);
+    await render(TaskDetailsTab, { providers, inputs: { task, boardId: 'board-1' } });
+
+    await user.click(screen.getByRole('combobox', { name: 'List' }));
+
+    expect(await screen.findByRole('option', { name: 'Doing (full)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'To Do' })).toBeInTheDocument();
   });
 
   it('hides the List select when the board has no lists yet', async () => {
