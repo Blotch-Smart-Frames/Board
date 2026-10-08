@@ -81,7 +81,7 @@ function urgencyLabel(task: EnrichedTask, now: number): UrgencyLabel {
           </div>
         </div>
       </div>
-      <div hlmCardContent class="max-h-104 overflow-y-auto pt-0">
+      <div hlmCardContent class="scroll-fade max-h-104 overflow-y-auto pt-0">
         @if (tickets().length === 0) {
           <div class="flex flex-col items-center gap-2 py-10 text-center">
             <span
