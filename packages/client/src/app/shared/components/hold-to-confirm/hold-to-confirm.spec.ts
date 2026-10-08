@@ -85,6 +85,20 @@ describe('HoldToConfirm', () => {
     expect(host.confirmedCount).toBe(2);
   });
 
+  it('does not restart the hold when a second input starts mid-hold', async () => {
+    const { button, host } = await setup();
+
+    fireEvent.pointerDown(button, { button: 0 });
+    vi.advanceTimersByTime(500);
+    fireEvent.keyDown(button, { key: 'Enter' });
+    vi.advanceTimersByTime(500);
+
+    expect(host.confirmedCount).toBe(1);
+
+    vi.advanceTimersByTime(1000);
+    expect(host.confirmedCount).toBe(1);
+  });
+
   it('cancels when the key is released early and ignores unrelated keys', async () => {
     const { button, host } = await setup();
 
