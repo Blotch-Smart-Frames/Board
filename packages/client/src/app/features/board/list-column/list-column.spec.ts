@@ -47,6 +47,21 @@ describe('ListColumn', () => {
     expect(screen.getByText('Task two')).toBeInTheDocument();
   });
 
+  it('marks only freshly arrived task cards to animate in', async () => {
+    const list = fakeList([
+      fakeTask({ id: 't1', title: 'Task one' }),
+      fakeTask({ id: 't2', title: 'Task two' }),
+    ]);
+    const { container } = await render(ListColumn, {
+      inputs: { list, freshTaskIds: new Set(['t2']) },
+      providers: [storeProvider],
+    });
+
+    const cards = container.querySelectorAll('app-task-card');
+    expect(cards[0]).not.toHaveClass('arrive');
+    expect(cards[1]).toHaveClass('arrive');
+  });
+
   it('shows an empty state when there are no active tasks', async () => {
     await render(ListColumn, { inputs: { list: fakeList([]) }, providers: [storeProvider] });
 

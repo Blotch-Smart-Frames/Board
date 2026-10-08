@@ -174,11 +174,18 @@ describe('BoardsSidebar', () => {
 
     const host = fixture.debugElement.nativeElement as HTMLElement;
     expect(host.classList.contains('w-70')).toBe(true);
+    // The expand fade-in stays off for the first render.
+    expect(host).not.toHaveAttribute('data-reveal-on-expand');
 
     await user.click(screen.getByRole('button', { name: /menu/i }));
     expect(host.classList.contains('w-14')).toBe(true);
+    expect(host).toHaveAttribute('data-reveal-on-expand');
     // While collapsed the icon-only "Create board" button is used.
     expect(screen.getByRole('button', { name: /create board/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /menu/i }));
+    expect(host.classList.contains('w-70')).toBe(true);
+    expect(screen.getByText('My Board')).toHaveClass('sidebar-reveal');
   });
 
   it('emits settings when the Board settings button is clicked', async () => {

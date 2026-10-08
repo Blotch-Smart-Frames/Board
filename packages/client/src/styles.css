@@ -89,6 +89,12 @@
   --sidebar-ring: oklch(0.552 0.016 285.938);
 }
 
+/* Shared motion curve. Overrides Tailwind's default so `ease-out` / `ease-(--ease-out)`
+ * use a stronger ease-out: fast start, long gentle settle. */
+@theme {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -140,4 +146,82 @@
 /* Smoothly shift siblings out of the way while an item is being dragged over the list. */
 .cdk-drop-list-dragging .cdk-drag:not(.cdk-drag-placeholder) {
   transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Hold-to-confirm fill (see HoldToConfirm). Fills left-to-right at a constant rate so
+ * progress reads as time remaining; snaps back quickly when released early. */
+.hold-to-confirm-fill {
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 200ms var(--ease-out);
+}
+
+[data-holding] > .hold-to-confirm-fill {
+  clip-path: inset(0 0 0 0);
+  transition: clip-path var(--hold-duration, 2s) linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hold-to-confirm-fill,
+  [data-holding] > .hold-to-confirm-fill {
+    clip-path: none;
+    opacity: 0;
+    transition: opacity 200ms var(--ease-out);
+  }
+  [data-holding] > .hold-to-confirm-fill {
+    opacity: 1;
+    transition-duration: var(--hold-duration, 2s);
+    transition-timing-function: linear;
+  }
+}
+
+/* Sidebar content fades in once the width has mostly opened, instead of
+ * popping in fully drawn inside a still-narrow panel. Only active after the
+ * user has toggled the sidebar, so the first page render isn't animated. */
+[data-reveal-on-expand] .sidebar-reveal {
+  transition: opacity 150ms var(--ease-out) 100ms;
+}
+
+@starting-style {
+  [data-reveal-on-expand] .sidebar-reveal {
+    opacity: 0;
+  }
+}
+
+/* Items that genuinely arrived (a collaborator's new card, a just-posted comment)
+ * settle in rather than appearing instantly. Applied only to new ids (see `arrivals`). */
+.arrive {
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
+}
+
+/* Don't replay the entrance on the drag preview clone or its placeholder. */
+.cdk-drag-preview .arrive,
+.cdk-drag-placeholder .arrive {
+  transition: none;
+}
+
+@starting-style {
+  .arrive {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  .arrive.arrive-rise {
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal-on-expand] .sidebar-reveal {
+    transition-delay: 0ms;
+  }
+  .arrive {
+    transition: opacity 200ms var(--ease-out);
+  }
+  @starting-style {
+    .arrive,
+    .arrive.arrive-rise {
+      transform: none;
+    }
+  }
 }

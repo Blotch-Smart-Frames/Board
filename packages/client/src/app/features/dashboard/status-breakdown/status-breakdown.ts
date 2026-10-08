@@ -36,7 +36,7 @@ import { DashboardStore } from '../data/dashboard.store';
           </div>
         </div>
       </div>
-      <div hlmCardContent class="flex flex-col gap-4">
+      <div hlmCardContent class="scroll-fade flex max-h-104 flex-col gap-4 overflow-y-auto">
         @if (rows().length === 0) {
           <p class="text-muted-foreground py-8 text-center text-sm">
             No tickets on any of your boards yet.

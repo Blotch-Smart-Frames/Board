@@ -46,6 +46,7 @@ export type ViewMode = 'kanban' | 'timeline';
       'flex h-full shrink-0 flex-col overflow-hidden border-e transition-[width] duration-300 ease-out',
     '[class.w-70]': '!collapsed()',
     '[class.w-14]': 'collapsed()',
+    '[attr.data-reveal-on-expand]': 'hasToggled() ? "" : null',
   },
   template: `
     <div class="flex items-center gap-1 border-b p-2">
@@ -61,13 +62,16 @@ export type ViewMode = 'kanban' | 'timeline';
       </button>
 
       @if (!collapsed()) {
-        <h1 class="text-primary min-w-0 grow truncate text-sm font-semibold">{{ title() }}</h1>
+        <h1 class="text-primary sidebar-reveal min-w-0 grow truncate text-sm font-semibold">
+          {{ title() }}
+        </h1>
 
         @if (showSettings()) {
           <button
             hlmBtn
             variant="ghost"
             size="icon"
+            class="sidebar-reveal"
             aria-label="Board settings"
             (click)="settings.emit()"
           >
@@ -96,7 +100,7 @@ export type ViewMode = 'kanban' | 'timeline';
           >
             <ng-icon name="lucideColumns3" />
             @if (!collapsed()) {
-              <span>Kanban</span>
+              <span class="sidebar-reveal">Kanban</span>
             }
           </button>
           <button
@@ -108,7 +112,7 @@ export type ViewMode = 'kanban' | 'timeline';
           >
             <ng-icon name="lucideGanttChartSquare" />
             @if (!collapsed()) {
-              <span>Timeline</span>
+              <span class="sidebar-reveal">Timeline</span>
             }
           </button>
         </div>
@@ -117,12 +121,12 @@ export type ViewMode = 'kanban' | 'timeline';
 
     @if (!collapsed()) {
       @if (store.isLoading()) {
-        <div class="flex items-center justify-center p-8">
+        <div class="sidebar-reveal flex items-center justify-center p-8">
           <hlm-spinner />
         </div>
       } @else {
         <nav
-          class="flex-1 space-y-0.5 overflow-y-auto p-2"
+          class="sidebar-reveal flex-1 space-y-0.5 overflow-y-auto p-2"
           aria-label="Boards"
           cdkDropList
           [cdkDropListDisabled]="dragDisabled()"
@@ -167,7 +171,12 @@ export type ViewMode = 'kanban' | 'timeline';
           <ng-icon name="lucidePlus" />
         </button>
       } @else {
-        <button hlmBtn variant="outline" class="w-full" (click)="createDialog.open()">
+        <button
+          hlmBtn
+          variant="outline"
+          class="sidebar-reveal w-full"
+          (click)="createDialog.open()"
+        >
           <ng-icon name="lucidePlus" class="mr-2" />
           Create board
         </button>
@@ -200,6 +209,8 @@ export class BoardsSidebar {
   readonly settings = output<void>();
 
   protected readonly collapsed = signal(false);
+  // Gates the expand fade-in so it doesn't play on the sidebar's first render.
+  protected readonly hasToggled = signal(false);
 
   // Suppress sidebar drag reordering on touch/mobile so vertical scroll works.
   protected readonly dragDisabled = isTouchOrMobileSignal();
@@ -262,6 +273,7 @@ export class BoardsSidebar {
 
   protected toggleCollapsed(): void {
     this.collapsed.update((v) => !v);
+    this.hasToggled.set(true);
   }
 
   protected onViewModeChange(value: unknown): void {
