@@ -11,35 +11,34 @@ import {
 import { FIRESTORE_DB } from '../../../core/firebase/firebase.config';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { BoardService } from '../../../core/services/board.service';
-import { BoardOrderService } from '../../../core/services/board-order.service';
+import {
+  BoardOrderService,
+  type BoardPreferences,
+  type BoardPreferencesPatch,
+} from '../../../core/services/board-order.service';
 import { docSignal, collectionSignal } from '../../../core/interop/signal-interop';
-import { compareOrder, getOrderAtEnd, getOrderAtIndex } from '../../../shared/utils/ordering';
+import { getOrderAtEnd, getOrderAtIndex, getOrdersBetween } from '../../../shared/utils/ordering';
 import type { Board, CreateBoardInput } from '../../../shared/types/board';
+import {
+  applyPreferencesPatch,
+  buildSidebarTree,
+  flattenSidebarTree,
+  orderOf,
+  type BoardFolder,
+  type FolderNode,
+  type SidebarNode,
+} from './board-tree';
 
-export type BoardWithOrder = Board & { order?: string };
+export type { BoardWithOrder, BoardFolder, BoardNode, FolderNode, SidebarNode } from './board-tree';
 
-function mergeBoards(
-  owned: Board[],
-  collaborated: Board[],
-  orderMap: Record<string, string>,
-): BoardWithOrder[] {
+function mergeBoards(owned: Board[], collaborated: Board[]): Board[] {
   const merged = new Map<string, Board>();
   for (const board of collaborated) merged.set(board.id, board);
   for (const board of owned) merged.set(board.id, board); // owned wins if it's somehow in both
-
-  const boards: BoardWithOrder[] = Array.from(merged.values()).map((board) => ({
-    ...board,
-    order: orderMap[board.id],
-  }));
-
-  for (const board of boards) {
-    if (board.order === undefined) {
-      board.order = getOrderAtEnd(boards.filter((b) => b.order !== undefined));
-    }
-  }
-
-  return boards.sort((a, b) => compareOrder(a.order, b.order));
+  return Array.from(merged.values());
 }
+
+const toOrdered = (nodes: SidebarNode[]) => nodes.map((node) => ({ order: orderOf(node) }));
 
 /** The signed-in user's boards: owned + shared-with-them, merged with their saved sidebar order. */
 @Service()
@@ -69,34 +68,43 @@ export class UserBoardsStore {
       : null;
   });
 
-  private readonly orderDocRef = computed<DocumentReference | null>(() => {
+  private readonly preferencesDocRef = computed<DocumentReference | null>(() => {
     const userId = this.currentUserId();
     return userId ? doc(this.db, 'users', userId, 'preferences', 'boardOrder') : null;
   });
 
   private readonly ownedBoards = collectionSignal<Board>(() => this.ownedQuery());
   private readonly collaboratedBoards = collectionSignal<Board>(() => this.collaboratedQuery());
-  private readonly orderDoc = docSignal<{ boards?: Record<string, string> }>(() =>
-    this.orderDocRef(),
-  );
+  private readonly preferencesDoc = docSignal<BoardPreferences>(() => this.preferencesDocRef());
 
-  // Optimistic reorder overlay, reset whenever the server's order doc echoes back.
-  private readonly orderOverrides = linkedSignal<
-    { boards?: Record<string, string> } | null | undefined,
-    Map<string, string>
-  >({ source: this.orderDoc, computation: () => new Map() });
+  // Optimistic layout changes, cleared whenever the server's preferences doc echoes back.
+  private readonly pendingPatches = linkedSignal<
+    BoardPreferences | null | undefined,
+    BoardPreferencesPatch[]
+  >({ source: this.preferencesDoc, computation: () => [] });
+
+  private readonly preferences = computed(() =>
+    this.pendingPatches().reduce(applyPreferencesPatch, this.preferencesDoc() ?? {}),
+  );
 
   readonly isLoading = computed(() => !!this.currentUserId() && this.ownedBoards() === undefined);
 
-  readonly boards = computed<BoardWithOrder[]>(() => {
-    /* v8 ignore start -- defensive: signals are seeded to concrete values before boards() is consumed @preserve */
-    const orderMap = {
-      ...(this.orderDoc()?.boards ?? {}),
-      ...Object.fromEntries(this.orderOverrides()),
-    };
-    return mergeBoards(this.ownedBoards() ?? [], this.collaboratedBoards() ?? [], orderMap);
-    /* v8 ignore stop -- @preserve */
-  });
+  /** The sidebar tree: folders (each with its boards) and loose boards, in display order. */
+  readonly sidebar = computed<SidebarNode[]>(() =>
+    buildSidebarTree(
+      mergeBoards(this.ownedBoards() ?? [], this.collaboratedBoards() ?? []),
+      this.preferences(),
+    ),
+  );
+
+  /** Every board the user can open, flattened in sidebar order. */
+  readonly boards = computed(() => flattenSidebarTree(this.sidebar()));
+
+  readonly folders = computed<BoardFolder[]>(() =>
+    this.sidebar()
+      .filter((node): node is FolderNode => node.kind === 'folder')
+      .map((node) => node.folder),
+  );
 
   async createBoard(input: CreateBoardInput): Promise<Board> {
     const userId = this.currentUserId();
@@ -123,55 +131,123 @@ export class UserBoardsStore {
     await this.boardService.removeCollaborator(boardId, userId);
   }
 
-  reorderBoard(boardId: string, newOrder: string): Promise<void> {
-    return this.reorderBoards(new Map([[boardId, newOrder]]));
+  /** Moves a board to `index` within a folder, or within the root when `folderId` is null. */
+  moveBoard(boardId: string, folderId: string | null, index: number): Promise<void> {
+    const siblings = this.childrenOf(folderId).filter((node) => node.id !== boardId);
+    return this.updatePreferences({
+      boards: {
+        ...this.pinUnstored(siblings),
+        [boardId]: getOrderAtIndex(toOrdered(siblings), index),
+      },
+      boardFolders: { [boardId]: folderId },
+    });
   }
 
   /**
-   * Applies a batch of board order keys optimistically, then persists them,
-   * rolling back the overrides if the write fails.
+   * Files a board at the end of a folder, or — with `folderId` null — takes it
+   * out of its folder and places it just below that folder.
    */
-  async reorderBoards(orders: Map<string, string>): Promise<void> {
-    const userId = this.currentUserId();
-    if (!userId) throw new Error('Not authenticated');
-    if (orders.size === 0) return;
-    this.orderOverrides.update((m) => {
-      const next = new Map(m);
-      for (const [id, order] of orders) next.set(id, order);
-      return next;
-    });
-    try {
-      await this.boardOrderService.setBoardOrders(userId, Object.fromEntries(orders));
-    } catch (error) {
-      this.orderOverrides.update((m) => {
-        const next = new Map(m);
-        for (const id of orders.keys()) next.delete(id);
-        return next;
-      });
-      throw error;
-    }
+  moveBoardToFolder(boardId: string, folderId: string | null): Promise<void> {
+    if (folderId) return this.moveBoard(boardId, folderId, this.childrenOf(folderId).length);
+
+    const currentFolderId = this.boardNode(boardId)?.folderId;
+    if (!currentFolderId) return Promise.resolve();
+    const folderIndex = this.sidebar().findIndex((node) => node.id === currentFolderId);
+    return this.moveBoard(boardId, null, folderIndex + 1);
   }
 
-  /** Computes the fractional order key for dropping a board at `targetIndex`, then reorders it. */
-  reorderBoardToIndex(boardId: string, targetIndex: number): Promise<void> {
-    const current = this.boards();
-    const others = current.filter((b) => b.id !== boardId);
-    const newOrder = getOrderAtIndex(others, targetIndex);
+  /** Moves a folder to `index` among the root-level folders and boards. */
+  moveFolder(folderId: string, index: number): Promise<void> {
+    const siblings = this.sidebar().filter((node) => node.id !== folderId);
+    return this.updatePreferences({
+      boards: this.pinUnstored(siblings),
+      folders: { [folderId]: { order: getOrderAtIndex(toOrdered(siblings), index) } },
+    });
+  }
 
-    // Persist the moved board *and* pin any sibling that has no stored order
-    // yet. Un-stored boards get an "at the end" key synthesized on every render
-    // (see mergeBoards). If we saved only the moved board, those siblings would
-    // be re-synthesized past its new key and leapfrog it — which snaps a
-    // downward drag back toward the top. Saving their current key fixes them in
-    // place so the move sticks; once every board is stored this writes just the
-    // moved one.
-    const stored = this.orderDoc()?.boards ?? {};
-    const orders = new Map<string, string>([[boardId, newOrder]]);
-    for (const board of current) {
-      if (board.id !== boardId && stored[board.id] === undefined && board.order !== undefined) {
-        orders.set(board.id, board.order);
-      }
+  /** Creates an empty folder at the bottom of the sidebar and resolves with its id. */
+  async createFolder(name: string): Promise<string> {
+    const id = crypto.randomUUID();
+    const root = this.sidebar();
+    await this.updatePreferences({
+      boards: this.pinUnstored(root),
+      folders: { [id]: { name, order: getOrderAtEnd(toOrdered(root)), collapsed: false } },
+    });
+    return id;
+  }
+
+  renameFolder(folderId: string, name: string): Promise<void> {
+    return this.updatePreferences({ folders: { [folderId]: { name } } });
+  }
+
+  setFolderCollapsed(folderId: string, collapsed: boolean): Promise<void> {
+    return this.updatePreferences({ folders: { [folderId]: { collapsed } } });
+  }
+
+  /**
+   * Deletes a folder but keeps its boards: they move back to the root, in the
+   * folder's old spot and in the same order they had inside it.
+   */
+  deleteFolder(folderId: string): Promise<void> {
+    const root = this.sidebar();
+    const index = root.findIndex((node) => node.id === folderId);
+    const folder = root[index];
+    if (folder?.kind !== 'folder') return Promise.resolve();
+
+    const next = root[index + 1];
+    const keys = getOrdersBetween(
+      folder.folder.order,
+      next ? orderOf(next) : null,
+      folder.boards.length,
+    );
+    const boards = this.pinUnstored(root);
+    const boardFolders: Record<string, null> = {};
+    folder.boards.forEach((child, i) => {
+      boards[child.id] = keys[i];
+      boardFolders[child.id] = null;
+    });
+    return this.updatePreferences({ boards, boardFolders, folders: { [folderId]: null } });
+  }
+
+  private childrenOf(folderId: string | null): SidebarNode[] {
+    if (folderId === null) return this.sidebar();
+    const folder = this.sidebar().find((node) => node.id === folderId);
+    return folder?.kind === 'folder' ? folder.boards : [];
+  }
+
+  private boardNode(boardId: string) {
+    return this.sidebar()
+      .flatMap((node) => (node.kind === 'folder' ? node.boards : [node]))
+      .find((node) => node.id === boardId);
+  }
+
+  /**
+   * Root boards with no stored key get an "at the end" key synthesized on every
+   * render (see buildSidebarTree). If a write saved only the moved item, those
+   * siblings would be re-synthesized past its new key and leapfrog it — which
+   * snaps a downward drag back toward the top, or buries a new folder above
+   * them. Saving their current key with the write fixes them in place; once
+   * every board is stored this adds nothing.
+   */
+  private pinUnstored(siblings: SidebarNode[]): Record<string, string> {
+    const stored = this.preferences().boards ?? {};
+    const pins: Record<string, string> = {};
+    for (const node of siblings) {
+      if (node.kind === 'board' && stored[node.id] === undefined) pins[node.id] = node.board.order;
     }
-    return this.reorderBoards(orders);
+    return pins;
+  }
+
+  /** Applies a layout change optimistically, then persists it, rolling back if the write fails. */
+  private async updatePreferences(patch: BoardPreferencesPatch): Promise<void> {
+    const userId = this.currentUserId();
+    if (!userId) throw new Error('Not authenticated');
+    this.pendingPatches.update((patches) => [...patches, patch]);
+    try {
+      await this.boardOrderService.updatePreferences(userId, patch);
+    } catch (error) {
+      this.pendingPatches.update((patches) => patches.filter((p) => p !== patch));
+      throw error;
+    }
   }
 }

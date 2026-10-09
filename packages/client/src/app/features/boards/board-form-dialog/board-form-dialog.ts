@@ -6,7 +6,7 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 
 /**
- * Reusable create/rename dialog for a board title. Opened imperatively via
+ * Reusable create/rename dialog for a board title (or, via `fieldLabel`, a folder name). Opened imperatively via
  * `open(initialTitle)`; owns its own submit lifecycle (validate → run the
  * injected saveHandler → close on success, stay open + show an error on
  * failure), matching the source app's TanStack-form create/rename dialogs but
@@ -26,8 +26,8 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner';
           <input
             hlmInput
             class="w-full"
-            placeholder="Enter board title"
-            aria-label="Board title"
+            [attr.placeholder]="'Enter ' + fieldLabel().toLowerCase()"
+            [attr.aria-label]="fieldLabel()"
             [formField]="titleForm.title"
             (keydown.escape)="close()"
           />
@@ -60,13 +60,14 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner';
 export class BoardFormDialog {
   readonly heading = input('Board');
   readonly submitLabel = input('Save');
+  readonly fieldLabel = input('Board title');
   readonly saveHandler = input.required<(title: string) => Promise<void>>();
 
   private readonly dialog = viewChild.required<HlmDialog>('dialog');
 
   protected readonly model = signal({ title: '' });
   protected readonly titleForm = form(this.model, (path) => {
-    required(path.title, { message: 'A board title is required' });
+    required(path.title, { message: 'A name is required' });
   });
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);

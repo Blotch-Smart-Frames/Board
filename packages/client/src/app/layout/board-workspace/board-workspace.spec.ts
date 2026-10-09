@@ -52,6 +52,8 @@ function commonProviders(boardId: string | null) {
       provide: UserBoardsStore,
       useValue: {
         boards: signal([]),
+        sidebar: signal([]),
+        folders: signal([]),
         isLoading: signal(false),
         createBoard: vi.fn(),
         renameBoard: vi.fn(),

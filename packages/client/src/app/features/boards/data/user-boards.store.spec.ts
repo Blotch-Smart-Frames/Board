@@ -33,7 +33,7 @@ function docSnapshot(id: string, data: Record<string, unknown> | undefined) {
 // order doc — in that field-declaration order — so registrations are tracked
 // positionally rather than by path (owned/collaborated both query "boards").
 describe('UserBoardsStore', () => {
-  let boardOrderService: { setBoardOrders: ReturnType<typeof vi.fn> };
+  let boardOrderService: { updatePreferences: ReturnType<typeof vi.fn> };
   let boardService: {
     createBoard: ReturnType<typeof vi.fn>;
     updateBoard: ReturnType<typeof vi.fn>;
@@ -47,7 +47,7 @@ describe('UserBoardsStore', () => {
     vi.clearAllMocks();
     registrations = [];
     userSignal = signal({ uid: 'u1' });
-    boardOrderService = { setBoardOrders: vi.fn().mockResolvedValue(undefined) };
+    boardOrderService = { updatePreferences: vi.fn().mockResolvedValue(undefined) };
     boardService = {
       createBoard: vi.fn(),
       updateBoard: vi.fn().mockResolvedValue(undefined),
@@ -129,75 +129,201 @@ describe('UserBoardsStore', () => {
     expect(boardService.createBoard).toHaveBeenCalledWith({ title: 'New board' }, 'u1');
   });
 
-  it('reorderBoard persists through BoardOrderService', async () => {
-    const store = injectStore();
-
-    await store.reorderBoard('board-1', 'a1');
-
-    expect(boardOrderService.setBoardOrders).toHaveBeenCalledWith('u1', { 'board-1': 'a1' });
-  });
-
-  it('reorderBoards is a no-op when the orders map is empty', async () => {
-    const store = injectStore();
-
-    await store.reorderBoards(new Map());
-
-    expect(boardOrderService.setBoardOrders).not.toHaveBeenCalled();
-  });
-
-  it('reorderBoardToIndex derives an order key for the target slot and reorders optimistically', async () => {
-    const store = injectStore();
-    registrations[0](collectionSnapshot([board('a'), board('b'), board('c')]));
+  /** Seeds owned boards (no collaborations) and the preferences doc. */
+  function seed(
+    store: UserBoardsStore,
+    ids: string[],
+    preferences: Record<string, unknown> | undefined,
+  ) {
+    registrations[0](collectionSnapshot(ids.map((id) => board(id))));
     registrations[1](collectionSnapshot([]));
-    registrations[2](docSnapshot('boardOrder', { boards: { a: 'a0', b: 'a1', c: 'a2' } }));
+    registrations[2](docSnapshot('boardOrder', preferences));
+    return store;
+  }
 
-    await store.reorderBoardToIndex('c', 0);
+  const lastPatch = () => boardOrderService.updatePreferences.mock.calls.at(-1)![1];
+  const rootIds = (store: UserBoardsStore) => store.sidebar().map((node) => node.id);
+  const folderIds = (store: UserBoardsStore, folderId: string) => {
+    const folder = store.sidebar().find((node) => node.id === folderId);
+    return folder?.kind === 'folder' ? folder.boards.map((node) => node.id) : [];
+  };
 
-    const [userId, orders] = boardOrderService.setBoardOrders.mock.calls[0];
-    expect(userId).toBe('u1');
+  it('is empty before the first snapshots arrive', () => {
+    const store = injectStore();
+
+    expect(store.sidebar()).toEqual([]);
+    expect(store.boards()).toEqual([]);
+  });
+
+  it('moveBoard derives an order key for the target slot and reorders optimistically', async () => {
+    const store = seed(injectStore(), ['a', 'b', 'c'], { boards: { a: 'a0', b: 'a1', c: 'a2' } });
+
+    await store.moveBoard('c', null, 0);
+
+    expect(boardOrderService.updatePreferences).toHaveBeenCalledWith('u1', expect.anything());
+    const patch = lastPatch();
     // All boards already have a stored order, so only the moved board is written.
-    expect(Object.keys(orders)).toEqual(['c']);
-    expect(orders['c'] < 'a0').toBe(true); // before board 'a'
+    expect(Object.keys(patch.boards)).toEqual(['c']);
+    expect(patch.boards.c < 'a0').toBe(true); // before board 'a'
+    expect(patch.boardFolders).toEqual({ c: null });
     // Optimistic overlay places 'c' first straight away.
     expect(store.boards().map((b) => b.id)).toEqual(['c', 'a', 'b']);
   });
 
-  it('pins boards with no stored order when reordering so a downward move sticks', async () => {
-    const store = injectStore();
-    // No order doc: every board's order is synthesized "at the end" on render.
-    registrations[0](collectionSnapshot([board('a'), board('b'), board('c'), board('d')]));
-    registrations[1](collectionSnapshot([]));
-    registrations[2](docSnapshot('boardOrder', undefined));
-
-    // Boards render in a stable synthesized order first.
+  it('pins boards with no stored order when moving so a downward move sticks', async () => {
+    // No preferences doc: every board's order is synthesized "at the end" on render.
+    const store = seed(injectStore(), ['a', 'b', 'c', 'd'], undefined);
     expect(store.boards().map((b) => b.id)).toEqual(['a', 'b', 'c', 'd']);
 
-    // Drag 'a' down to index 2 (between 'c' and 'd'). Before the fix, the
-    // un-stored siblings were re-synthesized past 'a' and snapped it back up.
-    await store.reorderBoardToIndex('a', 2);
+    // Drag 'a' down to index 2 (between 'c' and 'd'). Without pinning, the
+    // un-stored siblings would be re-synthesized past 'a' and snap it back up.
+    await store.moveBoard('a', null, 2);
 
     expect(store.boards().map((b) => b.id)).toEqual(['b', 'c', 'a', 'd']);
-
-    // The moved board and every previously-unstored sibling are persisted so the
-    // order is stable on the next render.
-    const [userId, orders] = boardOrderService.setBoardOrders.mock.calls[0];
-    expect(userId).toBe('u1');
-    expect(Object.keys(orders).sort()).toEqual(['a', 'b', 'c', 'd']);
-    expect(orders['b'] < orders['c']).toBe(true);
-    expect(orders['c'] < orders['a']).toBe(true);
-    expect(orders['a'] < orders['d']).toBe(true);
+    const { boards } = lastPatch();
+    expect(Object.keys(boards).sort()).toEqual(['a', 'b', 'c', 'd']);
+    expect(boards.b < boards.c && boards.c < boards.a && boards.a < boards.d).toBe(true);
   });
 
-  it('rolls back the optimistic order when persistence fails', async () => {
-    const store = injectStore();
-    registrations[0](collectionSnapshot([board('a'), board('b')]));
-    registrations[1](collectionSnapshot([]));
-    registrations[2](docSnapshot('boardOrder', { boards: { a: 'a0', b: 'a1' } }));
-    boardOrderService.setBoardOrders.mockRejectedValue(new Error('offline'));
+  it('rolls back the optimistic change when persistence fails', async () => {
+    const store = seed(injectStore(), ['a', 'b'], { boards: { a: 'a0', b: 'a1' } });
+    boardOrderService.updatePreferences.mockRejectedValue(new Error('offline'));
 
-    await expect(store.reorderBoardToIndex('b', 0)).rejects.toThrow('offline');
+    await expect(store.moveBoard('b', null, 0)).rejects.toThrow('offline');
 
     expect(store.boards().map((b) => b.id)).toEqual(['a', 'b']); // reverted
+  });
+
+  it('moveBoard files a board into a folder at the requested slot', async () => {
+    const store = seed(injectStore(), ['a', 'b', 'c'], {
+      boards: { a: 'a0', b: 'a0', c: 'a1' },
+      folders: { f1: { name: 'Work', order: 'a1' } },
+      boardFolders: { b: 'f1', c: 'f1' },
+    });
+
+    await store.moveBoard('a', 'f1', 1);
+
+    expect(lastPatch().boardFolders).toEqual({ a: 'f1' });
+    expect(rootIds(store)).toEqual(['f1']);
+    expect(folderIds(store, 'f1')).toEqual(['b', 'a', 'c']);
+    // Boards inside the folder flatten in place for other consumers.
+    expect(store.boards().map((b) => b.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('moveBoard into an unknown folder places the board first there', async () => {
+    const store = seed(injectStore(), ['a', 'b'], { boards: { a: 'a0', b: 'a1' } });
+
+    await store.moveBoard('b', 'missing', 0);
+
+    // No siblings to slot between, so it gets the base key; the board falls
+    // back to the root because the folder doesn't exist.
+    expect(lastPatch()).toEqual({ boards: { b: 'a0' }, boardFolders: { b: 'missing' } });
+  });
+
+  it('moveBoardToFolder appends the board to the end of the folder', async () => {
+    const store = seed(injectStore(), ['a', 'b'], {
+      boards: { a: 'a0', b: 'a0' },
+      folders: { f1: { name: 'Work', order: 'a1' } },
+      boardFolders: { b: 'f1' },
+    });
+
+    await store.moveBoardToFolder('a', 'f1');
+
+    expect(folderIds(store, 'f1')).toEqual(['b', 'a']);
+  });
+
+  it('moveBoardToFolder(null) takes a board out and places it just below its folder', async () => {
+    const store = seed(injectStore(), ['a', 'b', 'c'], {
+      boards: { a: 'a0', b: 'a0', c: 'a2' },
+      folders: { f1: { name: 'Work', order: 'a1' } },
+      boardFolders: { b: 'f1' },
+    });
+
+    await store.moveBoardToFolder('b', null);
+
+    expect(lastPatch().boardFolders).toEqual({ b: null });
+    expect(rootIds(store)).toEqual(['a', 'f1', 'b', 'c']);
+    expect(folderIds(store, 'f1')).toEqual([]);
+  });
+
+  it('moveBoardToFolder(null) is a no-op for a board already at the root', async () => {
+    const store = seed(injectStore(), ['a'], { boards: { a: 'a0' } });
+
+    await store.moveBoardToFolder('a', null);
+    await store.moveBoardToFolder('unknown', null);
+
+    expect(boardOrderService.updatePreferences).not.toHaveBeenCalled();
+  });
+
+  it('moveFolder reorders a folder among the root boards and folders', async () => {
+    const store = seed(injectStore(), ['a', 'b'], {
+      boards: { a: 'a0', b: 'a1' },
+      folders: { f1: { name: 'Work', order: 'a2' } },
+    });
+
+    await store.moveFolder('f1', 0);
+
+    expect(Object.keys(lastPatch().folders)).toEqual(['f1']);
+    expect(rootIds(store)).toEqual(['f1', 'a', 'b']);
+  });
+
+  it('createFolder adds an expanded folder at the bottom and resolves with its id', async () => {
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('1-2-3-4-5');
+    // 'b' has no stored key, so it's pinned to keep it above the new folder.
+    const store = seed(injectStore(), ['a', 'b'], { boards: { a: 'a0' } });
+
+    const id = await store.createFolder('Work');
+
+    expect(id).toBe('1-2-3-4-5');
+    expect(Object.keys(lastPatch().boards)).toEqual(['b']);
+    expect(lastPatch().folders[id]).toMatchObject({ name: 'Work', collapsed: false });
+    expect(rootIds(store)).toEqual(['a', 'b', id]);
+    expect(store.folders()).toEqual([
+      { id, name: 'Work', order: expect.any(String), collapsed: false },
+    ]);
+  });
+
+  it('renameFolder and setFolderCollapsed write partial folder updates', async () => {
+    const store = seed(injectStore(), [], { folders: { f1: { name: 'Work', order: 'a0' } } });
+
+    await store.renameFolder('f1', 'Personal');
+    expect(lastPatch()).toEqual({ folders: { f1: { name: 'Personal' } } });
+
+    await store.setFolderCollapsed('f1', true);
+    expect(lastPatch()).toEqual({ folders: { f1: { collapsed: true } } });
+
+    expect(store.folders()).toEqual([{ id: 'f1', name: 'Personal', order: 'a0', collapsed: true }]);
+  });
+
+  it("deleteFolder keeps the folder's boards, slotting them into its old spot in order", async () => {
+    const store = seed(injectStore(), ['a', 'b', 'c', 'd'], {
+      boards: { a: 'a0', b: 'a0', c: 'a1', d: 'a2' },
+      folders: { f1: { name: 'Work', order: 'a1' } },
+      boardFolders: { b: 'f1', c: 'f1' },
+    });
+
+    await store.deleteFolder('f1');
+
+    const patch = lastPatch();
+    expect(patch.folders).toEqual({ f1: null });
+    expect(patch.boardFolders).toEqual({ b: null, c: null });
+    expect(rootIds(store)).toEqual(['a', 'b', 'c', 'd']);
+    expect(store.folders()).toEqual([]);
+  });
+
+  it('deleteFolder works for the last root item and ignores unknown ids', async () => {
+    const store = seed(injectStore(), ['a', 'b'], {
+      boards: { a: 'a0', b: 'a0' },
+      folders: { f1: { name: 'Work', order: 'a1' } },
+      boardFolders: { b: 'f1' },
+    });
+
+    await store.deleteFolder('missing');
+    await store.deleteFolder('a'); // a board, not a folder
+    expect(boardOrderService.updatePreferences).not.toHaveBeenCalled();
+
+    await store.deleteFolder('f1');
+    expect(rootIds(store)).toEqual(['a', 'b']);
   });
 
   it('renameBoard delegates to BoardService.updateBoard', async () => {
@@ -229,7 +355,7 @@ describe('UserBoardsStore', () => {
     const store = injectStore();
 
     await expect(store.createBoard({ title: 'x' })).rejects.toThrow('Not authenticated');
-    await expect(store.reorderBoard('b1', 'a0')).rejects.toThrow('Not authenticated');
+    await expect(store.moveBoard('b1', null, 0)).rejects.toThrow('Not authenticated');
     await expect(store.leaveBoard('b1')).rejects.toThrow('Not authenticated');
   });
 
@@ -239,18 +365,5 @@ describe('UserBoardsStore', () => {
 
     // Left side of the AND (`!!userId()`) short-circuits — isLoading stays false.
     expect(store.isLoading()).toBe(false);
-  });
-
-  it('merges an existing orderDoc.boards map with the optimistic overrides', () => {
-    const store = injectStore();
-
-    // Seed both owned/collaborated snapshots and an order doc so the boards
-    // computed sees the truthy branch of `orderDoc()?.boards ?? {}`.
-    registrations[0](collectionSnapshot([{ id: 'b1', data: { title: 'One', ownerId: 'u1' } }]));
-    registrations[1](collectionSnapshot([]));
-    registrations[2](docSnapshot('boardOrder', { boards: { b1: 'a5' } }));
-
-    // Boards computed reads the order map from the doc.
-    expect(store.boards()[0].order).toBe('a5');
   });
 });
