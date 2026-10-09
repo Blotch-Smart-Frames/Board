@@ -1,4 +1,4 @@
-import { generateKeyBetween } from 'fractional-indexing';
+import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
 
 /**
  * Compare two order strings for sorting.
@@ -69,4 +69,16 @@ export const getOrderAtIndex = <T extends { order?: string }>(
   const before = sorted[index - 1].order;
   const after = sorted[index].order;
   return generateKeyBetween(before, after);
+};
+
+/**
+ * Generate `count` ascending order keys between two existing keys, e.g. to
+ * slot several items in after one item while preserving their relative order.
+ */
+export const getOrdersBetween = (
+  before: string | null,
+  after: string | null,
+  count: number,
+): string[] => {
+  return generateNKeysBetween(before, after, count);
 };

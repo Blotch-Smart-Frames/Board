@@ -1,6 +1,40 @@
 import { Service, inject } from '@angular/core';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { deleteField, doc, getDoc, setDoc } from 'firebase/firestore';
 import { FIRESTORE_DB } from '../firebase/firebase.config';
+
+export interface BoardFolderData {
+  name: string;
+  order: string;
+  collapsed?: boolean;
+}
+
+/**
+ * The user's personal sidebar layout, kept in `users/{uid}/preferences/boardOrder`.
+ * Folders are per-user (not on the board) so organizing your sidebar never
+ * reshuffles a collaborator's.
+ */
+export interface BoardPreferences {
+  /** Board id → fractional order key, scoped to the board's folder (or the root). */
+  boards?: Record<string, string>;
+  folders?: Record<string, BoardFolderData>;
+  /** Board id → folder id. Boards absent here sit at the root. */
+  boardFolders?: Record<string, string>;
+}
+
+/** A partial update to {@link BoardPreferences}; `null` removes the entry. */
+export interface BoardPreferencesPatch {
+  boards?: Record<string, string>;
+  folders?: Record<string, Partial<BoardFolderData> | null>;
+  boardFolders?: Record<string, string | null>;
+}
+
+type FirestoreMap = Record<string, unknown>;
+
+function withDeletes(entries: Record<string, unknown>): FirestoreMap {
+  return Object.fromEntries(
+    Object.entries(entries).map(([key, value]) => [key, value === null ? deleteField() : value]),
+  );
+}
 
 @Service()
 export class BoardOrderService {
@@ -17,12 +51,15 @@ export class BoardOrderService {
   }
 
   /**
-   * Persists one or more board order keys in a single merge write. Passing the
-   * full set of boards touched by a reorder (not just the moved one) lets the
-   * store pin boards that had no stored order yet, so they aren't re-synthesized
-   * to the end of the list on the next render. Untouched boards keep their keys.
+   * Persists a sidebar layout change in a single merge write, so moving a board
+   * into a folder updates its folder and order key atomically. Nested maps merge
+   * key-by-key; untouched boards and folders keep their values.
    */
-  async setBoardOrders(userId: string, orders: Record<string, string>): Promise<void> {
-    await setDoc(this.boardOrderRef(userId), { boards: orders }, { merge: true });
+  async updatePreferences(userId: string, patch: BoardPreferencesPatch): Promise<void> {
+    const data: FirestoreMap = {};
+    if (patch.boards) data['boards'] = patch.boards;
+    if (patch.folders) data['folders'] = withDeletes(patch.folders);
+    if (patch.boardFolders) data['boardFolders'] = withDeletes(patch.boardFolders);
+    await setDoc(this.boardOrderRef(userId), data, { merge: true });
   }
 }

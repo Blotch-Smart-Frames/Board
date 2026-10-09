@@ -1,4 +1,10 @@
-import { compareOrder, getOrderAtEnd, getOrderAtIndex, getOrderBetween } from './ordering';
+import {
+  compareOrder,
+  getOrderAtEnd,
+  getOrderAtIndex,
+  getOrderBetween,
+  getOrdersBetween,
+} from './ordering';
 
 describe('compareOrder', () => {
   it('sorts lexicographically for two defined keys', () => {
@@ -91,5 +97,21 @@ describe('getOrderAtIndex', () => {
     const key = getOrderAtIndex(shuffled, 1);
     expect(compareOrder('a0', key)).toBe(-1);
     expect(compareOrder(key, 'a1')).toBe(-1);
+  });
+});
+
+describe('getOrdersBetween', () => {
+  it('returns ascending keys strictly between the bounds', () => {
+    const keys = getOrdersBetween('a0', 'a1', 3);
+
+    expect(keys).toHaveLength(3);
+    expect(compareOrder('a0', keys[0])).toBe(-1);
+    expect(compareOrder(keys[0], keys[1])).toBe(-1);
+    expect(compareOrder(keys[1], keys[2])).toBe(-1);
+    expect(compareOrder(keys[2], 'a1')).toBe(-1);
+  });
+
+  it('returns no keys for a count of zero', () => {
+    expect(getOrdersBetween('a0', null, 0)).toEqual([]);
   });
 });

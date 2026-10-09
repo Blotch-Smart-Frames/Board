@@ -1,6 +1,15 @@
-import { Component, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  DOCUMENT,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { Router } from '@angular/router';
-import { CdkDropList, CdkDrag, type CdkDragDrop } from '@angular/cdk/drag-drop';
+import { CdkDropList, CdkDrag, type CdkDragDrop, type CdkDragMove } from '@angular/cdk/drag-drop';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucidePlus,
@@ -8,17 +17,28 @@ import {
   lucideSettings,
   lucideColumns3,
   lucideGanttChartSquare,
+  lucideFolderPlus,
 } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { HlmToggleGroupImports } from '@spartan-ng/helm/toggle-group';
 import { toast } from '@spartan-ng/brain/sonner';
-import { UserBoardsStore, type BoardWithOrder } from '../data/user-boards.store';
+import {
+  UserBoardsStore,
+  type BoardFolder,
+  type BoardWithOrder,
+  type SidebarNode,
+} from '../data/user-boards.store';
 import { BoardListItem } from '../board-list-item/board-list-item';
+import { BoardFolderHeader } from '../board-folder-header/board-folder-header';
 import { BoardFormDialog } from '../board-form-dialog/board-form-dialog';
 import { isTouchOrMobileSignal } from '../../../core/interop/breakpoint-signal';
 
 export type ViewMode = 'kanban' | 'timeline';
+
+const ROOT_LIST_ID = 'boards-root';
+const FOLDER_LIST_PREFIX = 'board-folder-';
+const folderListId = (folderId: string) => FOLDER_LIST_PREFIX + folderId;
 
 @Component({
   selector: 'app-boards-sidebar',
@@ -30,6 +50,7 @@ export type ViewMode = 'kanban' | 'timeline';
     HlmSpinner,
     HlmToggleGroupImports,
     BoardListItem,
+    BoardFolderHeader,
     BoardFormDialog,
   ],
   providers: [
@@ -39,6 +60,7 @@ export type ViewMode = 'kanban' | 'timeline';
       lucideSettings,
       lucideColumns3,
       lucideGanttChartSquare,
+      lucideFolderPlus,
     }),
   ],
   host: {
@@ -129,23 +151,97 @@ export type ViewMode = 'kanban' | 'timeline';
           class="sidebar-reveal flex-1 space-y-0.5 overflow-y-auto p-2"
           aria-label="Boards"
           cdkDropList
+          [id]="rootListId"
+          [cdkDropListConnectedTo]="folderListIds()"
           [cdkDropListDisabled]="dragDisabled()"
+          [cdkDropListEnterPredicate]="canEnterList"
+          [cdkDropListSortPredicate]="canSortRoot"
           (cdkDropListDropped)="onDrop($event)"
         >
-          @for (board of store.boards(); track board.id; let i = $index, count = $count) {
-            <div cdkDrag [cdkDragData]="board.id" [cdkDragDisabled]="dragDisabled()">
-              <app-board-list-item
-                [board]="board"
-                [canMoveUp]="i > 0"
-                [canMoveDown]="i < count - 1"
-                [isOwner]="board.ownerId === store.currentUserId()"
-                [dragDisabled]="dragDisabled()"
-                (rename)="openRename(board)"
-                (deleted)="deleteBoard(board)"
-                (leave)="leaveBoard(board)"
-                (moveUp)="store.reorderBoardToIndex(board.id, i - 1)"
-                (moveDown)="store.reorderBoardToIndex(board.id, i + 1)"
-              />
+          @for (node of store.sidebar(); track node.id; let i = $index, count = $count) {
+            <div
+              cdkDrag
+              [cdkDragData]="node"
+              [cdkDragDisabled]="dragDisabled()"
+              (cdkDragMoved)="onDragMoved($event)"
+            >
+              @if (node.kind === 'folder') {
+                <app-board-folder-header
+                  [folder]="node.folder"
+                  [boardCount]="node.boards.length"
+                  [contentId]="folderListId(node.id)"
+                  [canMoveUp]="i > 0"
+                  [canMoveDown]="i < count - 1"
+                  [dragDisabled]="dragDisabled()"
+                  [dropTarget]="dropIntoFolderId() === node.id"
+                  (toggle)="arrange(store.setFolderCollapsed(node.id, !node.folder.collapsed))"
+                  (rename)="openRenameFolder(node.folder)"
+                  (deleted)="deleteFolder(node.folder)"
+                  (moveUp)="arrange(store.moveFolder(node.id, i - 1))"
+                  (moveDown)="arrange(store.moveFolder(node.id, i + 1))"
+                />
+                @if (!node.folder.collapsed) {
+                  <div
+                    role="group"
+                    class="ms-4 space-y-0.5 border-s ps-1"
+                    [attr.aria-label]="node.folder.name"
+                    cdkDropList
+                    [id]="folderListId(node.id)"
+                    [cdkDropListConnectedTo]="allListIds()"
+                    [cdkDropListDisabled]="dragDisabled()"
+                    [cdkDropListEnterPredicate]="canEnterList"
+                    (cdkDropListDropped)="onDrop($event)"
+                  >
+                    @for (child of node.boards; track child.id; let j = $index, size = $count) {
+                      <div
+                        cdkDrag
+                        [cdkDragData]="child"
+                        [cdkDragDisabled]="dragDisabled()"
+                        (cdkDragMoved)="onDragMoved($event)"
+                      >
+                        <app-board-list-item
+                          [board]="child.board"
+                          [canMoveUp]="j > 0"
+                          [canMoveDown]="j < size - 1"
+                          [isOwner]="child.board.ownerId === store.currentUserId()"
+                          [dragDisabled]="dragDisabled()"
+                          [folders]="store.folders()"
+                          [folderId]="node.id"
+                          (rename)="openRename(child.board)"
+                          (deleted)="deleteBoard(child.board)"
+                          (leave)="leaveBoard(child.board)"
+                          (moveUp)="arrange(store.moveBoard(child.id, node.id, j - 1))"
+                          (moveDown)="arrange(store.moveBoard(child.id, node.id, j + 1))"
+                          (moveToFolder)="arrange(store.moveBoardToFolder(child.id, $event))"
+                          (newFolder)="openCreateFolder(child.id)"
+                        />
+                      </div>
+                    } @empty {
+                      <p
+                        class="text-muted-foreground px-2 py-1.5 text-xs in-[.cdk-drop-list-dragging]:hidden"
+                      >
+                        No boards in this folder
+                      </p>
+                    }
+                  </div>
+                }
+              } @else {
+                <app-board-list-item
+                  [board]="node.board"
+                  [canMoveUp]="i > 0"
+                  [canMoveDown]="i < count - 1"
+                  [isOwner]="node.board.ownerId === store.currentUserId()"
+                  [dragDisabled]="dragDisabled()"
+                  [folders]="store.folders()"
+                  (rename)="openRename(node.board)"
+                  (deleted)="deleteBoard(node.board)"
+                  (leave)="leaveBoard(node.board)"
+                  (moveUp)="arrange(store.moveBoard(node.id, null, i - 1))"
+                  (moveDown)="arrange(store.moveBoard(node.id, null, i + 1))"
+                  (moveToFolder)="arrange(store.moveBoardToFolder(node.id, $event))"
+                  (newFolder)="openCreateFolder(node.id)"
+                />
+              }
             </div>
           } @empty {
             <p class="text-muted-foreground p-4 text-center text-sm">
@@ -171,15 +267,21 @@ export type ViewMode = 'kanban' | 'timeline';
           <ng-icon name="lucidePlus" />
         </button>
       } @else {
-        <button
-          hlmBtn
-          variant="outline"
-          class="sidebar-reveal w-full"
-          (click)="createDialog.open()"
-        >
-          <ng-icon name="lucidePlus" class="mr-2" />
-          Create board
-        </button>
+        <div class="sidebar-reveal flex gap-2">
+          <button hlmBtn variant="outline" class="flex-1" (click)="createDialog.open()">
+            <ng-icon name="lucidePlus" class="mr-2" />
+            Create board
+          </button>
+          <button
+            hlmBtn
+            variant="outline"
+            size="icon"
+            aria-label="New folder"
+            (click)="openCreateFolder()"
+          >
+            <ng-icon name="lucideFolderPlus" />
+          </button>
+        </div>
       }
     </div>
 
@@ -195,11 +297,26 @@ export type ViewMode = 'kanban' | 'timeline';
       submitLabel="Rename"
       [saveHandler]="renameHandler"
     />
+    <app-board-form-dialog
+      #createFolderDialog
+      heading="New folder"
+      submitLabel="Create"
+      fieldLabel="Folder name"
+      [saveHandler]="createFolderHandler"
+    />
+    <app-board-form-dialog
+      #renameFolderDialog
+      heading="Rename folder"
+      submitLabel="Rename"
+      fieldLabel="Folder name"
+      [saveHandler]="renameFolderHandler"
+    />
   `,
 })
 export class BoardsSidebar {
   protected readonly store = inject(UserBoardsStore);
   private readonly router = inject(Router);
+  private readonly document = inject(DOCUMENT);
 
   readonly boardTitle = input<string | undefined>(undefined);
   readonly viewMode = input<ViewMode | undefined>(undefined);
@@ -217,8 +334,32 @@ export class BoardsSidebar {
 
   protected readonly title = computed(() => this.boardTitle() ?? 'Board by Blotch');
 
+  protected readonly rootListId = ROOT_LIST_ID;
+  protected readonly folderListId = folderListId;
+  // Only expanded folders render a drop list to connect to.
+  protected readonly folderListIds = computed(() =>
+    this.store
+      .folders()
+      .filter((folder) => !folder.collapsed)
+      .map((folder) => folderListId(folder.id)),
+  );
+  protected readonly allListIds = computed(() => [...this.folderListIds(), ROOT_LIST_ID]);
+
+  // CDK hands a drag to the first connected list whose box contains the pointer,
+  // and the root list's box contains every folder — so it would swallow drops
+  // meant for a folder. We track the innermost list under the pointer instead
+  // and only let that one accept the item.
+  private hoveredListId: string | null = null;
+  /** The folder whose row a dragged board is hovering; dropping files the board into it. */
+  protected readonly dropIntoFolderId = signal<string | null>(null);
+
   private readonly renameDialog = viewChild.required<BoardFormDialog>('renameDialog');
+  private readonly createFolderDialog = viewChild.required<BoardFormDialog>('createFolderDialog');
+  private readonly renameFolderDialog = viewChild.required<BoardFormDialog>('renameFolderDialog');
   private renameTargetId: string | null = null;
+  private renameFolderTargetId: string | null = null;
+  // Set when "New folder…" is picked from a board's menu, so the board goes straight in.
+  private newFolderBoardId: string | null = null;
 
   // Stable references so the [saveHandler] input identity doesn't churn.
   protected readonly createHandler = async (title: string): Promise<void> => {
@@ -229,6 +370,19 @@ export class BoardsSidebar {
   protected readonly renameHandler = async (title: string): Promise<void> => {
     if (this.renameTargetId) {
       await this.store.renameBoard(this.renameTargetId, title);
+    }
+  };
+
+  protected readonly createFolderHandler = async (name: string): Promise<void> => {
+    const folderId = await this.store.createFolder(name);
+    if (this.newFolderBoardId) {
+      await this.store.moveBoardToFolder(this.newFolderBoardId, folderId);
+    }
+  };
+
+  protected readonly renameFolderHandler = async (name: string): Promise<void> => {
+    if (this.renameFolderTargetId) {
+      await this.store.renameFolder(this.renameFolderTargetId, name);
     }
   };
 
@@ -265,10 +419,68 @@ export class BoardsSidebar {
     }
   }
 
-  protected onDrop(event: CdkDragDrop<unknown>): void {
-    if (event.previousIndex === event.currentIndex) return;
-    const boardId = event.item.data as string;
-    this.store.reorderBoardToIndex(boardId, event.currentIndex);
+  protected openCreateFolder(boardId: string | null = null): void {
+    this.newFolderBoardId = boardId;
+    this.createFolderDialog().open();
+  }
+
+  protected openRenameFolder(folder: BoardFolder): void {
+    this.renameFolderTargetId = folder.id;
+    this.renameFolderDialog().open(folder.name);
+  }
+
+  protected async deleteFolder(folder: BoardFolder): Promise<void> {
+    try {
+      await this.store.deleteFolder(folder.id);
+    } catch {
+      toast.error(`Couldn't delete "${folder.name}". Please try again.`);
+    }
+  }
+
+  /** Runs a sidebar layout change; the store rolls back its optimistic update on failure. */
+  protected arrange(change: Promise<void>): void {
+    change.catch(() => toast.error("Couldn't save your sidebar layout. Please try again."));
+  }
+
+  protected onDragMoved(event: CdkDragMove<SidebarNode>): void {
+    const { x, y } = event.pointerPosition;
+    const target = this.document.elementFromPoint(x, y);
+    this.hoveredListId = target?.closest('.cdk-drop-list')?.id ?? null;
+    const folderRow =
+      event.source.data.kind === 'board'
+        ? target?.closest<HTMLElement>('app-board-folder-header')
+        : null;
+    this.dropIntoFolderId.set(folderRow?.dataset['folderId'] ?? null);
+  }
+
+  protected readonly canEnterList = (drag: CdkDrag<SidebarNode>, drop: CdkDropList): boolean =>
+    drop.id === this.hoveredListId && (drop.id === ROOT_LIST_ID || drag.data.kind === 'board');
+
+  // While a board hovers a folder row it's headed into that folder, so hold the root order still.
+  protected readonly canSortRoot = (): boolean => this.dropIntoFolderId() === null;
+
+  protected onDrop(event: CdkDragDrop<unknown, unknown, SidebarNode>): void {
+    const node = event.item.data;
+    const intoFolderId = this.dropIntoFolderId();
+    this.dropIntoFolderId.set(null);
+    this.hoveredListId = null;
+
+    if (node.kind === 'board' && intoFolderId) {
+      if (intoFolderId !== node.folderId) {
+        this.arrange(this.store.moveBoardToFolder(node.id, intoFolderId));
+      }
+      return;
+    }
+    if (event.container === event.previousContainer && event.currentIndex === event.previousIndex) {
+      return;
+    }
+    if (node.kind === 'folder') {
+      this.arrange(this.store.moveFolder(node.id, event.currentIndex));
+    } else {
+      const listId = event.container.id;
+      const folderId = listId === ROOT_LIST_ID ? null : listId.slice(FOLDER_LIST_PREFIX.length);
+      this.arrange(this.store.moveBoard(node.id, folderId, event.currentIndex));
+    }
   }
 
   protected toggleCollapsed(): void {

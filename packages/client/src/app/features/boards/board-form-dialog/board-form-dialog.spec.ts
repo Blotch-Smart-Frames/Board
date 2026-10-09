@@ -21,6 +21,17 @@ describe('BoardFormDialog', () => {
     expect(screen.getByLabelText(/board title/i)).toHaveValue('Existing name');
   });
 
+  it('labels the field with fieldLabel, e.g. for naming a folder', async () => {
+    const view = await render(BoardFormDialog, {
+      inputs: { fieldLabel: 'Folder name', saveHandler: vi.fn().mockResolvedValue(undefined) },
+    });
+    view.fixture.componentInstance.open();
+    view.fixture.detectChanges();
+
+    const input = await screen.findByLabelText('Folder name');
+    expect(input).toHaveAttribute('placeholder', 'Enter folder name');
+  });
+
   it('saves the trimmed title and closes on success', async () => {
     const user = userEvent.setup();
     const { saveHandler } = await open();

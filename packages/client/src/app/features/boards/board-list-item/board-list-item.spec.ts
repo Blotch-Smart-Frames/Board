@@ -1,9 +1,9 @@
 import type { Timestamp } from 'firebase/firestore';
 import { provideRouter } from '@angular/router';
-import { render, screen } from '@testing-library/angular';
+import { fireEvent, render, screen } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { BoardListItem } from './board-list-item';
-import type { BoardWithOrder } from '../data/user-boards.store';
+import type { BoardFolder, BoardWithOrder } from '../data/user-boards.store';
 
 function fakeBoard(): BoardWithOrder {
   return {
@@ -14,6 +14,18 @@ function fakeBoard(): BoardWithOrder {
     createdAt: {} as Timestamp,
     updatedAt: {} as Timestamp,
   };
+}
+
+const folders: BoardFolder[] = [
+  { id: 'f1', name: 'Work', order: 'a0', collapsed: false },
+  { id: 'f2', name: 'Personal', order: 'a1', collapsed: true },
+];
+
+// CDK opens submenus on hover, so user-event's hover-then-click would toggle it
+// straight back shut; a bare click opens it, as a tap does.
+async function openFolderSubmenu(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /options for project alpha/i }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: /move to folder/i }));
 }
 
 describe('BoardListItem', () => {
@@ -122,5 +134,58 @@ describe('BoardListItem', () => {
     await user.click(await screen.findByRole('menuitem', { name: /move up/i }));
 
     expect(onMoveUp).toHaveBeenCalled();
+  });
+
+  it('moves a root board into another folder from the "Move to folder" submenu', async () => {
+    const user = userEvent.setup();
+    const onMoveToFolder = vi.fn();
+    await render(BoardListItem, {
+      inputs: { board: fakeBoard(), folders },
+      providers: [provideRouter([])],
+      on: { moveToFolder: onMoveToFolder },
+    });
+
+    await openFolderSubmenu(user);
+
+    // A root board can't be taken out of a folder, so there's no remove option.
+    expect(screen.queryByRole('menuitem', { name: /remove from folder/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole('menuitem', { name: 'Work' })).toBeInTheDocument();
+    await user.click(screen.getByRole('menuitem', { name: 'Personal' }));
+
+    expect(onMoveToFolder).toHaveBeenCalledWith('f2');
+  });
+
+  it('offers the other folders and "Remove from folder" for a board inside a folder', async () => {
+    const user = userEvent.setup();
+    const onMoveToFolder = vi.fn();
+    await render(BoardListItem, {
+      inputs: { board: fakeBoard(), folders, folderId: 'f1' },
+      providers: [provideRouter([])],
+      on: { moveToFolder: onMoveToFolder },
+    });
+
+    await openFolderSubmenu(user);
+
+    expect(screen.queryByRole('menuitem', { name: 'Work' })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('menuitem', { name: /remove from folder/i }));
+
+    expect(onMoveToFolder).toHaveBeenCalledWith(null);
+  });
+
+  it('emits newFolder from the submenu, which is the only option with no folders yet', async () => {
+    const user = userEvent.setup();
+    const onNewFolder = vi.fn();
+    await render(BoardListItem, {
+      inputs: { board: fakeBoard() },
+      providers: [provideRouter([])],
+      on: { newFolder: onNewFolder },
+    });
+
+    await openFolderSubmenu(user);
+
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('menuitem', { name: /new folder/i }));
+
+    expect(onNewFolder).toHaveBeenCalled();
   });
 });
