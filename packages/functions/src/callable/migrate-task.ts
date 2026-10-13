@@ -79,19 +79,31 @@ export async function runMigrateTask(
   }
 
   const data = (request.data ?? {}) as Record<string, unknown>;
-  const sourceBoardId = requireString(data.sourceBoardId, "sourceBoardId");
-  const taskId = requireString(data.taskId, "taskId");
-  const targetBoardId = requireString(data.targetBoardId, "targetBoardId");
-  const targetListId = requireString(data.targetListId, "targetListId");
+  return migrateTaskAsUser(deps?.db ?? getDb(), uid, {
+    sourceBoardId: requireString(data.sourceBoardId, "sourceBoardId"),
+    taskId: requireString(data.taskId, "taskId"),
+    targetBoardId: requireString(data.targetBoardId, "targetBoardId"),
+    targetListId: requireString(data.targetListId, "targetListId"),
+  });
+}
 
+/**
+ * The migration itself, for an already-authenticated `uid`. Shared by the
+ * `migrateTask` callable and the MCP `move_task_to_board` tool; see
+ * {@link runMigrateTask} for what it does. Throws `HttpsError`s whose messages
+ * are safe to show the user.
+ */
+export async function migrateTaskAsUser(
+  db: Firestore,
+  uid: string,
+  { sourceBoardId, taskId, targetBoardId, targetListId }: MigrateTaskRequest,
+): Promise<MigrateTaskResponse> {
   if (sourceBoardId === targetBoardId) {
     throw new HttpsError(
       "failed-precondition",
       "Cannot migrate task to the same board.",
     );
   }
-
-  const db = deps?.db ?? getDb();
 
   const sourceBoardRef = db.collection("boards").doc(sourceBoardId);
   const targetBoardRef = db.collection("boards").doc(targetBoardId);
