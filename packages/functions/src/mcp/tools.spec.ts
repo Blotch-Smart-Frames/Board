@@ -110,6 +110,26 @@ describe("read tools", () => {
     });
   });
 
+  it("get_current_user falls back to the email, then a placeholder", async () => {
+    db.seed(`users/${CAROL}`, { email: "carol@example.com" });
+    const carol = await callTool(app, seedAccessToken(db, CAROL), "get_current_user");
+    expect(carol.structuredContent).toEqual({
+      id: CAROL,
+      name: "carol@example.com",
+      email: "carol@example.com",
+    });
+    const ghost = await callTool(app, seedAccessToken(db, "u-ghost"), "get_current_user");
+    expect(ghost.structuredContent).toEqual({ id: "u-ghost", name: "Unknown user", email: "" });
+  });
+
+  it("list_boards counts just the owner when a board has no collaborators field", async () => {
+    db.seed("boards/b4", { title: "Solo", ownerId: ALICE });
+    const result = await call("list_boards");
+    expect(result.structuredContent?.boards).toContainEqual(
+      expect.objectContaining({ id: "b4", role: "owner", members: 1 }),
+    );
+  });
+
   it("list_boards returns only boards the user belongs to, with folders", async () => {
     const result = await call("list_boards");
     expect(result.structuredContent?.boards).toEqual([
@@ -161,6 +181,26 @@ describe("read tools", () => {
       { id: "lb-hot", name: "Hot", color: "#F97316" },
     ]);
     expect(board.sprints).toEqual([
+      expect.objectContaining({ name: "Sprint 7", current: true }),
+    ]);
+  });
+
+  it("get_board only flags the sprint that is running now", async () => {
+    db.seed("boards/b1/sprints/s0", {
+      name: "Sprint 6",
+      startDate: Timestamp.fromMillis(NOW - 17 * DAY),
+      endDate: Timestamp.fromMillis(NOW - 4 * DAY),
+      order: "Zz",
+    });
+    const board = (await call("get_board", { boardId: "b1", includeTasks: false }))
+      .structuredContent!;
+    expect(board.sprints).toEqual([
+      {
+        id: "s0",
+        name: "Sprint 6",
+        startDate: new Date(NOW - 17 * DAY).toISOString(),
+        endDate: new Date(NOW - 4 * DAY).toISOString(),
+      },
       expect.objectContaining({ name: "Sprint 7", current: true }),
     ]);
   });
@@ -604,6 +644,18 @@ describe("move_task", () => {
       expect.objectContaining({
         action: "moved",
         metadata: { fromListName: "To Do", toListName: "Done" },
+      }),
+    );
+  });
+
+  it("logs a blank source list when the task's list was deleted", async () => {
+    db.seed("boards/b1/tasks/t-lost", taskData({ title: "Lost", listId: "l-gone" }));
+    await call("move_task", { boardId: "b1", taskId: "t-lost", list: "Done" });
+    expect(db.read("boards/b1/tasks/t-lost")?.listId).toBe("l-done");
+    expect(history("boards/b1/tasks/t-lost")).toContainEqual(
+      expect.objectContaining({
+        action: "moved",
+        metadata: { fromListName: "", toListName: "Done" },
       }),
     );
   });

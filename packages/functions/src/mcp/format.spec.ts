@@ -3,9 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("firebase-admin/firestore", () => import("../testing/fake-firestore"));
 
 import { Timestamp } from "../testing/fake-firestore";
-import type { HistoryEntry, Label, List, Task } from "@blotch/model";
+import type { Comment, HistoryEntry, Label, List, Task } from "@blotch/model";
 import {
   describeHistory,
+  formatComment,
   formatContext,
   htmlToText,
   parseDateArg,
@@ -155,5 +156,39 @@ describe("describeHistory", () => {
     [{ action: "renamed" as HistoryEntry["action"] }, "Ana renamed"],
   ] as [Partial<HistoryEntry>, string][])("%j", (overrides, summary) => {
     expect(describeHistory(entry(overrides), ctx)).toEqual({ at: "1970-01-01T00:00:00.000Z", summary });
+  });
+});
+
+describe("formatComment", () => {
+  const ctx = formatContext(
+    [],
+    [],
+    [{ id: "u1", name: "Ana", email: "ana@example.com", role: "owner" }],
+    Date.UTC(2026, 0, 10),
+  );
+  const comment = (updatedAt: number) =>
+    ({
+      id: "c1",
+      text: "Looks good",
+      authorId: "u1",
+      createdAt: Timestamp.fromMillis(Date.UTC(2026, 0, 5)),
+      updatedAt: Timestamp.fromMillis(updatedAt),
+    }) as unknown as Comment;
+
+  it("leaves out editedAt for an untouched comment", () => {
+    expect(formatComment(comment(Date.UTC(2026, 0, 5)), ctx)).toEqual({
+      id: "c1",
+      author: "Ana",
+      authorId: "u1",
+      text: "Looks good",
+      createdAt: "2026-01-05T00:00:00.000Z",
+    });
+  });
+
+  it("adds editedAt once the comment changes", () => {
+    expect(formatComment(comment(Date.UTC(2026, 0, 6)), ctx)).toMatchObject({
+      createdAt: "2026-01-05T00:00:00.000Z",
+      editedAt: "2026-01-06T00:00:00.000Z",
+    });
   });
 });
