@@ -69,6 +69,7 @@ function urgencyLabel(task: EnrichedTask, now: number): UrgencyLabel {
           <div
             hlmToggleGroup
             type="single"
+            [nullable]="false"
             size="sm"
             [value]="scope()"
             (valueChange)="onScopeChange($event)"

@@ -109,6 +109,7 @@ const folderListId = (folderId: string) => FOLDER_LIST_PREFIX + folderId;
           hlmToggleGroup
           [orientation]="collapsed() ? 'vertical' : 'horizontal'"
           type="single"
+          [nullable]="false"
           [value]="mode"
           class="w-full"
           (valueChange)="onViewModeChange($event)"

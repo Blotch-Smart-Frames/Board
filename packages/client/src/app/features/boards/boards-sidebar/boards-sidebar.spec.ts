@@ -256,6 +256,23 @@ describe('BoardsSidebar', () => {
     expect(onViewModeChange).toHaveBeenCalledWith('timeline');
   });
 
+  it('keeps the active view selected when its toggle is clicked again', async () => {
+    const user = userEvent.setup();
+    const onViewModeChange = vi.fn();
+    const { providers } = setup([]);
+    await render(BoardsSidebar, {
+      providers,
+      inputs: { viewMode: 'kanban' },
+      on: { viewModeChange: onViewModeChange },
+    });
+
+    const kanban = screen.getByRole('button', { name: /kanban view/i });
+    await user.click(kanban);
+
+    expect(kanban).toHaveAttribute('aria-pressed', 'true');
+    expect(onViewModeChange).not.toHaveBeenCalled();
+  });
+
   it('does nothing when a foreign value is dispatched to the toggle group', async () => {
     const onViewModeChange = vi.fn();
     const { providers } = setup([]);

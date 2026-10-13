@@ -126,6 +126,18 @@ describe('UrgentTickets', () => {
     expect(screen.getByText('My task')).toBeInTheDocument();
   });
 
+  it('keeps the active scope selected when its toggle is clicked again', async () => {
+    const user = userEvent.setup();
+    const { providers } = setup({ all: [fakeTask({ dueDate: ts(new Date()) })], mine: [] });
+    await render(UrgentTickets, { providers });
+
+    const team = screen.getByRole('button', { name: /all urgent tickets/i });
+    await user.click(team);
+
+    expect(team).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Fix login bug')).toBeInTheDocument();
+  });
+
   it('shows the personal empty-state copy when Mine is selected and the user has none', async () => {
     const user = userEvent.setup();
     const { providers } = setup({
