@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 vi.mock("firebase-admin/firestore", () => import("../testing/fake-firestore"));
 vi.mock("firebase-functions/v2", () => ({
@@ -6,8 +6,8 @@ vi.mock("firebase-functions/v2", () => ({
 }));
 vi.mock("../firebase", () => ({ getDb: vi.fn(), getBucket: vi.fn() }));
 
+import { logger } from "firebase-functions/v2";
 import type { CallableRequest } from "firebase-functions/v2/https";
-import type { FakeFirestore } from "../testing/fake-firestore";
 import {
   ALICE,
   NOW,
@@ -15,6 +15,7 @@ import {
   config,
   errorText,
   rpc,
+  seedAccessToken,
   seedWorkspace,
 } from "../testing/mcp-fixtures";
 import {
@@ -31,14 +32,18 @@ const REDIRECT = "https://claude.ai/api/mcp/auth_callback";
 const VERIFIER = "verifier-".padEnd(64, "x");
 const CHALLENGE = pkceS256(VERIFIER);
 
-let db: FakeFirestore & { asFirestore(): any };
+let db: ReturnType<typeof seedWorkspace>;
 let app: McpApp;
-let fetchMetadata: ReturnType<typeof vi.fn>;
+let fetchMetadata: Mock<typeof fetch>;
 let clock: number;
 
 const connectDeps = () => ({ db: db.asFirestore(), issuer: config.issuer, now: () => clock });
 const asUser = (data: unknown, uid = ALICE) =>
   ({ auth: { uid }, data }) as unknown as CallableRequest<unknown>;
+
+async function json(response: Response) {
+  return (await response.json()) as Record<string, any>;
+}
 
 function get(path: string, headers: Record<string, string> = {}) {
   return app(new Request(`${ORIGIN}${path}`, { headers }));
@@ -71,7 +76,7 @@ async function register(metadata: Record<string, unknown> = {}) {
     token_endpoint_auth_method: "none",
     ...metadata,
   });
-  return { status: response.status, body: (await response.json()) as Record<string, any> };
+  return { status: response.status, body: await json(response) };
 }
 
 function authorizeUrl(params: Record<string, string>) {
@@ -111,15 +116,15 @@ async function exchange(clientId: string, code: string, extra: Record<string, st
     resource: config.resourceUrl,
     ...extra,
   });
-  return { status: response.status, body: (await response.json()) as Record<string, any> };
+  return { status: response.status, body: await json(response) };
 }
 
 beforeEach(() => {
   clock = NOW;
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
-  db = seedWorkspace() as FakeFirestore & { asFirestore(): any };
-  fetchMetadata = vi.fn();
+  db = seedWorkspace();
+  fetchMetadata = vi.fn<typeof fetch>();
   app = createMcpApp({
     db: db.asFirestore(),
     config,
@@ -137,7 +142,7 @@ afterEach(() => {
 describe("discovery", () => {
   it("serves authorization server metadata", async () => {
     const response = await get("/.well-known/oauth-authorization-server");
-    const metadata = await response.json();
+    const metadata = await json(response);
     expect(metadata).toMatchObject({
       issuer: ORIGIN,
       authorization_endpoint: `${ORIGIN}/oauth/authorize`,
@@ -218,7 +223,7 @@ describe("full connection flow (DCR public client)", () => {
       client_id: client.client_id,
       refresh_token: tokens.body.refresh_token,
     });
-    const rotated = await refreshed.json();
+    const rotated = await json(refreshed);
     expect(refreshed.status).toBe(200);
     expect(rotated.refresh_token).not.toBe(tokens.body.refresh_token);
     const reused = await postForm("/oauth/token", {
@@ -227,7 +232,7 @@ describe("full connection flow (DCR public client)", () => {
       refresh_token: tokens.body.refresh_token,
     });
     expect(reused.status).toBe(400);
-    expect((await reused.json()).error).toBe("invalid_grant");
+    expect((await json(reused)).error).toBe("invalid_grant");
 
     expect((await rpc(app, rotated.access_token, "tools/list")).error).toBeUndefined();
 
@@ -263,7 +268,7 @@ describe("full connection flow (DCR public client)", () => {
       refresh_token: tokens.refresh_token,
       scope: "boards admin",
     });
-    expect((await widened.json()).error).toBe("invalid_scope");
+    expect((await json(widened)).error).toBe("invalid_scope");
   });
 
   it("rejects expired access tokens", async () => {
@@ -325,12 +330,12 @@ describe("authorization code protections", () => {
       grant_type: "authorization_code",
       client_id: client.client_id,
     });
-    expect(await response.json()).toMatchObject({ error: "invalid_request" });
+    expect(await json(response)).toMatchObject({ error: "invalid_request" });
     const unsupported = await postForm("/oauth/token", {
       grant_type: "client_credentials",
       client_id: client.client_id,
     });
-    expect((await unsupported.json()).error).toBe("unsupported_grant_type");
+    expect((await json(unsupported)).error).toBe("unsupported_grant_type");
   });
 });
 
@@ -611,7 +616,7 @@ describe("token endpoint inputs", () => {
         body: "{",
       }),
     );
-    expect((await malformed.json()).error).toBe("invalid_request");
+    expect((await json(malformed)).error).toBe("invalid_request");
   });
 
   it("rejects unknown clients and malformed Basic credentials", async () => {
@@ -649,5 +654,52 @@ describe("token endpoint inputs", () => {
       }),
     );
     expect(after.status).toBe(401);
+  });
+});
+
+describe("error handling", () => {
+  it("logs MCP requests the transport rejects", async () => {
+    const token = seedAccessToken(db, ALICE);
+    const response = await app(
+      new Request(`${ORIGIN}/mcp`, {
+        method: "POST",
+        headers: {
+          "content-type": "text/plain",
+          accept: "application/json, text/event-stream",
+          authorization: `Bearer ${token}`,
+        },
+        body: "hello",
+      }),
+    );
+    expect(response.status).toBe(415);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(logger.warn).toHaveBeenCalledWith(
+      "MCP request rejected",
+      expect.objectContaining({ error: expect.any(String) }),
+    );
+  });
+
+  it("answers unexpected failures with a generic 500 and logs the cause", async () => {
+    app = createMcpApp({
+      db: db.asFirestore(),
+      config,
+      resolveClient: vi.fn().mockRejectedValue(new Error("Firestore unavailable")),
+      verifier: createTokenVerifier(db.asFirestore(), () => clock),
+      deleteStoragePaths: vi.fn(),
+    });
+    const response = await postForm("/oauth/token", {
+      grant_type: "refresh_token",
+      client_id: "client_test",
+      refresh_token: "rt",
+    });
+    expect(response.status).toBe(500);
+    expect(await json(response)).toEqual({
+      error: "server_error",
+      error_description: "Unexpected error.",
+    });
+    expect(logger.error).toHaveBeenCalledWith("MCP app request failed", {
+      path: "/oauth/token",
+      error: "Error: Firestore unavailable",
+    });
   });
 });

@@ -48,11 +48,6 @@ export function getOrderAtIndex<T extends { order?: string }>(
   index: number,
 ): string {
   const valid = sortedOrders(items);
-  if (valid.length === 0 || index <= 0) {
-    return generateKeyBetween(null, valid[0] ?? null);
-  }
-  if (index >= valid.length) {
-    return generateKeyBetween(valid[valid.length - 1] ?? null, null);
-  }
-  return generateKeyBetween(valid[index - 1] ?? null, valid[index] ?? null);
+  const at = Math.min(Math.max(index, 0), valid.length);
+  return generateKeyBetween(valid[at - 1] ?? null, valid[at] ?? null);
 }

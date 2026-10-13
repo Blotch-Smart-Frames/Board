@@ -37,7 +37,7 @@ export function htmlToText(html: string | null | undefined): string {
     .replace(/<li[^>]*>/gi, "\n- ")
     .replace(/<\/(p|div|h[1-6]|blockquote|pre|ul|ol)>/gi, "\n")
     .replace(/<[^>]*>/g, "")
-    .replace(/&(nbsp|lt|gt|quot|#39|amp);/g, (entity) => ENTITIES[entity] ?? entity)
+    .replace(/&(nbsp|lt|gt|quot|#39|amp);/g, (entity) => ENTITIES[entity] as string)
     .split("\n")
     .map((line) => line.trimEnd())
     .join("\n")

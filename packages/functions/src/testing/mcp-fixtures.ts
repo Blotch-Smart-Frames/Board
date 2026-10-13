@@ -45,7 +45,7 @@ export function taskData(overrides: Record<string, unknown> = {}) {
   };
 }
 
-export function seedWorkspace(db: FakeFirestore = createFakeFirestore()) {
+export function seedWorkspace(db = createFakeFirestore()) {
   db.seed(`users/${ALICE}`, { email: "alice@example.com", displayName: "Alice Adams" });
   db.seed(`users/${BOB}`, { email: "bob@example.com", displayName: "Bob Brown" });
   db.seed(`users/${CAROL}`, { email: "carol@example.com", displayName: "Carol Cole" });

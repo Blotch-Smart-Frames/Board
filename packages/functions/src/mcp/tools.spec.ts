@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 vi.mock("firebase-admin/firestore", () => import("../testing/fake-firestore"));
 vi.mock("firebase-functions/v2", () => ({
@@ -7,7 +7,7 @@ vi.mock("firebase-functions/v2", () => ({
 vi.mock("../firebase", () => ({ getDb: vi.fn(), getBucket: vi.fn() }));
 
 import { logger } from "firebase-functions/v2";
-import { Timestamp, type FakeFirestore } from "../testing/fake-firestore";
+import { Timestamp } from "../testing/fake-firestore";
 import {
   ALICE,
   BOB,
@@ -25,25 +25,35 @@ import {
 import { createClientResolver } from "../oauth/clients";
 import { createTokenVerifier } from "../oauth/verifier";
 import { createMcpApp, type McpApp } from "./app";
+import { PALETTE } from "./tools/shared";
 
-let db: FakeFirestore & { asFirestore(): any };
+let db: ReturnType<typeof seedWorkspace>;
 let app: McpApp;
 let token: string;
-let deleteStoragePaths: ReturnType<typeof vi.fn>;
+let deleteStoragePaths: Mock<(paths: string[]) => Promise<void>>;
 
 const call = (name: string, args: Record<string, unknown> = {}) =>
   callTool(app, token, name, args);
 
 function history(taskPath: string) {
-  return db.list(`${taskPath}/history`).map((path) => db.read(path));
+  return db.list(`${taskPath}/history`).map((path) => db.read(path) as Record<string, any> | undefined);
+}
+
+/** A task stored without the optional arrays that older tasks can lack. */
+function bareTask(overrides: Record<string, unknown> = {}) {
+  const task: Record<string, unknown> = taskData(overrides);
+  delete task.assignedTo;
+  delete task.labelIds;
+  delete task.attachments;
+  return task;
 }
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
-  db = seedWorkspace() as FakeFirestore & { asFirestore(): any };
+  db = seedWorkspace();
   token = seedAccessToken(db, ALICE);
-  deleteStoragePaths = vi.fn(async () => {});
+  deleteStoragePaths = vi.fn(async (_paths: string[]) => {});
   app = createMcpApp({
     db: db.asFirestore(),
     config,
@@ -189,6 +199,16 @@ describe("read tools", () => {
     expect(result.tasks.map((task: any) => task.id)).toEqual(["t-campaign"]);
   });
 
+  it("list_my_tasks orders tasks with the same due date by title", async () => {
+    db.seed("boards/b1/tasks/t-alpha", taskData({ title: "Alpha", order: "a2", assignedTo: [ALICE] }));
+    const result = (await call("list_my_tasks", { boardId: "b1" })).structuredContent!;
+    expect(result.tasks.map((task: any) => task.title)).toEqual([
+      "Fix login bug",
+      "Alpha",
+      "Write docs",
+    ]);
+  });
+
   describe("search_tasks", () => {
     const titles = async (args: Record<string, unknown>) =>
       ((await call("search_tasks", args)).structuredContent!.tasks as any[]).map(
@@ -208,6 +228,18 @@ describe("read tools", () => {
         "Launch campaign",
       ]);
       expect(await titles({ assignee: "unassigned", boardId: "b1" })).toEqual([]);
+    });
+
+    it("finds unassigned tasks and tasks that aren't overdue", async () => {
+      db.seed("boards/b1/tasks/t-bare", bareTask({ title: "Untouched", order: "a2" }));
+      db.seed("boards/b1/tasks/t-free", taskData({ title: "Free", order: "a3" }));
+      expect(await titles({ assignee: "unassigned", boardId: "b1" })).toEqual(["Free", "Untouched"]);
+      expect(await titles({ overdue: false, boardId: "b1" })).toEqual([
+        "Build API",
+        "Free",
+        "Untouched",
+        "Write docs",
+      ]);
     });
 
     it("includes archived tasks only when asked", async () => {
@@ -231,8 +263,17 @@ describe("read tools", () => {
       expect(errorText(await call("search_tasks", { list: "Nowhere" }))).toMatch(
         /None of your boards has a list/,
       );
+      expect(errorText(await call("search_tasks", { label: "Nope" }))).toMatch(
+        /None of your boards has a label/,
+      );
       expect(errorText(await call("search_tasks", { label: "Nope", boardId: "b1" }))).toMatch(
         /This board has no label/,
+      );
+      expect(errorText(await call("search_tasks", { assignee: "Zed", boardId: "b1" }))).toMatch(
+        /No member of this board matches "Zed"/,
+      );
+      expect(errorText(await call("search_tasks", { list: "Nowhere", boardId: "b1" }))).toMatch(
+        /This board has no list named "Nowhere"/,
       );
       // Resolves on b1 but not b2: that's a valid search, not an error.
       expect(await titles({ assignee: "Bob", list: "In Progress" })).toEqual(["Build API"]);
@@ -260,6 +301,64 @@ describe("read tools", () => {
       comments: [{ id: "c1", author: "Bob Brown", authorId: BOB, text: "Seen on **Safari** too" }],
       history: [{ summary: "Bob Brown assigned Alice Adams" }],
     });
+  });
+
+  it("get_task shows escalation, color, calendar sync and attachments", async () => {
+    db.seed(
+      "boards/b1/tasks/t-hot",
+      taskData({
+        title: "Escalated",
+        labelIds: ["lb-bug", "lb-deleted"],
+        escalation: "level-2",
+        color: "#EF4444",
+        calendarSyncEnabled: true,
+        attachments: [
+          {
+            id: "a1",
+            fileName: "spec.pdf",
+            fileType: "application/pdf",
+            fileSize: 1200,
+            downloadUrl: "https://files.test/spec.pdf",
+            storagePath: "boards/b1/tasks/t-hot/attachments/spec.pdf",
+          },
+        ],
+      }),
+    );
+    const task = (await call("get_task", { boardId: "b1", taskId: "t-hot" })).structuredContent!;
+    expect(task).toMatchObject({
+      labels: [{ id: "lb-bug", name: "🐛 Bug" }],
+      escalation: "level-2",
+      color: "#EF4444",
+      syncedToGoogleCalendar: true,
+      attachments: [
+        {
+          fileName: "spec.pdf",
+          fileType: "application/pdf",
+          fileSize: 1200,
+          url: "https://files.test/spec.pdf",
+        },
+      ],
+    });
+    expect(task.history).toBeUndefined();
+  });
+
+  it("get_task copes with archived tasks and missing optional fields", async () => {
+    const archived = (await call("get_task", { boardId: "b1", taskId: "t-old" })).structuredContent!;
+    expect(archived).toMatchObject({ archived: true, list: { id: "l-archive", title: "Archive" } });
+
+    db.seed(
+      "boards/b1/tasks/t-bare",
+      bareTask({ title: "Bare", listId: "l-gone", escalation: "none" }),
+    );
+    const bare = (await call("get_task", { boardId: "b1", taskId: "t-bare" })).structuredContent!;
+    expect(bare).toMatchObject({
+      list: { id: "l-gone", title: "Unknown list" },
+      assignees: [],
+      labels: [],
+      attachments: [],
+    });
+    expect(bare.escalation).toBeUndefined();
+    expect(bare.archived).toBeUndefined();
   });
 
   it("get_task reports a missing task", async () => {
@@ -302,7 +401,7 @@ describe("create_task", () => {
       commentCount: 0,
       description: "<p>Steps:</p><ul><li>build</li><li><strong>deploy</strong></li></ul>",
     });
-    expect(stored.order > "a1").toBe(true);
+    expect((stored.order as string) > "a1").toBe(true);
     expect(stored.createdAt).toBeInstanceOf(Timestamp);
   });
 
@@ -311,6 +410,20 @@ describe("create_task", () => {
     const stored = db.read(`boards/b1/tasks/${result.structuredContent!.task.id}`)!;
     expect(stored.archive).toBe(true);
     expect(stored.archivedAt).toBeInstanceOf(Timestamp);
+  });
+
+  it("puts the task in a named list with a start date", async () => {
+    const result = await call("create_task", {
+      boardId: "b1",
+      title: "Plan",
+      list: "In Progress",
+      startDate: "2026-10-14",
+    });
+    expect(result.structuredContent!.task.list).toBe("In Progress");
+    const stored = db.read(`boards/b1/tasks/${result.structuredContent!.task.id}`)!;
+    expect(stored.listId).toBe("l-doing");
+    expect((stored.startDate as Timestamp).toDate().toISOString()).toBe("2026-10-14T12:00:00.000Z");
+    expect(stored).toMatchObject({ description: "", color: null, assignedTo: [], labelIds: [] });
   });
 
   it("enforces the 20-task list limit", async () => {
@@ -387,6 +500,21 @@ describe("update_task", () => {
     expect(result.note).toMatch(/Google Calendar/);
   });
 
+  it("replaces the description and clears the color", async () => {
+    db.seed("boards/b1/tasks/t-docs", taskData({ title: "Write docs", color: "#22C55E" }));
+    const result = await call("update_task", {
+      boardId: "b1",
+      taskId: "t-docs",
+      description: "Use **Markdown**",
+      color: null,
+    });
+    expect(db.read("boards/b1/tasks/t-docs")).toMatchObject({
+      description: "<p>Use <strong>Markdown</strong></p>",
+      color: null,
+    });
+    expect(result.structuredContent!.note).toBeUndefined();
+  });
+
   it("needs at least one field", async () => {
     expect(errorText(await call("update_task", { boardId: "b1", taskId: "t-login" }))).toMatch(
       /Nothing to update/,
@@ -437,6 +565,27 @@ describe("assign_task and label_task", () => {
     expect(history("boards/b1/tasks/t-login").map((h) => h?.action)).toEqual(
       expect.arrayContaining(["label_added", "label_removed"]),
     );
+  });
+
+  it("removes labels on their own and skips no-op label changes", async () => {
+    await call("label_task", { boardId: "b1", taskId: "t-login", remove: ["Bug"] });
+    expect(db.read("boards/b1/tasks/t-login")?.labelIds).toEqual([]);
+
+    const before = history("boards/b1/tasks/t-login").length;
+    const result = (await call("label_task", { boardId: "b1", taskId: "t-login", remove: ["Hot"] }))
+      .structuredContent!;
+    expect(result.task.labels).toBeUndefined();
+    expect(history("boards/b1/tasks/t-login")).toHaveLength(before);
+  });
+
+  it("assigns and labels a task stored without assignees or labels", async () => {
+    db.seed("boards/b1/tasks/t-bare", bareTask({ title: "Bare" }));
+    await call("assign_task", { boardId: "b1", taskId: "t-bare", add: ["me"] });
+    await call("label_task", { boardId: "b1", taskId: "t-bare", add: ["Bug"] });
+    expect(db.read("boards/b1/tasks/t-bare")).toMatchObject({
+      assignedTo: [ALICE],
+      labelIds: ["lb-bug"],
+    });
   });
 
   it("points at create_label for unknown labels", async () => {
@@ -564,6 +713,15 @@ describe("delete_task", () => {
     expect(db.read("boards/b1/tasks/t-docs")).toBeUndefined();
     expect(logger.warn).toHaveBeenCalled();
   });
+
+  it("skips storage cleanup for tasks without attachments", async () => {
+    db.seed("boards/b1/tasks/t-bare", bareTask({ title: "Bare" }));
+    await call("delete_task", { boardId: "b1", taskId: "t-bare" });
+    await call("delete_task", { boardId: "b1", taskId: "t-docs" });
+    expect(db.read("boards/b1/tasks/t-bare")).toBeUndefined();
+    expect(db.read("boards/b1/tasks/t-docs")).toBeUndefined();
+    expect(deleteStoragePaths).not.toHaveBeenCalled();
+  });
 });
 
 describe("comments", () => {
@@ -628,6 +786,13 @@ describe("lists and labels", () => {
     );
   });
 
+  it("adds a list at the end by default", async () => {
+    const result = (await call("create_list", { boardId: "b1", title: "Later" })).structuredContent!;
+    expect(result.list).toEqual({ id: expect.any(String), title: "Later" });
+    const board = (await call("get_board", { boardId: "b1", includeTasks: false })).structuredContent!;
+    expect(board.lists.map((list: any) => list.title).at(-1)).toBe("Later");
+  });
+
   it("renames and reorders a list", async () => {
     const result = (
       await call("update_list", { boardId: "b1", list: "Done", title: "Shipped", index: 0 })
@@ -649,6 +814,23 @@ describe("lists and labels", () => {
     expect(errorText(await call("create_label", { boardId: "b1", name: "docs" }))).toMatch(
       /already exists/,
     );
+  });
+
+  it("takes an explicit label color, and cycles the palette once it's used up", async () => {
+    const custom = (await call("create_label", { boardId: "b1", name: "Ops", color: "#abcdef" }))
+      .structuredContent!;
+    expect(custom.label).toEqual({ id: expect.any(String), name: "Ops", color: "#ABCDEF" });
+    expect(db.read(`boards/b1/labels/${custom.label.id}`)?.emoji).toBeNull();
+
+    // Valid fractional order keys after Ops (a2): a3, a4, ...
+    const orderDigits = "3456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    PALETTE.forEach((color, i) =>
+      db.seed(`boards/b1/labels/p${i}`, { name: `P${i}`, color, order: `a${orderDigits[i]}` }),
+    );
+    const overflow = (await call("create_label", { boardId: "b1", name: "Overflow" }))
+      .structuredContent!;
+    // Bug, Hot and Ops plus one label per palette color already exist.
+    expect(overflow.label.color).toBe(PALETTE[(3 + PALETTE.length) % PALETTE.length]);
   });
 });
 

@@ -3,8 +3,15 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("firebase-admin/firestore", () => import("../testing/fake-firestore"));
 
 import { Timestamp } from "../testing/fake-firestore";
-import type { HistoryEntry } from "@blotch/model";
-import { describeHistory, formatContext, htmlToText, parseDateArg, textToHtml } from "./format";
+import type { HistoryEntry, Label, List, Task } from "@blotch/model";
+import {
+  describeHistory,
+  formatContext,
+  htmlToText,
+  parseDateArg,
+  summarizeTask,
+  textToHtml,
+} from "./format";
 
 describe("htmlToText", () => {
   it("turns Quill HTML into readable lines", () => {
@@ -56,6 +63,59 @@ describe("parseDateArg", () => {
   });
 });
 
+describe("summarizeTask", () => {
+  const ctx = formatContext(
+    [{ id: "l1", title: "To Do" } as List],
+    [{ id: "lb1", name: "Bug", emoji: "🐛", color: "#EF4444" } as Label],
+    [{ id: "u1", name: "Ana", email: "ana@example.com", role: "owner" }],
+    Date.UTC(2026, 0, 10),
+  );
+
+  it("names assignees, labels and the list, flagging overdue tasks", () => {
+    const task = {
+      id: "t1",
+      title: "Ship",
+      listId: "l1",
+      assignedTo: ["u1", "gone"],
+      labelIds: ["lb1", "deleted"],
+      startDate: Timestamp.fromMillis(Date.UTC(2026, 0, 1)),
+      dueDate: Timestamp.fromMillis(Date.UTC(2026, 0, 5)),
+      archive: false,
+      commentCount: 2,
+    } as unknown as Task;
+    expect(summarizeTask(task, ctx, { board: { id: "b1", title: "Product" } })).toEqual({
+      id: "t1",
+      title: "Ship",
+      boardId: "b1",
+      board: "Product",
+      listId: "l1",
+      list: "To Do",
+      assignees: ["Ana", "Former member"],
+      labels: ["🐛 Bug"],
+      startDate: "2026-01-01T00:00:00.000Z",
+      dueDate: "2026-01-05T00:00:00.000Z",
+      overdue: true,
+      comments: 2,
+    });
+  });
+
+  it("leaves out empty fields and copes with unknown lists", () => {
+    const task = { id: "t2", title: "Bare", listId: "nope", archive: true } as unknown as Task;
+    expect(summarizeTask(task, ctx)).toEqual({
+      id: "t2",
+      title: "Bare",
+      listId: "nope",
+      list: "Unknown list",
+      archived: true,
+    });
+    expect(summarizeTask(task, ctx, { includeList: false })).toEqual({
+      id: "t2",
+      title: "Bare",
+      archived: true,
+    });
+  });
+});
+
 describe("describeHistory", () => {
   const ctx = formatContext(
     [],
@@ -81,6 +141,18 @@ describe("describeHistory", () => {
       'Ana changed description from "a" to "b"',
     ],
     [{ action: "unarchived", userId: "gone" }, "Former member restored from ? to ?"],
+    [{ action: "moved", metadata: { fromListName: "To Do", toListName: "Done" } }, "Ana moved from To Do to Done"],
+    [{ action: "label_removed" }, "Ana removed label "],
+    [{ action: "assignee_added", metadata: { userName: "Bo" } }, "Ana assigned Bo"],
+    [{ action: "assignee_removed" }, "Ana unassigned "],
+    [{ action: "attachment_added" }, "Ana attached "],
+    [{ action: "board_migrated" }, "Ana moved from another board (? → ?)"],
+    [
+      { action: "field_changed", field: "title", metadata: { oldValue: "A", newValue: "B" } },
+      'Ana changed title from "A" to "B"',
+    ],
+    [{ action: "field_changed" }, 'Ana changed a field from "" to ""'],
+    [{ action: "renamed" as HistoryEntry["action"] }, "Ana renamed"],
   ] as [Partial<HistoryEntry>, string][])("%j", (overrides, summary) => {
     expect(describeHistory(entry(overrides), ctx)).toEqual({ at: "1970-01-01T00:00:00.000Z", summary });
   });
