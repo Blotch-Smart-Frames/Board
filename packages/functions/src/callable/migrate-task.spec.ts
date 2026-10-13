@@ -34,6 +34,7 @@ vi.mock("firebase-admin/firestore", () => ({
 vi.mock("../firebase", () => ({ getDb: vi.fn() }));
 
 import { HttpsError } from "firebase-functions/v2/https";
+import { getDb } from "../firebase";
 import { migrateTask, runMigrateTask } from "./migrate-task";
 
 type BoardDoc = {
@@ -486,19 +487,20 @@ describe("runMigrateTask", () => {
   });
 
   it("exposes migrateTask as a callable that delegates to runMigrateTask", async () => {
-    const { db } = makeDb({ boards: baseBoards, task: baseTask });
+    const { db, batches } = makeDb({ boards: baseBoards, task: baseTask });
+    vi.mocked(getDb).mockReturnValue(db);
     // The mocked onCall just returns the handler, so calling migrateTask hits
-    // the arrow wrapper that re-dispatches to runMigrateTask (without deps).
-    // We only care that it forwards through and rejects on missing auth,
-    // proving the wrapper is exercised.
-    await expect(
-      (
-        migrateTask as unknown as (
-          req: CallableRequest<unknown>,
-        ) => Promise<unknown>
-      )(makeRequest(basePayload, null)),
-    ).rejects.toMatchObject({ code: "unauthenticated" });
-    // Reference db so the setup helper stays symmetric across tests.
-    expect(db).toBeDefined();
+    // the arrow wrapper that re-dispatches to runMigrateTask without deps,
+    // which falls back to the default database.
+    const callable = migrateTask as unknown as (
+      req: CallableRequest<unknown>,
+    ) => Promise<{ newTaskId: string }>;
+    await expect(callable(makeRequest(basePayload, null))).rejects.toMatchObject(
+      { code: "unauthenticated" },
+    );
+    const result = await callable(makeRequest(basePayload));
+    expect(result.newTaskId).toBe("new-task-id");
+    expect(getDb).toHaveBeenCalled();
+    expect(batches[0]!.commit).toHaveBeenCalledTimes(1);
   });
 });

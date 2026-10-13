@@ -258,3 +258,40 @@ export type HistoryEntry = {
 export type CreateBoardInput = {
   title: string;
 };
+
+/**
+ * A pending "connect an AI assistant" request, as shown on the consent screen.
+ * Created when an MCP client (ChatGPT, Claude, …) starts the OAuth flow; the
+ * signed-in user then approves or denies it via the `decideMcpConnectRequest`
+ * callable.
+ */
+export type McpConnectRequestInfo = {
+  /** Self-reported name of the app asking for access. */
+  clientName: string;
+  /** The app's homepage, when it published one. */
+  clientUri: string | null;
+  /** Hostname the browser is sent back to once the user decides. */
+  redirectHost: string;
+  /**
+   * True when that redirect points at the user's own machine (a loopback
+   * address), e.g. a CLI such as Claude Code. Anything on the machine could be
+   * listening there, so the consent screen should warn about it.
+   */
+  isLoopbackRedirect: boolean;
+  /** When the request expires, in epoch milliseconds. */
+  expiresAt: number;
+};
+
+export type GetMcpConnectRequestInput = {
+  requestId: string;
+};
+
+export type DecideMcpConnectRequestInput = {
+  requestId: string;
+  approve: boolean;
+};
+
+export type DecideMcpConnectRequestResult = {
+  /** Where to send the browser next: the MCP client's redirect URI with a code or an error. */
+  redirectUrl: string;
+};

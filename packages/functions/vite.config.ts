@@ -12,6 +12,11 @@ const runtimeExternals = [
   // Large CJS SDK — keep it out of the single inlined bundle; it installs at
   // deploy time from the generated dist/package.json (twilio is a runtime dep).
   /^twilio(\/.*)?$/,
+  // The MCP SDK resolves its runtime shims through package export conditions
+  // and pairs with zod at runtime; install both at deploy time rather than
+  // inlining a second copy of either.
+  /^@modelcontextprotocol\/server(\/.*)?$/,
+  /^zod(\/.*)?$/,
 ];
 
 export default defineConfig({
@@ -43,7 +48,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html", "lcov"],
       include: ["src/**/*.ts"],
-      exclude: ["src/**/*.spec.ts", "src/index.ts"],
+      exclude: ["src/**/*.spec.ts", "src/index.ts", "src/testing/**"],
     },
   },
 });

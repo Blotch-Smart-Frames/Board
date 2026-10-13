@@ -12,6 +12,7 @@ A simple, visual way to organize your work. Create boards, add tasks, and drag t
 - **Label and categorize** — Tag tasks with color-coded labels and emoji so you can spot what matters at a glance.
 - **Sync with Google Calendar** — Attach due dates to tasks and have them appear on your calendar automatically.
 - **Sign in with Google** — No new account needed. Just sign in with your existing Google account.
+- **Work from ChatGPT or Claude** — Connect an AI assistant to view your tickets and your team's, move and assign tasks, set deadlines and comment. Add `https://<app domain>/mcp` as a connector and approve access in Board. See [packages/functions](packages/functions/README.md#mcp-server-chatgpt-claude).
 
 ## Getting Started
 
@@ -25,6 +26,8 @@ A simple, visual way to organize your work. Create boards, add tasks, and drag t
 This repo is an [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) monorepo orchestrated with [Turborepo](https://turborepo.dev):
 
 - [packages/client](packages/client) — Angular 22 app (primary, deployed to Firebase Hosting)
+- [packages/functions](packages/functions) — Cloud Functions, including the MCP server for AI assistants
+- [packages/model](packages/model) — Domain types shared by the client and functions
 
 Shared root files: [firebase.json](firebase.json), [firestore.rules](firestore.rules), [storage.rules](storage.rules), [turbo.json](turbo.json), and the CI workflows under [.github/workflows](.github/workflows).
 
